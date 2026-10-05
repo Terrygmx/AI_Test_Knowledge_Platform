@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual env
+.venv/
+venv/
+env/
+ENV/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# Data & artifacts (不入库)
+data/*
+!data/.gitkeep
+out/
+logs/
+*.log
+
+# Vector stores / model cache
+.chroma/
+.faiss/
+*.index
