@@ -38,24 +38,30 @@ Metadata 过滤、全文检索与向量检索，避免多套存储带来的数�
 ```
 AI_Test_Knowledge_Platform/
 ├── app/
-│   ├── core/           # 基础设施：配置、数据库会话、日志
-│   ├── api/            # FastAPI 路由层
-│   ├── ingestion/      # 数据接入：Parser → Normalizer → Knowledge Model → Chunker
-│   ├── retrieval/      # 检索：Vector / Keyword / Hybrid Fusion / Metadata Filter
-│   ├── rerank/         # 重排
-│   ├── generation/     # 上下文组装 + LLM + Citation
-│   ├── evaluation/     # 离线评测指标与运行器
-│   └── models/         # 数据模型（ORM / Pydantic Schema）
+│   ├── core/           # 基础设施：配置、数据库会话、日志、领域异常、请求上下文
+│   ├── api/            # FastAPI 路由层 + 中间件 + 统一错误处理
+│   ├── models/         # ORM 实体（Schema 的单一事实来源）+ 可移植列类型 + 受控词表
+│   ├── schemas/        # Pydantic 请求 / 响应模型
+│   ├── services/       # 业务服务层：CRUD 基类 + 实体服务 + 统一检索
+│   ├── ingestion/      # 数据接入：Parser → Normalizer → Knowledge Model → Chunker（Phase 5）
+│   ├── retrieval/      # 检索：Vector / Keyword / Hybrid Fusion / Metadata Filter（Phase 3+）
+│   ├── rerank/         # 重排（Phase 11）
+│   ├── generation/     # 上下文组装 + LLM + Citation（Phase 17）
+│   └── evaluation/     # 离线评测指标与运行器（Phase 13）
+├── alembic/            # 迁移脚本（env.py + versions/）
 ├── docs/               # 项目方案、开发计划、各阶段实验报告
 ├── eval/               # 评测数据集（约 100 条人工确认 Query）
 ├── scripts/            # 数据导入、索引、实验脚本
-├── sql/init/           # 数据库初始化 DDL
 ├── tests/              # 测试代码
 ├── data/               # 原始语料与产物（不入库）
 ├── docker-compose.yml  # PostgreSQL + pgvector
+├── alembic.ini         # Alembic 配置
 ├── .env.example        # 环境变量模板
 └── pyproject.toml
 ```
+
+**Schema 只有一份**：`app/models/` 是唯一事实来源，`alembic/versions/` 是它的版本化投影。
+（早期用 `sql/init/*.sql` 手工建表，与 ORM 双轨维护必然漂移，已废除。）
 
 ---
 
@@ -84,19 +90,21 @@ cp .env.example .env
 | `LLM_*` | 默认走本地 Ollama（`qwen3:8b`）；切云 API 时改 `LLM_PROVIDER=openai_compatible` 并填 Key |
 
 > 未配置 Key 时，涉及 Embedding / Rerank / LLM 的代码路径不可运行，但项目可正常导入与启动。
+> `GET /health` 的 `capabilities` 字段会直接告诉你各项能力是否可用。
 
-### 3. 启动数据库（当前待办）
-
-本机尚未安装 Docker / PostgreSQL，`docker-compose.yml` 与 `sql/init/01_schema.sql` 已备好待用。
+### 3. 启动数据库并建表
 
 ```bash
-# 安装 Docker Desktop 后：
-docker compose up -d
-docker compose ps                 # 等待 healthy
-docker compose exec postgres psql -U postgres -d ai_test_knowledge -c '\dx'   # 确认 vector 扩展
+./scripts/db_init.sh                      # 等价于下面两条命令
+#   docker compose up -d
+#   uv run alembic upgrade head
+docker compose ps                         # 等待 healthy
+docker compose exec postgres psql -U postgres -d ai_test_knowledge -c '\dx'   # 确认 vector / pg_trgm 扩展
 ```
 
-首次启动会自动执行 `sql/init/*.sql` 完成建表。
+Schema 由 Alembic 管理：新增表或改列时，改 `app/models/` 后执行
+`uv run alembic revision --autogenerate -m "描述"` 生成迁移，再 `upgrade head`。
+`tests/test_migrations.py` 会检查「ORM 与迁移是否一致」以及「迁移能否真正执行」。
 
 ### 4. 本地 LLM（可选）
 
@@ -106,17 +114,59 @@ ollama pull qwen3:8b     # 本机 Ollama 服务已在运行（127.0.0.1:11434）
 
 ---
 
+## 开发
+
+### 运行测试
+
+```bash
+uv run pytest                       # 全量测试
+uv run pytest tests/api -q          # 只跑 API 层
+uv run ruff check .                 # 静态检查
+```
+
+**测试不依赖 Docker**：默认用 SQLite 内存库（通过 `app/models/types.py` 的方言分流），
+因此任何机器上都能跑 TDD。要针对真实 PostgreSQL 验证时，指向专用测试库即可：
+
+```bash
+TEST_DATABASE_URL='postgresql+psycopg://postgres:postgres@127.0.0.1:5432/aitkp_test' uv run pytest
+```
+
+> 注意：`TEST_DATABASE_URL` 指向的库会被 `drop_all` + `create_all`，请使用专用测试库。
+
+### 启动服务
+
+```bash
+uv run uvicorn app.main:app --reload
+# 交互式文档：http://127.0.0.1:8000/docs
+```
+
+---
+
 ## 当前状态
+
+Phase 1（FastAPI + PostgreSQL）已完成，测试 **191 passed**，全程 TDD（先红后绿）。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
 - [x] 配置层：`app/core/config.py`（pydantic-settings）
-- [x] 数据访问层骨架：`app/core/db.py`、`app/core/logging.py`
-- [x] `docker-compose.yml` + `sql/init/01_schema.sql`（初稿）
-- [ ] **数据库实机验证**（待安装 Docker / PostgreSQL）
-- [ ] 项目方案与开发计划评审（`docs/`）
+- [x] 数据访问层：`app/core/db.py`、`app/core/logging.py`
+- [x] ORM 实体：`test_cases` / `defects` / `requirements` / `documents`
+- [x] Pydantic Schema：受控词表（Priority / CaseType / Severity / Status）与规范化
+- [x] 服务层：通用 CRUD 基类 + 四实体服务 + 统一检索（元数据过滤 + 关键词）
+- [x] API：`/health`、`/api/v1/testcases`、`/api/v1/defects`、`/api/v1/requirements`、
+      `/api/v1/documents`、`/api/v1/search`
+- [x] 统一错误信封 + `X-Request-ID` / `X-Process-Time-Ms` 中间件
+- [x] Alembic 初始迁移（含 pgvector / pg_trgm 扩展）+ 漂移检查
+- [ ] **数据库实机验证**（待本机 Docker 起来后跑 `scripts/db_init.sh`）
 - [ ] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
-- [ ] Phase 1：FastAPI + PostgreSQL
+- [ ] Phase 2：Embedding + pgvector（`knowledge_chunks`）
+- [ ] Phase 3：手写最小 RAG（先不上 LangChain / LlamaIndex）
 
-> `sql/init/01_schema.sql` 是**初稿**。方案要求 Schema 由本人定稿，
-> 请在 Phase 1 评审字段后再固化，并让 Alembic 接管后续变更。
+### 已知取舍（需要时 revisit）
+
+| 事项 | 当前选择 | 原因 |
+|---|---|---|
+| 中文全文检索 | 关键词检索走 `ILIKE`（全表扫描） | PG 内置 `to_tsvector` 对中文无效；Phase 8 再定 zhparser / pg_jieba / 应用层分词 |
+| 检索结果打分 | 不返回 `score` | 没有打分依据时不编数字（Evidence First）；Phase 9 融合后引入 |
+| 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
+| 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

@@ -5,18 +5,64 @@
 ## [Unreleased]
 
 ### Added
+
+#### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
+
+- **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，
+  索引命名与迁移一致；`TestCase` 等实体是「原始事实来源」，检索单元 `knowledge_chunks` 留给 Phase 2。
+- **可移植列类型**（`app/models/types.py`）：`pk_type()` / `TextArray` / `JSONMap` 按方言分流
+  （PG → `BIGSERIAL` / `TEXT[]` / `JSONB`，SQLite → `INTEGER` / JSON 文本），
+  使整套测试无需 Docker 即可运行。
+- **受控词表**（`app/models/enums.py`）：`Priority` / `CaseType` / `Severity` / `DefectStatus` / `RequirementStatus`，
+  统一用 `StrEnum`（`str(member)` 即规范值，避免写入 `"Priority.P0"` 这类脏数据）；
+  数据库列保持 `TEXT`，避免 PG 原生 enum 的 `ALTER TYPE` 迁移成本。
+- **Pydantic Schema**（`app/schemas/`）：入参统一去空白、枚举大小写归一化、标签去重去空；
+  `to_orm_dict()` 用 `mode="json"` 把枚举转成裸值；更新入参 `extra="forbid"`（拼错字段名 / 改不可变业务编号直接 422）。
+- **服务层**（`app/services/`）：通用 `EntityService` 基类（CRUD + 等值过滤 + 关键词检索 + 分页），
+  四个实体服务只声明差异；`UnifiedSearchService` 提供跨实体统一检索。
+- **API**（`app/api/`、`app/main.py`）：`GET /health`（含数据库与 AI 能力自检）、
+  `/api/v1/{testcases,defects,requirements,documents}` 完整 CRUD、`GET /api/v1/search`；
+  公开接口统一用业务编号（Case ID / Bug ID）寻址。
+- **统一错误处理**（`app/api/errors.py`）：所有错误都是 `{"error": {code, message, request_id, detail}}` 信封；
+  领域异常（`app/core/exceptions.py`）→ 404 / 409，参数校验 → 422，未处理异常 → 500 且不泄露内部细节。
+- **请求中间件**（`app/api/middleware.py`）：`X-Request-ID`（可传入，便于串联上层日志）+
+  `X-Process-Time-Ms` + 访问日志，为后续 Badcase 分析打底。
+- **Alembic**：`alembic.ini` + `alembic/env.py` + 初始迁移 `0001_initial_schema.py`
+  （含 `CREATE EXTENSION vector` / `pg_trgm`，仅 PG）。
+- **测试**：191 个用例，覆盖模型形状、Schema 规范化、服务 CRUD/过滤/分页、API 全流程、
+  错误信封、中间件、迁移漂移与迁移可执行性。
+
+### Changed
+
+- **Schema 改由 Alembic 单一管理**：删除 `sql/init/01_schema.sql` 与 docker-compose 的初始化脚本挂载。
+  原因：DDL 文件与 ORM 双轨维护必然漂移；现在 `app/models/` 是唯一事实来源，
+  `alembic/versions/` 是它的版本化投影，`tests/test_migrations.py` 负责盯住两者一致。
+- `docker-compose.yml` 不再挂载 `sql/init`；新增 `scripts/db_init.sh`（起容器 + 等 healthy + 跑迁移）。
+- `app/core/config.py` 新增 `api_prefix`（默认 `/api/v1`），`.env.example` 同步补充 `API_PREFIX`。
+- `README.md` 重写：目录结构、数据库初始化、测试策略（SQLite 默认 / `TEST_DATABASE_URL` 切 PG）、当前状态与已知取舍。
+
+### Removed
+
+- `sql/` 目录（初稿 DDL 内容已并入 Alembic 初始迁移，未丢失）。
+
+### Notes
+
+- **数据库仍未实机验证**：本机 Docker daemon 未启动，迁移目前只在 SQLite 上验证过可执行；
+  Docker 起来后需跑 `./scripts/db_init.sh`，并用
+  `TEST_DATABASE_URL=... uv run pytest` 对真实 PG 复跑全量测试。
+- **中文全文检索待定**：当前关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词。
+- **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First），Phase 9 融合打分后引入。
+- **`.env` 中 `EMBEDDING_API_KEY` / `RERANK_API_KEY` 为空**：`/health` 的 `capabilities` 会显示 false，
+  涉及 Embedding / Rerank 的代码路径暂不可运行（LLM 走本地 Ollama，无需 Key）。
+- **`tags` / `related_cases` 暂不支持查询过滤**：PG 的 `text[] @>` 与 SQLite 不可兼得，Phase 10 元数据过滤时补。
+
+### 历史（Phase 0 之前）
+
 - 项目目录骨架，对齐方案 §14 的 `app/` 布局（`core` / `api` / `ingestion` / `retrieval` / `rerank` / `generation` / `evaluation` / `models`）。
 - 依赖声明 `pyproject.toml`：FastAPI、SQLAlchemy、Alembic、psycopg3、pgvector、openai、pandas、pypdf、pytest、ruff 等。
 - 虚拟环境：`uv sync` + Python 3.11（`.python-version`）。
 - 配置层 `app/core/config.py`：基于 pydantic-settings，统一从 `.env` 读取应用 / 数据库 / Embedding / Rerank / LLM / 检索参数。
 - 数据访问骨架 `app/core/db.py`：SQLAlchemy 2.0 engine、session、`session_scope()`、`ping()`。
 - 日志骨架 `app/core/logging.py`：统一格式，为后续 Badcase 阶段日志打底。
-- `docker-compose.yml`：PostgreSQL 17 + pgvector（`pgvector/pgvector:pg17`），含健康检查与初始化脚本挂载。
-- `sql/init/01_schema.sql`（初稿）：业务实体表（test_cases / defects / requirements / documents）、检索表（knowledge_chunks，含 `vector(1024)` 与 HNSW 索引）、评测表（evaluation_cases / evaluation_results / badcases）。
 - `.env.example`：Embedding / Rerank / LLM 双通道（Ollama ↔ 云 API）配置模板。
 - `.gitignore`：排除 `.venv`、`.env`、`data/`、`.workbuddy-ai/` 等。
-
-### Notes
-- **数据库未实机验证**：本机无 Docker / PostgreSQL，`docker-compose.yml` 处于「备好待用」状态。
-- **中文全文检索待定**：PostgreSQL 内置 `to_tsvector` 对中文无效，DDL 中 `tsv` 先保留为普通列，待选定 zhparser / pg_trgm / 应用层分词方案后再固化。
-- **Embedding 维度耦合**：`knowledge_chunks.embedding` 固定为 `vector(1024)`（bge-m3），更换模型需同步改列与索引。
