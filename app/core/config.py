@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_host: str = "127.0.0.1"
     api_port: int = 8000
+    api_prefix: str = "/api/v1"
 
     # ---------------- PostgreSQL + pgvector ----------------
     postgres_host: str = "127.0.0.1"
