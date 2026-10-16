@@ -1,7 +1,12 @@
 # PostgreSQL 17 + pgvector 0.8.x
-# 说明：本机当前未安装 Docker，此文件为「备好待用」状态。
-# 需要数据库时执行：docker compose up -d
-# 首次启动会自动执行 sql/init/*.sql 完成建表。
+#
+# 用法：
+#   docker compose up -d          # 启动数据库
+#   uv run alembic upgrade head   # 建表（Schema 由 Alembic 管理，见 alembic/versions/）
+#
+# 说明：不再把 *.sql 挂到 docker-entrypoint-initdb.d。
+# 以前「DDL 文件 + ORM」两份 Schema 必然漂移，现在单一事实来源是 ORM（app/models），
+# 迁移脚本即 Schema 的版本化投影；pgvector / pg_trgm 扩展也在迁移里创建。
 services:
   postgres:
     image: pgvector/pgvector:pg17
@@ -17,7 +22,6 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./sql/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test:
         ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_test_knowledge}"]
