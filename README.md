@@ -8,7 +8,9 @@
 > **Evidence First** —— 回答必须有来源，不允许凭空生成 Case ID / Bug ID。
 
 详细方案见 [`docs/AI_Test_Knowledge_Platform_V2.md`](docs/AI_Test_Knowledge_Platform_V2.md)，
-开发计划见 [`docs/AI_Test_Knowledge_Platform_Implementation_Plan.md`](docs/AI_Test_Knowledge_Platform_Implementation_Plan.md)。
+开发计划见 [`docs/AI_Test_Knowledge_Platform_Implementation_Plan.md`](docs/AI_Test_Knowledge_Platform_Implementation_Plan.md)；
+项目边界与学习问题见 [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md)、
+[`docs/LEARNING_QUESTIONS.md`](docs/LEARNING_QUESTIONS.md)。
 
 ---
 
@@ -144,7 +146,8 @@ uv run uvicorn app.main:app --reload
 
 ## 当前状态
 
-Phase 1（FastAPI + PostgreSQL）已完成，测试 **191 passed**，全程 TDD（先红后绿）。
+Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
+默认 SQLite 路径 **191 passed + 1 skipped**，真实 PostgreSQL **192 passed**，全程 TDD（先红后绿）。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
@@ -157,8 +160,8 @@ Phase 1（FastAPI + PostgreSQL）已完成，测试 **191 passed**，全程 TDD�
       `/api/v1/documents`、`/api/v1/search`
 - [x] 统一错误信封 + `X-Request-ID` / `X-Process-Time-Ms` 中间件
 - [x] Alembic 初始迁移（含 pgvector / pg_trgm 扩展）+ 漂移检查
-- [ ] **数据库实机验证**（待本机 Docker 起来后跑 `scripts/db_init.sh`）
-- [ ] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
+- [x] **PostgreSQL 17.11 实机验证**（`vector 0.8.7` / `pg_trgm 1.6`）
+- [x] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
 - [ ] Phase 2：Embedding + pgvector（`knowledge_chunks`）
 - [ ] Phase 3：手写最小 RAG（先不上 LangChain / LlamaIndex）
 

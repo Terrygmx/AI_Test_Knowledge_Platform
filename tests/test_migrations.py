@@ -16,7 +16,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import UniqueConstraint, inspect, text
+from sqlalchemy.engine import Engine
 
 from app import models  # noqa: F401
 from app.core.db import Base
@@ -130,7 +131,7 @@ class TestMigrationExecutable:
 
         command.upgrade(config, "head")
 
-        from sqlalchemy import create_engine, inspect
+        from sqlalchemy import create_engine
 
         engine = create_engine(f"sqlite:///{db_file}")
         try:
@@ -147,3 +148,39 @@ class TestMigrationExecutable:
             assert remaining == {"alembic_version"}, remaining
         finally:
             engine.dispose()
+
+    def test_postgresql_extensions_present(self, engine: Engine) -> None:
+        """真实 PostgreSQL 上，迁移必须安装向量与三元组检索扩展。"""
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL-only check")
+
+        from alembic.config import Config
+
+        from alembic import command
+
+        config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+        config.set_main_option("sqlalchemy.url", engine.url.render_as_string(hide_password=False))
+
+        # 测试夹具已 create_all；清空 ORM 表与 Alembic 版本表，从 base 验证迁移。
+        Base.metadata.drop_all(engine)
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+
+        command.upgrade(config, "head")
+
+        try:
+            with engine.connect() as conn:
+                installed = set(
+                    conn.execute(
+                        text(
+                            "SELECT extname FROM pg_extension "
+                            "WHERE extname IN ('vector', 'pg_trgm')"
+                        )
+                    ).scalars()
+                )
+
+            assert installed == {"vector", "pg_trgm"}
+        finally:
+            command.downgrade(config, "base")
+            with engine.begin() as conn:
+                conn.execute(text("DROP TABLE IF EXISTS alembic_version"))

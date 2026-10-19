@@ -6,6 +6,13 @@
 
 ### Added
 
+#### Phase 0：项目边界（2026-10-19）
+
+- 新增 `docs/PROJECT_SCOPE.md`：明确问题、用户、数据、MVP 用例、非目标、成功指标与
+  Retrieval / Generation 边界。
+- 新增 `docs/LEARNING_QUESTIONS.md`：记录 Embedding、Chunk、Vector / BM25、Rerank、TopK、
+  Recall@K / MRR、Faithfulness、RAG 幻觉、适用边界与持续优化问题。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，
@@ -31,6 +38,8 @@
   （含 `CREATE EXTENSION vector` / `pg_trgm`，仅 PG）。
 - **测试**：191 个用例，覆盖模型形状、Schema 规范化、服务 CRUD/过滤/分页、API 全流程、
   错误信封、中间件、迁移漂移与迁移可执行性。
+- **PostgreSQL 实机验证**：新增 PG 专属迁移测试，在真实 PostgreSQL 上从 base 升级到
+  `head` 并校验 `vector` / `pg_trgm` 扩展；SQLite 默认路径自动跳过该用例。
 
 ### Changed
 
@@ -47,9 +56,11 @@
 
 ### Notes
 
-- **数据库仍未实机验证**：本机 Docker daemon 未启动，迁移目前只在 SQLite 上验证过可执行；
-  Docker 起来后需跑 `./scripts/db_init.sh`，并用
-  `TEST_DATABASE_URL=... uv run pytest` 对真实 PG 复跑全量测试。
+- **PostgreSQL 17.11 实机验证通过**：`pgvector/pgvector:pg17` 容器运行正常，
+  Alembic 升级到 `0001 (head)`，`vector 0.8.7` / `pg_trgm 1.6` 已安装；
+  `aitkp_test` 上 192 个测试全部通过，SQLite 默认路径为 191 passed + 1 skipped。
+- **Docker 环境**：首次启动需拉取 `pgvector/pgvector:pg17` 镜像；
+  测试库 `aitkp_test` 可重复使用，但测试会 `drop_all` + `create_all`，不要指向开发库。
 - **中文全文检索待定**：当前关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词。
 - **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First），Phase 9 融合打分后引入。
 - **`.env` 中 `EMBEDDING_API_KEY` / `RERANK_API_KEY` 为空**：`/health` 的 `capabilities` 会显示 false，
