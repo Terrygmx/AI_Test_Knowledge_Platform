@@ -94,8 +94,8 @@ class OpenAICompatibleEmbeddingClient:
             # OpenAI SDK 要求非空 Key；本机服务可用占位值。
             api_key=self._settings.embedding_api_key or "local-no-key",
             base_url=self._settings.embedding_base_url,
-            timeout=60.0,
-            max_retries=2,
+            timeout=self._settings.embedding_timeout,
+            max_retries=self._settings.embedding_max_retries,
         )
 
         # 数据库列是 Vector(EMBEDDING_DIM)；配置漂移必须在进程启动 / 建客户端时暴露。

@@ -1,9 +1,10 @@
 {
   "phase": 7,
-  "started_at": "2026-10-19T20:17:51.238640+00:00",
-  "finished_at": "2026-10-19T20:17:55.636678+00:00",
-  "git_commit": "b67f2e7b8c4a3e7cc4f7b3d695f5d99ab7d2aa02",
-  "git_dirty": false,
+  "run_id": "3cd42b2f910f4836986a1e86cd265b0b",
+  "started_at": "2026-10-19T20:35:38.459818+00:00",
+  "finished_at": "2026-10-19T20:35:50.073081+00:00",
+  "git_commit": "9ab3ab8a1fcc5ea32b46b6ff0ad050a9752197aa",
+  "git_dirty": true,
   "command": [
     "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
     "scripts/embedding_experiment.py",
@@ -28,8 +29,42 @@
   },
   "environment": {
     "database_name": "aitkp_embedding",
-    "embedding_base_url": "http://127.0.0.1:28080/v1"
+    "embedding_base_url": "http://127.0.0.1:28080/v1",
+    "embedding_batch_size": 32,
+    "embedding_timeout_seconds": 60.0,
+    "embedding_max_retries": 2
   },
+  "embedding_service": {
+    "model_metadata": {
+      "status": "available",
+      "models": {
+        "bge-m3-mlx-4bit": {
+          "object": "model",
+          "created": 1792442150,
+          "owned_by": "omlx",
+          "max_model_len": 8194
+        },
+        "embeddinggemma-2-oQ8e": {
+          "object": "model",
+          "created": 1792442150,
+          "owned_by": "omlx",
+          "max_model_len": 131072
+        },
+        "all-MiniLM-L6-v2": {
+          "object": "model",
+          "created": 1792442150,
+          "owned_by": "omlx",
+          "max_model_len": 512
+        }
+      },
+      "missing_models": []
+    }
+  },
+  "cleared_experiment_tables": [
+    "phase7_embedding_all_minilm_l6_v2_384",
+    "phase7_embedding_bge_m3_mlx_4bit_1024",
+    "phase7_embedding_embeddinggemma_2_oq8e_768"
+  ],
   "models": [
     {
       "name": "bge-m3-mlx-4bit",
@@ -54,16 +89,17 @@
       "dimension": 1024,
       "table_name": "phase7_embedding_bge_m3_mlx_4bit_1024",
       "chunk_count": 46,
-      "warmup_seconds": 0.04340679199958686,
-      "content_embedding_seconds": 1.106208750003134,
-      "write_seconds": 0.034362250007689,
-      "index_seconds": 1.140571000010823,
-      "query_embedding_p50_seconds": 0.024575584000558592,
-      "query_embedding_p95_seconds": 0.031291708000935614,
-      "search_p50_seconds": 0.003094833009527065,
-      "search_p95_seconds": 0.004321875007008202,
-      "query_total_p50_seconds": 0.027670417010085657,
-      "query_total_p95_seconds": 0.034857749997172505,
+      "batch_count": 2,
+      "warmup_seconds": 1.1958894999988843,
+      "content_embedding_seconds": 2.855015249995631,
+      "write_seconds": 0.04368324999813922,
+      "index_seconds": 2.8986984999937704,
+      "query_embedding_p50_seconds": 0.06482479198893998,
+      "query_embedding_p95_seconds": 0.08220320900727529,
+      "search_p50_seconds": 0.0031666669965488836,
+      "search_p95_seconds": 0.005013834001147188,
+      "query_total_p50_seconds": 0.06761966699559707,
+      "query_total_p95_seconds": 0.08523050000076182,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -85,16 +121,17 @@
       "dimension": 768,
       "table_name": "phase7_embedding_embeddinggemma_2_oq8e_768",
       "chunk_count": 46,
-      "warmup_seconds": 0.016875624991371296,
-      "content_embedding_seconds": 0.412762499996461,
-      "write_seconds": 0.028431166996597312,
-      "index_seconds": 0.4411936669930583,
-      "query_embedding_p50_seconds": 0.015507541989791207,
-      "query_embedding_p95_seconds": 0.020643791009206325,
-      "search_p50_seconds": 0.0022482920030597597,
-      "search_p95_seconds": 0.0041158329986501485,
-      "query_total_p50_seconds": 0.017972625006223097,
-      "query_total_p95_seconds": 0.02309420899837278,
+      "batch_count": 2,
+      "warmup_seconds": 0.028744249997544102,
+      "content_embedding_seconds": 1.3995555839937879,
+      "write_seconds": 0.028413457999704406,
+      "index_seconds": 1.4279690419934923,
+      "query_embedding_p50_seconds": 0.040132249996531755,
+      "query_embedding_p95_seconds": 0.04938333301106468,
+      "search_p50_seconds": 0.0030131249950500205,
+      "search_p95_seconds": 0.004930957991746254,
+      "query_total_p50_seconds": 0.04293541699007619,
+      "query_total_p95_seconds": 0.05236012500245124,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -116,16 +153,17 @@
       "dimension": 384,
       "table_name": "phase7_embedding_all_minilm_l6_v2_384",
       "chunk_count": 46,
-      "warmup_seconds": 0.009300417004851624,
-      "content_embedding_seconds": 0.13628495899320114,
-      "write_seconds": 0.018081749993143603,
-      "index_seconds": 0.15436670898634475,
-      "query_embedding_p50_seconds": 0.011868167013744824,
-      "query_embedding_p95_seconds": 0.014513250003801659,
-      "search_p50_seconds": 0.0020122080022701994,
-      "search_p95_seconds": 0.003796707998844795,
-      "query_total_p50_seconds": 0.01408270800311584,
-      "query_total_p95_seconds": 0.017274124998948537,
+      "batch_count": 2,
+      "warmup_seconds": 0.02276700000220444,
+      "content_embedding_seconds": 0.45613916699949186,
+      "write_seconds": 0.018980832988745533,
+      "index_seconds": 0.4751199999882374,
+      "query_embedding_p50_seconds": 0.014713124997797422,
+      "query_embedding_p95_seconds": 0.023413166010868736,
+      "search_p50_seconds": 0.001971042001969181,
+      "search_p95_seconds": 0.004739292009617202,
+      "query_total_p50_seconds": 0.01691679201030638,
+      "query_total_p95_seconds": 0.024922666008933447,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,

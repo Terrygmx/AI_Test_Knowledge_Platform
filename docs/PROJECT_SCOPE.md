@@ -134,7 +134,8 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 | Phase 3 | 代码完成 + 链路已验证（生成质量待评测） | 手写最小 RAG、Context Assembly、Answer + Citation |
 | Phase 4 | 完成 | TestCase / Defect / KnowledgeChunk 字段契约、Metadata 映射与验收 |
 | Phase 5 | 完成 | Excel / CSV / Markdown / 普通文本 PDF 接入 |
-| Phase 6 | 完成（小规模模拟语料） | 固定 / 语义 / 实体级 Chunk 对比、Gold Set 指标 |
+| Phase 6 | 完成（小规模模拟语料） | 固定窗口 / Semantic / `entity+heading` Chunk 对比、Gold Set 指标 |
+| Phase 7 | 完成（小规模模拟语料） | 固定 Chunking 基线，对比 1024 / 768 / 384 维 Embedding |
 
 ### Phase 2 验证边界
 

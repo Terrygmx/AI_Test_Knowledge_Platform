@@ -65,7 +65,7 @@ app/
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
 └── evaluation/  # Phase 6 数据集契约 + Recall@K / MRR；Phase 13 扩展 NDCG
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
-tests/           # 346 个通过用例（SQLite 默认路径）
+tests/           # 通过用例以当前实测为准（SQLite 默认路径）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
 scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upgrade head
 ```

@@ -23,7 +23,9 @@ from sqlalchemy import (
     Table,
     Text,
     create_engine,
+    inspect,
     select,
+    text,
 )
 from sqlalchemy.engine import Engine
 
@@ -59,6 +61,7 @@ class EmbeddingResult:
     dimension: int
     table_name: str
     chunk_count: int
+    batch_count: int
     warmup_seconds: float
     content_embedding_seconds: float
     write_seconds: float
@@ -130,6 +133,24 @@ def _experiment_table(config: EmbeddingConfig) -> Table:
     )
 
 
+def clear_experiment_tables(
+    engine: Engine,
+    *,
+    prefix: str = "phase7_embedding_",
+) -> list[str]:
+    """删除本阶段历史表，避免缩减模型集合后残留旧结果。"""
+    if not re.fullmatch(r"[a-zA-Z0-9_]+", prefix):
+        raise ValueError(f"实验表前缀包含非法字符：{prefix}")
+    table_names = sorted(
+        name for name in inspect(engine).get_table_names() if name.startswith(prefix)
+    )
+    if table_names:
+        with engine.begin() as connection:
+            for name in table_names:
+                connection.execute(text(f'DROP TABLE IF EXISTS "{name}"'))
+    return table_names
+
+
 def _validate_vectors(
     vectors: Sequence[Sequence[float]],
     *,
@@ -162,6 +183,7 @@ def evaluate_embedding(
     embedding: EmbeddingClient,
     *,
     top_k: int = 10,
+    batch_size: int = 32,
 ) -> EmbeddingResult:
     """在同一 Chunk 集合上重建模型专属向量表并计算检索指标。"""
     if engine.dialect.name != POSTGRES:
@@ -171,6 +193,8 @@ def evaluate_embedding(
             f"模型维度不一致：{config.name} 配置 {config.dimension}，"
             f"客户端返回 {embedding.dimension}"
         )
+    if batch_size < 1:
+        raise ValueError("batch_size 必须 >= 1")
 
     warmup_started = time.perf_counter()
     embedding.embed_query("embedding experiment warmup")
@@ -250,6 +274,7 @@ def evaluate_embedding(
         dimension=config.dimension,
         table_name=table.name,
         chunk_count=len(chunks),
+        batch_count=(len(chunks) + batch_size - 1) // batch_size,
         warmup_seconds=warmup_seconds,
         content_embedding_seconds=content_embedding_seconds,
         write_seconds=write_seconds,
@@ -282,6 +307,7 @@ def run_embedding_experiment(
     clients: Sequence[EmbeddingClient],
     *,
     top_k: int = 10,
+    batch_size: int = 32,
 ) -> list[EmbeddingResult]:
     """串行评测多个模型；固定同一 Chunk 集合与 Query 集。"""
     if len(configs) != len(clients):
@@ -294,6 +320,7 @@ def run_embedding_experiment(
             config,
             client,
             top_k=top_k,
+            batch_size=batch_size,
         )
         for config, client in zip(configs, clients, strict=True)
     ]
@@ -305,6 +332,7 @@ __all__ = [
     "RetrievedChunk",
     "build_engine",
     "chunk_length_summary",
+    "clear_experiment_tables",
     "evaluate_embedding",
     "parse_model_specs",
     "run_embedding_experiment",

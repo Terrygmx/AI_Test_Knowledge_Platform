@@ -23,24 +23,28 @@ import argparse
 import json
 import subprocess
 import sys
+import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import httpx
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, settings
 from app.core.db import Base
+from app.core.logging import get_logger
 from app.evaluation.dataset import ChunkingDataset, load_dataset
 from app.evaluation.embedding_experiment import (
     EmbeddingConfig,
     EmbeddingResult,
     build_engine,
     chunk_length_summary,
+    clear_experiment_tables,
     parse_model_specs,
     run_embedding_experiment,
 )
@@ -60,6 +64,7 @@ DEFAULT_MODELS = (
     "embeddinggemma-2-oQ8e:768,"
     "all-MiniLM-L6-v2:384"
 )
+logger = get_logger(__name__)
 
 
 def _baseline_chunks(
@@ -92,16 +97,18 @@ class _DummyEmbedding:
         raise AssertionError("entity+heading 基线不应调用 Embedding")
 
 
-def _client_for(config: EmbeddingConfig) -> OpenAICompatibleEmbeddingClient:
-    """复用连接配置，只覆盖模型名与维度。"""
-    client_settings = Settings(
-        _env_file=None,
-        embedding_base_url=settings.embedding_base_url,
-        embedding_api_key=settings.embedding_api_key,
-        embedding_model=config.model,
-        embedding_dim=config.dimension,
-        embedding_batch_size=settings.embedding_batch_size,
+def _experiment_settings(config: EmbeddingConfig) -> Settings:
+    """复制全部配置，只覆盖模型名与维度，避免遗漏超时等字段。"""
+    return settings.model_copy(
+        update={
+            "embedding_model": config.model,
+            "embedding_dim": config.dimension,
+        }
     )
+
+
+def _client_for(config: EmbeddingConfig) -> OpenAICompatibleEmbeddingClient:
+    client_settings = _experiment_settings(config)
     return OpenAICompatibleEmbeddingClient(
         client_settings,
         allow_non_production_dimension=True,
@@ -117,6 +124,45 @@ def _verify_experiment_database(engine: Engine) -> None:
         ).scalar()
         if not vector:
             raise ValueError("目标数据库未安装 pgvector 扩展")
+
+
+def _fetch_model_metadata(
+    *,
+    base_url: str,
+    api_key: str,
+    model_names: list[str],
+    timeout: float,
+) -> dict[str, Any]:
+    """记录服务端实际声明的模型元数据；接口不可用时诚实标记。"""
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    try:
+        response = httpx.get(
+            f"{base_url.rstrip('/')}/models",
+            headers=headers,
+            timeout=timeout,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        entries = {
+            str(item["id"]): {
+                key: value
+                for key, value in item.items()
+                if key != "id" and isinstance(value, (str, int, float, bool))
+            }
+            for item in payload.get("data", [])
+            if isinstance(item, dict) and item.get("id")
+        }
+    except Exception as exc:  # noqa: BLE001 - 元数据不可用不应阻断实验
+        logger.warning("读取 Embedding 服务模型元数据失败：%s", type(exc).__name__)
+        return {"status": "unavailable", "error": type(exc).__name__}
+
+    models = {name: entries.get(name) for name in model_names}
+    missing = [name for name, metadata in models.items() if metadata is None]
+    return {
+        "status": "partial" if missing else "available",
+        "models": models,
+        "missing_models": missing,
+    }
 
 
 def _redact_command(command: list[str]) -> list[str]:
@@ -151,6 +197,9 @@ def _manifest(
     started_at: datetime,
     finished_at: datetime,
     command: list[str],
+    run_id: str,
+    cleared_tables: list[str],
+    model_metadata: dict[str, Any],
 ) -> dict[str, Any]:
     database_name = database_url.rsplit("/", 1)[-1].split("?", 1)[0]
     git_commit = "unknown"
@@ -163,6 +212,7 @@ def _manifest(
 
     return {
         "phase": 7,
+        "run_id": run_id,
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
         "git_commit": git_commit,
@@ -182,7 +232,14 @@ def _manifest(
         "environment": {
             "database_name": database_name,
             "embedding_base_url": settings.embedding_base_url,
+            "embedding_batch_size": settings.embedding_batch_size,
+            "embedding_timeout_seconds": settings.embedding_timeout,
+            "embedding_max_retries": settings.embedding_max_retries,
         },
+        "embedding_service": {
+            "model_metadata": model_metadata,
+        },
+        "cleared_experiment_tables": cleared_tables,
         "models": [
             {
                 "name": config.name,
@@ -198,6 +255,7 @@ def _manifest(
                 "dimension": result.dimension,
                 "table_name": result.table_name,
                 "chunk_count": result.chunk_count,
+                "batch_count": result.batch_count,
                 "warmup_seconds": result.warmup_seconds,
                 "content_embedding_seconds": result.content_embedding_seconds,
                 "write_seconds": result.write_seconds,
@@ -242,6 +300,7 @@ def main() -> None:
         return
 
     started_at = datetime.now(UTC)
+    run_id = uuid.uuid4().hex
     engine = build_engine(args.database_url)
     _verify_experiment_database(engine)
     Base.metadata.create_all(engine)
@@ -250,6 +309,7 @@ def main() -> None:
     if not chunks:
         raise SystemExit("entity+heading 基线没有生成任何 Chunk")
 
+    cleared_tables = clear_experiment_tables(engine)
     clients = [_client_for(config) for config in configs]
     results = run_embedding_experiment(
         engine,
@@ -258,6 +318,13 @@ def main() -> None:
         configs,
         clients,
         top_k=args.top_k,
+        batch_size=settings.embedding_batch_size,
+    )
+    model_metadata = _fetch_model_metadata(
+        base_url=settings.embedding_base_url,
+        api_key=settings.embedding_api_key,
+        model_names=[config.model for config in configs],
+        timeout=settings.embedding_timeout,
     )
     manifest = _manifest(
         dataset,
@@ -269,6 +336,9 @@ def main() -> None:
         started_at=started_at,
         finished_at=datetime.now(UTC),
         command=[sys.executable, *sys.argv],
+        run_id=run_id,
+        cleared_tables=cleared_tables,
+        model_metadata=model_metadata,
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)

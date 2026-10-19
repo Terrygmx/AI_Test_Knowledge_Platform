@@ -34,6 +34,11 @@ Phase 6 在相同 40 条 Query 上得到：
 Embedding，准备成本更低。因此 Phase 7 固定它作为基线。否则同时改变切分与
 Embedding，指标变化无法归因。
 
+需要明确的是：Phase 6 的基线选择与 Phase 7 的模型评测共用同一批 40 条 Query，
+因此基线本身也受该 Gold Set 影响。当前结论只说明“在这个切分基线下哪个模型更好”，
+扩大数据集后应同时重新确认 Chunking 基线与 Embedding 排名，不能把一次小样本选型
+当成对生产分布的证明。
+
 ## 3. 模型与隔离策略
 
 | 报告标识 | OMLX 模型 | 维度 |
@@ -91,13 +96,15 @@ Embedding，指标变化无法归因。
 
 | 模型 | 内容 Embedding | 写库 | 索引合计 | Query Embedding P50 / P95 | pgvector P95 | 端到端 P95 |
 |---|---:|---:|---:|---:|---:|---:|
-| `bge-m3-mlx-4bit` | 1.159s | 0.040s | 1.199s | 0.024s / 0.028s | 0.005s | 0.034s |
-| `embeddinggemma-2-oQ8e` | 0.614s | 0.034s | 0.648s | 0.013s / 0.023s | 0.005s | 0.030s |
-| `all-MiniLM-L6-v2` | 0.268s | 0.021s | 0.289s | 0.007s / 0.010s | 0.005s | 0.016s |
+| `bge-m3-mlx-4bit` | 2.855s | 0.044s | 2.899s | 0.065s / 0.082s | 0.005s | 0.085s |
+| `embeddinggemma-2-oQ8e` | 1.400s | 0.028s | 1.428s | 0.040s / 0.049s | 0.005s | 0.052s |
+| `all-MiniLM-L6-v2` | 0.456s | 0.019s | 0.475s | 0.015s / 0.023s | 0.005s | 0.025s |
 
 表中的“索引合计”= 内容 Embedding + 写库，不含建表与首次 warmup。
 46 个 Chunk 的绝对耗时很短，主要反映本机 OMLX 的单次批处理开销和当前负载；
-pgvector 在 46 行数据上约为毫秒级，差异没有工程意义。
+pgvector 在 46 行数据上约为毫秒级，差异没有工程意义。表内数字来自
+`results/embedding-phase7.json` 当前 manifest，四舍五入到 0.001s；绝对延迟会因
+模型冷启动与机器负载明显波动，只适合同一环境下的相对参考。
 
 本实验的检索表没有建立 HNSW 索引，所有模型使用相同的精确距离扫描。因此这里
 **只比较模型语义质量与调用成本，不比较 HNSW 参数**；数据量扩大后需要单独评测
@@ -142,7 +149,13 @@ uv run python scripts/embedding_experiment.py --dry-run
 
 脚本会用 `Base.metadata.create_all` 确保隔离库具备基础实体表，再为每个模型
 重建模型专属向量表。manifest 记录数据集 SHA-256、起止时间、`git_commit` /
-`git_dirty`、脱敏后的命令、模型与维度、Chunk 统计和完整指标。
+`git_dirty`、脱敏后的命令、模型与维度、Chunk 统计和完整指标。运行时还会清理
+隔离库中历史 `phase7_embedding_*` 表，避免缩减模型集合后残留旧结果。
+
+服务端元数据通过 OpenAI-compatible `/models` 尽力获取：OMLX 当前返回
+`created` / `owned_by` / `max_model_len`，但不提供模型文件哈希或量化构建号。
+manifest 因此只能证明“服务当时声明了什么”，不能据此断言权重字节完全一致；
+若需要更强的模型版本审计，应额外记录模型文件哈希或服务部署版本。
 
 ## 7. 已知局限
 
@@ -153,6 +166,7 @@ uv run python scripts/embedding_experiment.py --dry-run
 - 延迟受本机 OMLX 冷启动、批大小和机器负载影响，不是服务端 SLA。
 - 实验表未建 HNSW，不能据此判断不同维度下 ANN 索引的表现。
 - 模型距离分布不同，不可回答 Query 的阈值不能跨模型复用。
+- Phase 6 与 Phase 7 共用 Gold Set，基线选择和模型排名存在同源选择偏差。
 
 ## 8. 下一步
 

@@ -90,6 +90,8 @@ cp .env.example .env
 | `EMBEDDING_BASE_URL` | 默认本机 OMLX：`http://127.0.0.1:28080/v1` |
 | `EMBEDDING_API_KEY` | 默认 `omlx`（本机占位 Key） |
 | `EMBEDDING_MODEL` | 默认 `bge-m3-mlx-4bit`（1024 维） |
+| `EMBEDDING_BATCH_SIZE` / `EMBEDDING_TIMEOUT` | 默认 32 / 60 秒；控制批量大小与单次请求超时 |
+| `EMBEDDING_MAX_RETRIES` | 默认 2；上游短暂失败时的重试次数 |
 | `RERANK_API_KEY` | Reranker 服务密钥 |
 | `LLM_*` | 默认走本机 OMLX（`Ling-3.0-tiny-oQ6e`）；也可切 Ollama 或云 API |
 
@@ -153,6 +155,10 @@ uv run python scripts/ask.py "登录失败怎么测试？"
 
 # Phase 7 Embedding 对比（只写隔离库；dry-run 不调用模型）
 uv run python scripts/embedding_experiment.py --dry-run
+
+# 真实实验；完整参数和隔离库前置条件见 docs/EMBEDDING_EXPERIMENT.md
+uv run python scripts/embedding_experiment.py \
+  --database-url 'postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/aitkp_embedding'
 ```
 
 ### 数据接入（Phase 5）
@@ -232,7 +238,7 @@ Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。P
 - [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
 - [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py`（默认 OMLX）
 - [x] Phase 5 数据接入：CSV / Excel / Markdown / PDF + `scripts/ingest.py`
-- [x] Phase 6 Chunking 实验：固定窗口 / 语义 / 实体级对比 + Gold Set 指标
+- [x] Phase 6 Chunking 实验：固定窗口 / Semantic / `entity+heading` 对比 + Gold Set 指标
   （见 `docs/CHUNKING_EXPERIMENT.md`）
 - [x] Phase 7 Embedding 实验：固定 entity+heading，对比 1024/768/384 维模型
   （见 `docs/EMBEDDING_EXPERIMENT.md`）
@@ -255,6 +261,7 @@ Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。P
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | Embedding 选型 | 默认 `bge-m3-mlx-4bit`（1024 维） | Phase 7 小样本 MRR 最高；`embeddinggemma` 接近且更快，待更大 Gold Set 复验 |
 | Embedding 实验索引 | 模型独立表 + 精确距离扫描，未建 HNSW | 先隔离模型变量；46 个 Chunk 上 ANN 参数没有可解释性 |
+| 报告与 manifest | 指标由一致性测试校验，延迟以 manifest 为准 | 延迟受机器负载影响；报告中的数字必须能追溯到同一次原始结果 |
 | RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
 | RAG 拒答 | 检索为空即拒答；未引用回答统一降级；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
 | RAG 延迟 | 实验性同步接口 + 45 秒预算（LLM 30 秒）| 默认推理模型较慢，Phase 14/20 再做性能与异步化 |

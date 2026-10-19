@@ -43,6 +43,8 @@ class Settings(BaseSettings):
     embedding_model: str = "bge-m3-mlx-4bit"
     embedding_dim: int = 1024
     embedding_batch_size: int = 32
+    embedding_timeout: float = 60.0
+    embedding_max_retries: int = 2
 
     # ---------------- Reranker（OpenAI-compatible）----------------
     rerank_base_url: str = "https://api.siliconflow.cn/v1"
@@ -96,6 +98,12 @@ class Settings(BaseSettings):
             )
         if self.rag_max_concurrency < 1:
             raise ValueError("RAG_MAX_CONCURRENCY 必须 >= 1")
+        if self.embedding_timeout <= 0:
+            raise ValueError("EMBEDDING_TIMEOUT 必须 > 0")
+        if self.embedding_max_retries < 0:
+            raise ValueError("EMBEDDING_MAX_RETRIES 必须 >= 0")
+        if self.embedding_batch_size < 1:
+            raise ValueError("EMBEDDING_BATCH_SIZE 必须 >= 1")
         return self
 
 

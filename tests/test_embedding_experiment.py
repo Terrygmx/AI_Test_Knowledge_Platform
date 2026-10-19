@@ -3,20 +3,29 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import Column, Integer, MetaData, Table, inspect
 
+from app.core.config import Settings
 from app.evaluation.dataset import load_dataset
 from app.evaluation.embedding_experiment import (
     EmbeddingConfig,
     EmbeddingResult,
     build_engine,
     chunk_length_summary,
+    clear_experiment_tables,
     parse_model_specs,
     run_embedding_experiment,
 )
 from app.retrieval.embedding import FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
+from scripts import embedding_experiment as embedding_script
 from scripts.chunking_experiment import StrategyConfig, _document_chunks
-from scripts.embedding_experiment import _baseline_chunks, _manifest
+from scripts.embedding_experiment import (
+    _baseline_chunks,
+    _experiment_settings,
+    _fetch_model_metadata,
+    _manifest,
+)
 
 
 def test_parse_model_specs_rejects_ambiguous_configuration() -> None:
@@ -69,6 +78,20 @@ def test_chunk_length_summary_is_stable() -> None:
     }
 
 
+def test_clear_experiment_tables_only_drops_phase7_tables(engine) -> None:
+    metadata = MetaData()
+    for name in ("phase7_embedding_old_8", "phase7_embedding_older_16", "keep_me"):
+        Table(name, metadata, Column("id", Integer, primary_key=True))
+    metadata.create_all(engine)
+
+    cleared = clear_experiment_tables(engine)
+
+    assert cleared == ["phase7_embedding_old_8", "phase7_embedding_older_16"]
+    remaining = set(inspect(engine).get_table_names())
+    assert "keep_me" in remaining
+    assert not any(name.startswith("phase7_embedding_") for name in remaining)
+
+
 def test_phase7_reuses_phase6_entity_heading_baseline() -> None:
     dataset = load_dataset("eval/fixtures/phase6_simulated.json")
     embedding = FakeEmbeddingClient(dimension=1024)
@@ -94,6 +117,83 @@ def test_phase7_baseline_can_be_rebuilt_in_the_same_database(db_session) -> None
     ]
 
 
+def test_experiment_settings_copy_all_connection_fields(monkeypatch) -> None:
+    configured = Settings(
+        _env_file=None,
+        embedding_base_url="http://127.0.0.1:28080/v1",
+        embedding_api_key="omlx",
+        embedding_batch_size=7,
+        embedding_timeout=12.5,
+        embedding_max_retries=4,
+    )
+    monkeypatch.setattr(embedding_script, "settings", configured)
+
+    copied = _experiment_settings(EmbeddingConfig("small", "small", 8))
+
+    assert copied.embedding_model == "small"
+    assert copied.embedding_dim == 8
+    assert copied.embedding_batch_size == 7
+    assert copied.embedding_timeout == 12.5
+    assert copied.embedding_max_retries == 4
+
+
+def test_fetch_model_metadata_records_server_fields_without_key(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    class Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "data": [
+                    {
+                        "id": "bge",
+                        "object": "model",
+                        "owned_by": "omlx",
+                        "max_model_len": 8194,
+                    }
+                ]
+            }
+
+    def fake_get(url, **kwargs):
+        captured["url"] = url
+        captured.update(kwargs)
+        return Response()
+
+    monkeypatch.setattr(embedding_script.httpx, "get", fake_get)
+
+    metadata = _fetch_model_metadata(
+        base_url="http://127.0.0.1:28080/v1/",
+        api_key="secret",
+        model_names=["bge", "missing"],
+        timeout=12.5,
+    )
+
+    assert captured["url"] == "http://127.0.0.1:28080/v1/models"
+    assert captured["headers"] == {"Authorization": "Bearer secret"}
+    assert captured["timeout"] == 12.5
+    assert metadata["status"] == "partial"
+    assert metadata["models"]["bge"]["max_model_len"] == 8194
+    assert metadata["missing_models"] == ["missing"]
+
+
+def test_fetch_model_metadata_failure_is_recorded_without_raising(monkeypatch) -> None:
+    def broken_get(*args, **kwargs):
+        raise OSError("service down")
+
+    monkeypatch.setattr(embedding_script.httpx, "get", broken_get)
+
+    metadata = _fetch_model_metadata(
+        base_url="http://127.0.0.1:28080/v1",
+        api_key="",
+        model_names=["bge"],
+        timeout=1.0,
+    )
+
+    assert metadata == {"status": "unavailable", "error": "OSError"}
+
+
 def test_run_embedding_experiment_requires_matching_clients() -> None:
     with pytest.raises(ValueError, match="数量"):
         run_embedding_experiment(
@@ -116,6 +216,7 @@ def test_manifest_redacts_database_password() -> None:
         dimension=1024,
         table_name="phase7_embedding_bge_1024",
         chunk_count=46,
+        batch_count=2,
         warmup_seconds=0.1,
         content_embedding_seconds=2.0,
         write_seconds=0.2,
@@ -150,10 +251,17 @@ def test_manifest_redacts_database_password() -> None:
             "script",
             "postgresql+psycopg://user:secret@localhost/aitkp_embedding",
         ],
+        run_id="run-1",
+        cleared_tables=[],
+        model_metadata={"status": "available", "models": {}},
     )
 
     assert manifest["phase"] == 7
+    assert manifest["run_id"] == "run-1"
     assert manifest["chunking_baseline"]["strategy"] == "entity+heading"
+    assert manifest["environment"]["embedding_batch_size"] == 32
+    assert manifest["environment"]["embedding_timeout_seconds"] == 60.0
+    assert manifest["environment"]["embedding_max_retries"] == 2
     assert manifest["command"][-1] == (
         "postgresql+psycopg://user:***@localhost/aitkp_embedding"
     )
@@ -197,3 +305,4 @@ def test_postgres_uses_separate_vector_tables_per_dimension(
 
     assert results[0].table_name != results[1].table_name
     assert [result.dimension for result in results] == [8, 16]
+    assert [result.batch_count for result in results] == [1, 1]

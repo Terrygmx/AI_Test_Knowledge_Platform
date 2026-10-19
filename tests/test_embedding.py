@@ -87,3 +87,39 @@ class TestOpenAICompatibleClient:
         assert config.embedding_base_url == "http://127.0.0.1:28080/v1"
         assert config.embedding_model == "bge-m3-mlx-4bit"
         assert config.embedding_dim == 1024
+        assert config.embedding_batch_size == 32
+        assert config.embedding_timeout == 60.0
+        assert config.embedding_max_retries == 2
+
+    def test_client_uses_configured_timeout_and_retries(self, monkeypatch) -> None:
+        from app.core.config import Settings
+
+        captured: dict[str, object] = {}
+
+        class CapturingOpenAI:
+            def __init__(self, **kwargs) -> None:
+                captured.update(kwargs)
+
+        monkeypatch.setattr("app.retrieval.embedding.OpenAI", CapturingOpenAI)
+        config = Settings(
+            _env_file=None,
+            embedding_base_url="http://127.0.0.1:28080/v1",
+            embedding_api_key="omlx",
+            embedding_timeout=12.5,
+            embedding_max_retries=4,
+        )
+
+        OpenAICompatibleEmbeddingClient(config)
+
+        assert captured["timeout"] == 12.5
+        assert captured["max_retries"] == 4
+
+    def test_invalid_embedding_runtime_settings_fail_fast(self) -> None:
+        from app.core.config import Settings
+
+        with pytest.raises(ValueError, match="EMBEDDING_TIMEOUT"):
+            Settings(_env_file=None, embedding_timeout=0)
+        with pytest.raises(ValueError, match="EMBEDDING_MAX_RETRIES"):
+            Settings(_env_file=None, embedding_max_retries=-1)
+        with pytest.raises(ValueError, match="EMBEDDING_BATCH_SIZE"):
+            Settings(_env_file=None, embedding_batch_size=0)
