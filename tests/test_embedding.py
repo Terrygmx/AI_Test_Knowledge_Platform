@@ -64,7 +64,7 @@ class TestOpenAICompatibleClient:
     def test_default_config_points_to_local_omlx(self) -> None:
         from app.core.config import Settings
 
-        config = Settings()
+        config = Settings(_env_file=None)
         assert config.embedding_base_url == "http://127.0.0.1:28080/v1"
         assert config.embedding_model == "bge-m3-mlx-4bit"
         assert config.embedding_dim == 1024

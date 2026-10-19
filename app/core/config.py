@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.0
     llm_max_tokens: int = 2048
     llm_timeout: int = 120
+    #: RAG 请求的端到端预算；超时返回明确错误，避免慢模型长期占用 worker
+    rag_request_timeout: float = 30.0
 
     # ---------------- 检索参数（Phase 9/11 起被 Hybrid / Rerank 消费）----------------
     retrieval_vector_top_k: int = 20

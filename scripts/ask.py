@@ -5,7 +5,8 @@
     uv run python scripts/ask.py "登录失败怎么测试？"
     uv run python scripts/ask.py --top-k 3 --source-type defect "支付失败有哪些根因？"
 
-需要 PostgreSQL + pgvector、EMBEDDING_API_KEY 与可用的 LLM（默认本地 Ollama）。
+需要 PostgreSQL + pgvector 与可用的 OMLX 服务（默认同时提供 Embedding 和 LLM）。
+本机服务无需真实 Key；远端兼容服务才需要配置 Key。
 """
 
 from __future__ import annotations
@@ -57,7 +58,8 @@ def main() -> None:
         print("引用：")
         for citation in result.citations:
             print(
-                f"- {citation.source_type}:{citation.source_id}"
+                f"- rank={citation.rank} distance={citation.distance}"
+                f" {citation.source_type}:{citation.source_id}"
                 f"#chunk-{citation.chunk_index}"
             )
 

@@ -54,6 +54,12 @@
   `Ling-3.0-tiny-oQ6e`（同一地址与 Key），完成 `scripts/ask.py` 与
   `POST /api/v1/rag/answer` 的 PostgreSQL + pgvector 端到端验证；
   修复“部分回答带合法引用、末尾又写证据不足”时引用被整体丢弃的问题。
+- **Phase 3 Review 修复**：`/health` 对 Embedding / LLM 均探测 `/models`
+  并校验配置模型存在，服务不可达或模型名错误不再误报 `true`；
+  `evidence_sufficient` 只表示是否通过 `max_distance`，与引用合法性解耦；
+  无引用回答统一降级为“证据不足”，不再原样返回；新增 `RAG_REQUEST_TIMEOUT`
+  （默认 30 秒）与实验性慢接口说明；Citation snippet 截断、`retriever` 收敛为
+  受控值，CLI 输出 rank / distance；同步 OMLX / Key / Phase 状态文档。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field, field_validator
 
 from app.schemas.common import BaseSchema, SourceType
@@ -42,15 +44,18 @@ class Citation(BaseSchema):
     distance: float | None = Field(
         default=None, description="cosine distance；越小越相似，仅 PostgreSQL 检索可用"
     )
-    retriever: str = Field(default="vector", description="产生该证据的检索器")
+    retriever: Literal["vector", "keyword", "hybrid", "rerank"] = Field(
+        default="vector", description="产生该证据的检索器"
+    )
 
 
 class RAGResponse(BaseSchema):
     """RAG 回答。
 
     ``citation_valid`` 只表示引用编号合法且回答至少引用一条证据，不代表 Faithfulness；
-    ``evidence_sufficient`` 在配置 ``max_distance`` 时表示证据是否通过阈值；
+    ``evidence_sufficient`` 在配置 ``max_distance`` 时表示是否存在通过阈值的证据；
     未配置时为 ``None``，表示尚未建立相关性判定，而不是“无据”或“有据”。
+    该字段与 LLM 是否引用证据无关；回答可追溯性由 ``citation_valid`` 表示。
     """
 
     question: str

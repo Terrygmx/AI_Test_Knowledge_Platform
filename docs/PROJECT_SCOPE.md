@@ -130,14 +130,15 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 |---|---|---|
 | Phase 0 | 完成 | 项目范围、学习问题 |
 | Phase 1 | 完成 | FastAPI、四实体、Alembic、PostgreSQL 实机验证 |
-| Phase 2 | 代码完成（真实语义未验证） | `knowledge_chunks`、Embedding、pgvector、索引入口、向量检索 |
-| Phase 3 | 代码完成（真实链路未验证） | 手写最小 RAG、Context Assembly、Answer + Citation |
+| Phase 2 | 代码完成 + 链路已验证（语义质量待评测） | `knowledge_chunks`、Embedding、pgvector、索引入口、向量检索 |
+| Phase 3 | 代码完成 + 链路已验证（生成质量待评测） | 手写最小 RAG、Context Assembly、Answer + Citation |
 
 ### Phase 2 验证边界
 
 `FakeEmbeddingClient` 只用于验证“实体 → Chunk → 向量 → pgvector → 距离返回”链路，
-不提供真实语义能力。Embedding API Key 配置后，必须用 bge-m3 在真实测试 Query 上重新验证
-相似文本是否更接近；不能把 Fake 结果当作召回质量结论。
+不提供真实语义能力。默认本机 OMLX 不需要真实 Key；无论使用本机还是远端服务，
+都必须用 bge-m3 在真实测试 Query 上验证相似文本是否更接近，不能把 Fake 结果
+当作召回质量结论。真实链路已验证，但 Recall@K / MRR 仍需人工 Gold Set。
 
 ## 9. Human Review Points
 

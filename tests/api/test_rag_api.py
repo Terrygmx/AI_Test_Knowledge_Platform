@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from app.generation.llm import LLMError
 from app.retrieval.embedding import FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
@@ -73,3 +75,19 @@ class TestRAGAPI:
         assert body["citations"][0]["source_id"] == "LOGIN-API-1"
         assert body["citations"][0]["rank"] == 1
         assert "distance" in body["citations"][0]
+
+    def test_rag_timeout_returns_llm_error(self, client, monkeypatch) -> None:
+        from app.api import rag
+
+        def slow_answer(*args, **kwargs):
+            time.sleep(0.2)
+
+        monkeypatch.setattr(rag.RAGService, "answer", slow_answer)
+        monkeypatch.setattr(rag.settings, "rag_request_timeout", 0.01)
+
+        response = client.post(API, json={"question": "登录失败怎么排查？"})
+
+        assert response.status_code == 503
+        body = response.json()
+        assert body["error"]["code"] == "llm_error"
+        assert "超时" in body["error"]["message"]

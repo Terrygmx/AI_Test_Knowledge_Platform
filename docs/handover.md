@@ -65,7 +65,7 @@ app/
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
 └── evaluation/  # 空，Phase 13（Recall@K / MRR / NDCG）
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
-tests/           # 266 个用例（api / services / models / schemas / types / exceptions / migrations）
+tests/           # 273 个用例（api / services / models / schemas / types / exceptions / migrations）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
 scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upgrade head
 ```
@@ -118,7 +118,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 261 passed + 6 skipped；真实 PostgreSQL 266 passed + 1 skipped）
+  （当前 SQLite 267 passed + 6 skipped；真实 PostgreSQL 272 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -128,7 +128,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   - Alembic 初始迁移 `0001`（含 `CREATE EXTENSION vector / pg_trgm`，仅 PG 分支执行）
 - **PostgreSQL 17.11 实机验证通过**：Docker Compose 启动 `pgvector/pgvector:pg17`，
   Alembic 升级到 `0002 (head)`；`vector 0.8.7` / `pg_trgm 1.6` 已安装；
-  专用测试库 `aitkp_test` 上 266 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
+  专用测试库 `aitkp_test` 上 272 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
 - Phase 2 核心链路：`knowledge_chunks` ORM / Schema / 迁移、Embedding 抽象、
   实体到 Chunk 的索引脚本、PostgreSQL cosine 向量检索、Chunk API
 - Phase 2 验证边界：Fake Embedding 只证明链路可运行；本机 OMLX 已具备真实
@@ -139,7 +139,8 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   PostgreSQL + pgvector + OMLX Embedding + OMLX LLM 已端到端验证
 - 真实链路结果记录在 `docs/RAG_EXPERIMENT.md`：正常回答、引用追溯、无关问题拒答
   与严格 `max_distance` 过滤均通过；`Ling-3.0-tiny-oQ6e` 的推理输出会使单次回答
-  延迟达到约 11–60 秒，生产使用前需做性能与超时策略评估
+  延迟达到约 11–60 秒；API 已加 `RAG_REQUEST_TIMEOUT`（默认 30 秒）并标注为
+  实验性慢接口，生产使用前仍需做异步化与性能评估
 - Phase 3 的 `citation_valid` 只表示引用编号合法；Faithfulness / Citation Accuracy
   仍需 Phase 14 的真实评测，不能据此宣称回答有据
 - 文档：README / CHANGELOG 与代码同步
@@ -156,6 +157,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - 中文关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词
 - `tags` / `related_cases` 数组暂不支持查询过滤（PG `text[] @>` 与 SQLite 不可兼得，Phase 10 补）
 - 检索结果暂无 `score` 字段（Phase 9 融合打分后引入）
+- CI 目前覆盖 Ruff + SQLite pytest；PostgreSQL 集成测试仍为手工执行
 
 ---
 
@@ -189,7 +191,7 @@ uv run alembic upgrade head               # 应用迁移
 
 ## 8. 给接手 agent 的第一步建议
 
-1. `uv sync && uv run pytest` 确认默认路径 261 passed + 6 skipped（以实际输出为准）
+1. `uv sync && uv run pytest` 确认默认路径 267 passed + 6 skipped（以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
 4. Phase 2/3 真实链路已完成；本机启动 OMLX 后运行

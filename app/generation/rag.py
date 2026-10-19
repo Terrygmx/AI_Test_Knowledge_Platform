@@ -17,6 +17,7 @@ from app.services.knowledge_chunk_service import KnowledgeChunkService
 logger = get_logger(__name__)
 
 INSUFFICIENT_EVIDENCE = "证据不足：当前知识库没有可用于回答该问题的内容。"
+UNCITED_ANSWER = "证据不足：模型回答未通过引用校验。"
 _CITATION_PATTERN = re.compile(r"\[\s*(\d+(?:\s*[,，]\s*\d+)*)\s*\]")
 
 
@@ -74,6 +75,7 @@ class RAGService:
                 if distance <= max_distance
             ]
         bundle = assemble_context(eligible_results)  # type: ignore[arg-type]
+        evidence_sufficient = True if max_distance is not None and bundle.citations else None
         if not bundle.citations:
             return RAGResponse(
                 question=question,
@@ -93,7 +95,16 @@ class RAGService:
                 question=question,
                 answer=raw_answer.strip(),
                 citation_valid=False,
-                evidence_sufficient=False,
+                evidence_sufficient=evidence_sufficient,
+                citations=[],
+                retrieved_count=len(bundle.citations),
+            )
+        if not citations:
+            return RAGResponse(
+                question=question,
+                answer=UNCITED_ANSWER,
+                citation_valid=False,
+                evidence_sufficient=evidence_sufficient,
                 citations=[],
                 retrieved_count=len(bundle.citations),
             )
@@ -101,9 +112,7 @@ class RAGService:
             question=question,
             answer=raw_answer.strip(),
             citation_valid=bool(citations),
-            evidence_sufficient=(
-                True if max_distance is not None and bool(citations) else None
-            ),
+            evidence_sufficient=evidence_sufficient,
             citations=citations,
             retrieved_count=len(bundle.citations),
         )
@@ -161,4 +170,10 @@ class RAGService:
         )
 
 
-__all__ = ["INSUFFICIENT_EVIDENCE", "RAGService", "build_prompt", "extract_citations"]
+__all__ = [
+    "INSUFFICIENT_EVIDENCE",
+    "UNCITED_ANSWER",
+    "RAGService",
+    "build_prompt",
+    "extract_citations",
+]

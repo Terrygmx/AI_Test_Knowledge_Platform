@@ -1,7 +1,7 @@
 """健康检查。
 
-除了探活，还报告各 AI 能力的可用性：未配置 Key 时 Embedding / Rerank
-代码路径不可运行，提前暴露比等到调用时才报错更友好。
+除了探活，还探测模型服务与配置的模型是否存在。这样服务未启动、模型名写错
+或远端 Key 缺失都会提前暴露，而不是等到第一次 RAG 请求才报错。
 """
 
 from __future__ import annotations
@@ -27,7 +27,8 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["health"])
 
 _llm_cache: tuple[float, bool] | None = None
-_LLM_CACHE_TTL_SECONDS = 60.0
+_embedding_cache: tuple[float, bool] | None = None
+_MODEL_CACHE_TTL_SECONDS = 60.0
 
 
 class HealthResponse(BaseSchema):
@@ -49,10 +50,10 @@ def health(session: SessionDep) -> HealthResponse:
         KnowledgeChunkService.count_without_embedding(session) if database else None
     )
     llm_ready = _check_llm()
+    embedding_ready = _check_embedding()
     capabilities = {
-        # 本地 Ollama 不需要 Key；云 API 通道需要
-        "embedding": bool(settings.embedding_api_key)
-        or settings.embedding_base_url.startswith(("http://127.0.0.1", "http://localhost")),
+        # 本机 OpenAI-compatible 服务不需要 Key，但仍需服务与模型真实可用
+        "embedding": embedding_ready,
         "rerank": bool(settings.rerank_api_key),
         "llm": llm_ready,
         # 向量检索依赖 PostgreSQL + pgvector；SQLite 默认测试路径不支持
@@ -91,10 +92,14 @@ def _check_llm() -> bool:
     """探测 LLM 通道；结果短时缓存，避免每次 /health 都等待上游。"""
     global _llm_cache
     now = time.monotonic()
-    if _llm_cache is not None and now - _llm_cache[0] < _LLM_CACHE_TTL_SECONDS:
+    if _llm_cache is not None and now - _llm_cache[0] < _MODEL_CACHE_TTL_SECONDS:
         return _llm_cache[1]
     if settings.llm_provider == "openai_compatible":
-        ready = bool(settings.llm_api_key)
+        ready = bool(settings.llm_api_key) and _model_available(
+            settings.llm_base_url,
+            settings.llm_api_key,
+            settings.llm_model,
+        )
         _llm_cache = (now, ready)
         return ready
 
@@ -108,6 +113,38 @@ def _check_llm() -> bool:
         ready = False
     _llm_cache = (now, ready)
     return ready
+
+
+def _check_embedding() -> bool:
+    """确认 Embedding 服务可达且配置模型存在；本机服务同样需要真实探测。"""
+    global _embedding_cache
+    now = time.monotonic()
+    if _embedding_cache is not None and now - _embedding_cache[0] < _MODEL_CACHE_TTL_SECONDS:
+        return _embedding_cache[1]
+    ready = _model_available(
+        settings.embedding_base_url,
+        settings.embedding_api_key,
+        settings.embedding_model,
+    )
+    _embedding_cache = (now, ready)
+    return ready
+
+
+def _model_available(base_url: str, api_key: str, model: str) -> bool:
+    """检查 ``GET /models`` 是否返回目标模型。"""
+    try:
+        response = httpx.get(
+            f"{base_url.rstrip('/')}/models",
+            headers={"Authorization": f"Bearer {api_key or 'local-no-key'}"},
+            timeout=1.5,
+        )
+        if response.status_code != 200:
+            return False
+        payload = response.json()
+        models = payload.get("data", [])
+        return any(item.get("id") == model for item in models if isinstance(item, dict))
+    except Exception:
+        return False
 
 
 __all__ = ["HealthResponse", "router"]

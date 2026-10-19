@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """真实 Embedding 相似度探针（Phase 2.1）。
 
-需要配置 EMBEDDING_API_KEY；输出成对 cosine similarity，供人工判断语义模型是否工作。
+默认调用本机 OMLX，无需真实 Key；远端兼容服务才需要配置 EMBEDDING_API_KEY。
+输出成对 cosine similarity，供人工判断语义模型是否工作。
 不要把输出当作 Recall / MRR，真正的检索质量需要人工 Gold Set。
 """
 
@@ -35,7 +36,11 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Embedding 相似度探针")
-    parser.add_argument("--pairs", action="store_true", help="使用内置测试对")
+    parser.add_argument(
+        "--pairs",
+        action="store_true",
+        help="运行内置测试对（默认行为，保留用于兼容旧命令）",
+    )
     parser.parse_args()
 
     try:

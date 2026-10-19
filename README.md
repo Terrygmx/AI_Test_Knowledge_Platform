@@ -26,7 +26,7 @@
 | 检索 | Vector(HNSW) + 全文检索 + RRF/Weighted 融合 + Metadata Filter |
 | Embedding | bge-m3（OpenAI-compatible API，1024 维） |
 | Reranker | bge-reranker-v2-m3（OpenAI-compatible API） |
-| LLM | OpenAI-compatible，双通道：本地 Ollama / 云 API，`.env` 一键切换 |
+| LLM | OpenAI-compatible：本机 OMLX / Ollama / 云 API，`.env` 一键切换 |
 | 评测 | 自研指标（Recall@K / Precision@K / MRR / NDCG）+ 后续接 Ragas |
 | 工程 | uv + pytest + ruff |
 
@@ -93,8 +93,8 @@ cp .env.example .env
 | `RERANK_API_KEY` | Reranker 服务密钥 |
 | `LLM_*` | 默认走本机 OMLX（`Ling-3.0-tiny-oQ6e`）；也可切 Ollama 或云 API |
 
-> 未配置 Key 时，涉及 Embedding / Rerank / LLM 的代码路径不可运行，但项目可正常导入与启动。
-> `GET /health` 的 `capabilities` 字段会直接告诉你各项能力是否可用。
+> 本机 OMLX 的 Embedding / LLM 不要求真实 Key；远端 OpenAI-compatible 服务才需要。
+> `GET /health` 会检查服务可达性与配置模型是否存在，并直接报告各项能力是否可用。
 
 ### 3. 启动数据库并建表
 
@@ -146,6 +146,9 @@ uv run python scripts/embedding_probe.py --pairs
 uv run python scripts/ask.py "登录失败怎么测试？"
 ```
 
+> `/api/v1/rag/answer` 是实验性慢接口：默认推理模型可能耗时 11–60 秒，
+> 请求超过 `RAG_REQUEST_TIMEOUT`（默认 30 秒）会返回 503。暂不建议用于交互式生产场景。
+
 `IndexService` 不是 HTTP 路由：索引是批量运维任务，交由脚本执行；
 `/api/v1/chunks` 只负责保存 / 查询检索单元，不在请求内生成向量。
 
@@ -171,7 +174,7 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
-**261 passed + 6 skipped**，真实 PostgreSQL **266 passed + 1 skipped**，全程 TDD
+**267 passed + 6 skipped**，真实 PostgreSQL **272 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -208,7 +211,8 @@ pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLit
 | 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
-| RAG 拒答 | 检索为空即拒答；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
+| RAG 拒答 | 检索为空即拒答；未引用回答统一降级；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
+| RAG 延迟 | 实验性同步接口 + 30 秒预算 | 默认推理模型较慢，Phase 14/20 再做性能与异步化 |
 | Citation 信号 | `citation_valid` 只表示编号合法 | 不代表 Faithfulness / Citation Accuracy，Phase 14 单独评测 |
 | Chunk 索引状态 | `GET /chunks?has_embedding=false` + `/health.metrics` | 无向量 Chunk 不会参与向量检索，必须可排查 |
 | CI 范围 | SQLite + ruff | PostgreSQL 门禁仍为手工执行 |

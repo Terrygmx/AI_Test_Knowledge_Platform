@@ -12,6 +12,8 @@ from app.schemas.rag import Citation
 MAX_CHUNK_CHARS = 2000
 #: 全部证据最多放入 Prompt 的字符数
 MAX_CONTEXT_CHARS = 8000
+#: Citation 返回给调用方的片段上限，避免响应体远大于实际 Prompt
+MAX_SNIPPET_CHARS = 500
 
 
 @dataclass(frozen=True)
@@ -60,7 +62,7 @@ def assemble_context(
                 source_type=chunk.source_type,
                 source_id=chunk.source_id,
                 chunk_index=chunk.chunk_index,
-                snippet=raw_content,
+                snippet=_truncate(raw_content, MAX_SNIPPET_CHARS),
                 rank=len(citations) + 1,
                 distance=_distance,
             )
@@ -70,4 +72,10 @@ def assemble_context(
     return ContextBundle(text="\n\n".join(blocks), citations=citations)
 
 
-__all__ = ["ContextBundle", "MAX_CHUNK_CHARS", "MAX_CONTEXT_CHARS", "assemble_context"]
+__all__ = [
+    "ContextBundle",
+    "MAX_CHUNK_CHARS",
+    "MAX_CONTEXT_CHARS",
+    "MAX_SNIPPET_CHARS",
+    "assemble_context",
+]

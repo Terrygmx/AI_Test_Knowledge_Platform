@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from app.generation.context import MAX_CHUNK_CHARS, assemble_context
+from app.generation.context import MAX_CHUNK_CHARS, MAX_SNIPPET_CHARS, assemble_context
 from app.generation.llm import LLMError
-from app.generation.rag import INSUFFICIENT_EVIDENCE, RAGService, build_prompt, extract_citations
+from app.generation.rag import (
+    INSUFFICIENT_EVIDENCE,
+    UNCITED_ANSWER,
+    RAGService,
+    build_prompt,
+    extract_citations,
+)
 from app.models import KnowledgeChunk
 from app.retrieval.embedding import FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
@@ -124,7 +130,7 @@ class TestRAGService:
             llm=FakeLLM("证据不足：无法确认。"),
         )
         assert result.citation_valid is False
-        assert result.evidence_sufficient is False
+        assert result.evidence_sufficient is None
         assert result.citations == []
 
     def test_partial_answer_keeps_citations_when_model_also_mentions_gap(
@@ -187,9 +193,34 @@ class TestRAGService:
             results=[(chunks[0], 0.1)],
             llm=FakeLLM("回答没有编号"),
         )
-        assert result.answer == "回答没有编号"
+        assert result.answer == UNCITED_ANSWER
         assert result.citation_valid is False
         assert result.citations == []
+
+    def test_threshold_is_independent_from_missing_citation(self, db_session) -> None:
+        chunks = _seed_chunks(db_session)
+        result = RAGService.answer_from_results(
+            question="登录失败怎么排查？",
+            results=[(chunks[0], 0.1)],
+            llm=FakeLLM("回答没有编号"),
+            max_distance=0.5,
+        )
+
+        assert result.answer == UNCITED_ANSWER
+        assert result.citation_valid is False
+        assert result.evidence_sufficient is True
+
+    def test_no_threshold_and_missing_citation_keeps_unknown_sufficiency(
+        self, db_session
+    ) -> None:
+        chunks = _seed_chunks(db_session)
+        result = RAGService.answer_from_results(
+            question="登录失败怎么排查？",
+            results=[(chunks[0], 0.1)],
+            llm=FakeLLM("回答没有编号"),
+        )
+
+        assert result.evidence_sufficient is None
 
 
 class TestContextAssembly:
@@ -232,7 +263,7 @@ class TestContextAssembly:
         chunk = self._chunk("CASE-LONG", "x" * (MAX_CHUNK_CHARS + 100))
         bundle = assemble_context([(chunk, 0.1)])
         assert f"{'x' * (MAX_CHUNK_CHARS - 1)}…" in bundle.text
-        assert bundle.citations[0].snippet == chunk.content
+        assert bundle.citations[0].snippet == f"{'x' * (MAX_SNIPPET_CHARS - 1)}…"
         assert bundle.citations[0].distance == 0.1
         assert bundle.citations[0].rank == 1
 
