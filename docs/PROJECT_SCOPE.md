@@ -132,6 +132,7 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 | Phase 1 | 完成 | FastAPI、四实体、Alembic、PostgreSQL 实机验证 |
 | Phase 2 | 代码完成 + 链路已验证（语义质量待评测） | `knowledge_chunks`、Embedding、pgvector、索引入口、向量检索 |
 | Phase 3 | 代码完成 + 链路已验证（生成质量待评测） | 手写最小 RAG、Context Assembly、Answer + Citation |
+| Phase 4 | 完成 | TestCase / Defect / KnowledgeChunk 字段契约、Metadata 映射与验收 |
 
 ### Phase 2 验证边界
 

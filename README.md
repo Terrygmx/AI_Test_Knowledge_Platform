@@ -173,8 +173,8 @@ uv run uvicorn app.main:app --reload
 ## 当前状态
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
-pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
-**267 passed + 6 skipped**，真实 PostgreSQL **272 passed + 1 skipped**，全程 TDD
+pgvector）、Phase 3（手写最小 RAG）与 Phase 4（知识模型收口）已完成。默认 SQLite 路径
+**272 passed + 6 skipped**，真实 PostgreSQL **277 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -191,6 +191,8 @@ pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLit
 - [x] **PostgreSQL 17.11 实机验证**（`vector 0.8.7` / `pg_trgm 1.6`）
 - [x] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
 - [x] Phase 2：`knowledge_chunks`、Embedding 抽象、pgvector 向量检索
+- [x] Phase 4：TestCase / Defect / KnowledgeChunk 契约与 Metadata 映射收口
+  （见 `docs/PHASE4_KNOWLEDGE_MODEL.md`）
 - [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
 - [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py --pairs`（默认 OMLX）
 - [x] 本机 OMLX bge-m3 链路实验（见 `docs/EMBEDDING_EXPERIMENT.md`）

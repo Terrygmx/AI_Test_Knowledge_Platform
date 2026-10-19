@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from pydantic import Field, field_validator
@@ -17,6 +18,22 @@ from app.schemas.common import (
     SeverityField,
     not_null_fields,
 )
+
+_RELATED_CASE_PATTERN = re.compile(BUSINESS_ID_PATTERN)
+
+
+def _clean_related_cases(value: list[str]) -> list[str]:
+    """关联用例也必须是业务编号，避免脏 ID 进入 Citation 邻接关系。"""
+    cleaned: list[str] = []
+    for raw in value:
+        case_id = raw.strip()
+        if not case_id:
+            continue
+        if not _RELATED_CASE_PATTERN.fullmatch(case_id):
+            raise ValueError(f"关联用例编号格式不合法：{case_id}")
+        if case_id not in cleaned:
+            cleaned.append(case_id)
+    return cleaned
 
 
 class DefectCreate(ORMInput):
@@ -44,12 +61,7 @@ class DefectCreate(ORMInput):
     @field_validator("related_cases")
     @classmethod
     def _clean_related_cases(cls, value: list[str]) -> list[str]:
-        cleaned: list[str] = []
-        for raw in value:
-            case_id = raw.strip()
-            if case_id and case_id not in cleaned:
-                cleaned.append(case_id)
-        return cleaned
+        return _clean_related_cases(value)
 
 
 class DefectUpdate(ORMUpdate):
@@ -74,12 +86,7 @@ class DefectUpdate(ORMUpdate):
     def _clean_related_cases(cls, value: list[str] | None) -> list[str] | None:
         if value is None:
             return None
-        cleaned: list[str] = []
-        for raw in value:
-            case_id = raw.strip()
-            if case_id and case_id not in cleaned:
-                cleaned.append(case_id)
-        return cleaned
+        return _clean_related_cases(value)
 
 
 class DefectRead(BaseSchema):

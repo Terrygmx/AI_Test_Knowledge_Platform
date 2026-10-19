@@ -61,6 +61,16 @@
   （默认 30 秒）与实验性慢接口说明；Citation snippet 截断、`retriever` 收敛为
   受控值，CLI 输出 rank / distance；同步 OMLX / Key / Phase 状态文档。
 
+#### Phase 4：测试知识模型收口（2026-10-20）
+
+- **模型契约验收**：确认 TestCase / Defect 字段、受控词表、唯一业务编号、
+  Alembic Schema 与索引完整；知识模型边界见 `docs/PHASE4_KNOWLEDGE_MODEL.md`。
+- **Metadata 补齐**：TestCase Chunk 保留 `sub_module` / `case_type` / `tags`；
+  Defect Chunk 保留 `related_cases`，为 Phase 10 Metadata Filter 提供完整字段。
+- **关联用例校验**：`related_cases` 与业务编号使用相同格式规则，非法编号返回 422；
+  仍保持弱关联，不要求关联用例已存在。
+- **边界保护**：实体转 Chunk 时容忍尚未 flush 的 ORM 实例中数组字段为 `None`。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，

@@ -52,6 +52,9 @@ Citation 的锚点必须是业务编号（Case ID / Bug ID / Req ID / Doc ID）�
 - `content_hash` 支持后续增量索引判断内容是否变化。
 - `embedding` 是派生数据，可以删除后重新生成。
 - Phase 2 的索引入口按来源重建 Chunk，不修改原始实体。
+- TestCase Chunk Metadata 保留 module / sub_module / version / priority /
+  case_type / tags；Defect 额外保留 severity / status / related_cases。
+- 详细字段契约与验收结论见 `docs/PHASE4_KNOWLEDGE_MODEL.md`。
 
 ## 6. 不应做的事
 

@@ -123,6 +123,15 @@ class TestDefectSchemas:
         payload = DefectCreate(bug_id="BUG-1", title="x", related_cases=["PAY-001", "PAY-001"])
         assert payload.related_cases == ["PAY-001"]
 
+    def test_related_cases_reject_invalid_business_ids(self) -> None:
+        for bad in ("PAY 001", "登录-001", "PAY/001"):
+            with pytest.raises(ValidationError):
+                DefectCreate(bug_id="BUG-1", title="x", related_cases=[bad])
+
+    def test_update_related_cases_reject_invalid_business_ids(self) -> None:
+        with pytest.raises(ValidationError):
+            DefectUpdate(related_cases=["PAY 001"])
+
     def test_update_is_partial(self) -> None:
         assert DefectUpdate(resolution="已修复").to_orm_dict(exclude_unset=True) == {
             "resolution": "已修复"

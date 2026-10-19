@@ -91,22 +91,33 @@ class TestEntityMapping:
             expected_result="登录成功",
             tags=["smoke"],
             module="login",
+            sub_module="sms",
             priority="P0",
+            case_type="smoke",
         )
         chunk = case_to_chunk(case)
         assert chunk.source_type == "testcase"
         assert chunk.source_id == "LOGIN-001"
         assert "短信登录冒烟" in chunk.content
         assert chunk.metadata["priority"] == "P0"
+        assert chunk.metadata["sub_module"] == "sms"
+        assert chunk.metadata["case_type"] == "smoke"
+        assert chunk.metadata["tags"] == ["smoke"]
 
     def test_defect_and_requirement_mapping(self) -> None:
         from app.services.index_service import defect_to_chunk, requirement_to_chunk
 
         defect_chunk = defect_to_chunk(
-            Defect(bug_id="BUG-1", title="支付失败", root_cause="超时")
+            Defect(
+                bug_id="BUG-1",
+                title="支付失败",
+                root_cause="超时",
+                related_cases=["PAY-001"],
+            )
         )
         assert defect_chunk.source_type == "defect"
         assert "根因：超时" in defect_chunk.content
+        assert defect_chunk.metadata["related_cases"] == ["PAY-001"]
 
         req_chunk = requirement_to_chunk(
             Requirement(req_id="REQ-1", title="支付改版", content="新增退款")

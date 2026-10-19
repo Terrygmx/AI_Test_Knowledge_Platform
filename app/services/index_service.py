@@ -41,7 +41,14 @@ def case_to_chunk(case: TestCase) -> KnowledgeChunkCreate:
         source_id=case.case_id,
         chunk_index=0,
         content=content,
-        metadata={"module": case.module, "version": case.version, "priority": case.priority},
+        metadata={
+            "module": case.module,
+            "sub_module": case.sub_module,
+            "version": case.version,
+            "priority": case.priority,
+            "case_type": case.case_type,
+            "tags": list(case.tags or []),
+        },
         version=case.version,
     )
 
@@ -67,6 +74,7 @@ def defect_to_chunk(defect: Defect) -> KnowledgeChunkCreate:
             "priority": defect.priority,
             "severity": defect.severity,
             "status": defect.status,
+            "related_cases": list(defect.related_cases or []),
         },
         version=defect.version,
     )
