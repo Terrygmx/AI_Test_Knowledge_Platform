@@ -146,6 +146,21 @@ uv run python scripts/embedding_probe.py --pairs
 uv run python scripts/ask.py "登录失败怎么测试？"
 ```
 
+### 数据接入（Phase 5）
+
+```bash
+# CSV / Excel；不传 --type 时按表头自动识别
+uv run python scripts/ingest.py table data/cases.csv
+
+# Markdown：每个标题生成一个文档 Chunk
+uv run python scripts/ingest.py markdown data/spec.md --doc-id DOC-001
+
+# 普通文本 PDF（不做 OCR / 复杂版面还原）
+uv run python scripts/ingest.py pdf data/spec.pdf --doc-id DOC-002
+```
+
+详细字段映射、清洗规则与限制见 `docs/PHASE5_INGESTION.md`。
+
 > `/api/v1/rag/answer` 是实验性慢接口：默认推理模型可能耗时 11–60 秒，
 > 请求超过 `RAG_REQUEST_TIMEOUT`（默认 30 秒）会返回 503。暂不建议用于交互式生产场景。
 
@@ -174,7 +189,7 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）、Phase 3（手写最小 RAG）与 Phase 4（知识模型收口）已完成。默认 SQLite 路径
-**272 passed + 6 skipped**，真实 PostgreSQL **277 passed + 1 skipped**，全程 TDD
+**286 passed + 6 skipped**，真实 PostgreSQL **291 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）

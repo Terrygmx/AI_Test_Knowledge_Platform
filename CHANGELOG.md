@@ -71,6 +71,17 @@
   仍保持弱关联，不要求关联用例已存在。
 - **边界保护**：实体转 Chunk 时容忍尚未 flush 的 ORM 实例中数组字段为 `None`。
 
+#### Phase 5：数据接入（2026-10-20）
+
+- **表格导入**：新增 CSV / Excel 读取、表头归一化、实体类型识别、空值清洗、
+  数组字段拆分、文件内去重与按业务编号幂等更新；整文件事务保证失败不留半批数据。
+- **Markdown**：新增 front matter、标题树与 Section 解析；正文保留原始 Markdown，
+  每个 Section 生成一个 Document Chunk，重复导入按文档替换旧 Chunk。
+- **PDF**：使用 `pypdf` 抽取普通文本层，无文本 PDF 明确报错；OCR / 表格 / 版面还原
+  不在当前范围。
+- **CLI**：新增 `scripts/ingest.py table|markdown|pdf`。
+- **文档**：新增 `docs/PHASE5_INGESTION.md`，说明表头、清洗、幂等与边界。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，

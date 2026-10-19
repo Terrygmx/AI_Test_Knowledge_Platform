@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Phase 5 数据接入入口。
+
+用法：
+    uv run python scripts/ingest.py table data/cases.csv
+    uv run python scripts/ingest.py table data/cases.csv --type testcase
+    uv run python scripts/ingest.py markdown data/spec.md --doc-id DOC-001
+    uv run python scripts/ingest.py pdf data/spec.pdf --doc-id DOC-002
+"""
+
+from __future__ import annotations
+
+import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.core.db import SessionLocal
+from app.ingestion import ImportService, TableImporter
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="导入测试知识数据")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    table = subparsers.add_parser("table", help="导入 CSV / Excel")
+    table.add_argument("path")
+    table.add_argument(
+        "--type",
+        choices=["testcase", "defect", "requirement", "document"],
+        default=None,
+        help="不传时按表头自动识别",
+    )
+
+    markdown = subparsers.add_parser("markdown", help="导入 Markdown 文档")
+    markdown.add_argument("path")
+    markdown.add_argument("--doc-id", required=True)
+    markdown.add_argument("--version", default=None)
+
+    pdf = subparsers.add_parser("pdf", help="导入普通文本 PDF")
+    pdf.add_argument("path")
+    pdf.add_argument("--doc-id", required=True)
+    pdf.add_argument("--version", default=None)
+
+    args = parser.parse_args()
+    path = Path(args.path)
+    if not path.is_file():
+        parser.error(f"文件不存在：{path}")
+
+    with SessionLocal() as session:
+        if args.command == "table":
+            result = TableImporter.import_file(session, path, entity_type=args.type)
+            print(
+                f"导入完成：type={result.entity_type} created={result.created} "
+                f"updated={result.updated} skipped={result.skipped}"
+            )
+            return
+
+        if args.command == "markdown":
+            result = ImportService.import_markdown(
+                session,
+                doc_id=args.doc_id,
+                source=path.read_text(encoding="utf-8"),
+                path=str(path),
+                version=args.version,
+            )
+        else:
+            result = ImportService.import_pdf(
+                session,
+                doc_id=args.doc_id,
+                path=path,
+                version=args.version,
+            )
+        action = "创建" if result.created else "更新"
+        print(
+            f"导入完成：{action} document={result.document_id} "
+            f"sections={result.section_count}"
+        )
+
+
+if __name__ == "__main__":
+    main()
