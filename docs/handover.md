@@ -60,7 +60,7 @@ app/
 ├── schemas/     # Pydantic 请求/响应模型（入参规范化在这里做）
 ├── services/    # EntityService CRUD 基类 + 四实体服务 + UnifiedSearchService
 ├── ingestion/   # Phase 5：表格 / Markdown / PDF 解析与文档导入
-├── retrieval/   # Embedding 抽象、Chunking、Phase 8 分词 / 倒排 / BM25
+├── retrieval/   # Embedding 抽象、Chunking、分词 / BM25、Weighted / RRF 融合
 ├── rerank/      # 空，Phase 11
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
 └── evaluation/  # 数据集契约、Recall@K / MRR、Chunking / Embedding / Lexical 实验
@@ -111,7 +111,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-8-bm25`，Phase 0–8 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-9-hybrid`，Phase 0–9 核心链路已完成，数据库实机验证已完成。**
 
 ### 已完成
 
@@ -187,6 +187,17 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - 当前统一 `/search` 仍走 `ILIKE` 且不返回 score；Phase 8 的 BM25 是独立 Chunk
   检索接缝，供 Phase 9 融合使用。不要在没有融合 / 归一化契约时把 BM25 score 直接
   塞进现有 `SearchHit`
+- Phase 9 已完成 Hybrid Search 实验：固定 Phase 8 的 24 条 Query / 47 个 Chunk，
+  在隔离库 `aitkp_hybrid` + OMLX `bge-m3-mlx-4bit` 上比较 Vector / BM25 /
+  Weighted / RRF。Recall@5 分别为 0.917 / 0.944 / 0.972 / 0.972，MRR 分别为
+  0.748 / 0.792 / 0.764 / 0.794；详见 `docs/HYBRID_SEARCH_EXPERIMENT.md`，
+  manifest 为 `results/hybrid-phase9.json`、`results/hybrid-sweep-phase9.json`
+- Phase 9 新增 `KnowledgeChunkService.hybrid_search()`，返回保留 `chunk_index`、
+  `vector_rank`、`keyword_rank`、原始分数与 `matched_terms` 的 `FusedHit`。
+  该接缝尚未替换统一 `/search` 或 RAG；公开 API 的 score 契约仍未确定
+- Phase 9 的实验表未建 HNSW，Query 延迟只含 pgvector 候选 + BM25 + 融合，
+  不含 Query Embedding；6 条不可回答 Query 在四个通道上仍全部误召回。
+  参数扫描中的最佳 MRR 来自同一份小样本，不能直接设为生产默认值
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
@@ -204,16 +215,16 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 / 8 结论
 2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
-3. Phase 9：Vector Top-K + BM25 Top-K 融合，比较 Weighted Score 与 RRF
+3. Phase 10：Metadata Filter，重点验证过滤发生在向量检索前 / 中 / 后对 Recall 与延迟的影响
 4. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
 
-- 统一 `/search` 关键词仍走 `ILIKE`；Phase 8 已新增独立 BM25 Chunk 检索，
-  但尚未替换统一 API，融合在 Phase 9
+- 统一 `/search` 关键词仍走 `ILIKE`；BM25 与 Hybrid 已具备独立 Chunk 接缝，
+  但尚未替换统一 API
 - `tags` / `related_cases` 数组暂不支持查询过滤（PG `text[] @>` 与 SQLite 不可兼得，Phase 10 补）
-- 统一 `/search` 暂无 `score` 字段；Chunk BM25 返回可解释分数，统一响应契约在
-  Phase 9 融合后确定
+- 统一 `/search` 暂无 `score` 字段；Chunk BM25 / Hybrid 在内部返回可解释分数，
+  公开响应契约仍未确定
 - BM25 每次查询读取候选 Chunk 并建内存索引，只适用于当前小规模验证；大库需
   持久化倒排表或独立搜索服务
 - CI 目前覆盖 Ruff + SQLite pytest；PostgreSQL 集成测试仍为手工执行
@@ -253,8 +264,9 @@ uv run alembic upgrade head               # 应用迁移
 1. `uv sync && uv run pytest` 确认默认路径测试通过（数量以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3/6/7/8 已完成；本机启动 OMLX 后运行
+4. Phase 2/3/6/7/8/9 已完成；本机启动 OMLX 后运行
    `scripts/embedding_probe.py`、`scripts/ask.py` 与
    `scripts/chunking_experiment.py --dry-run`、
    `scripts/embedding_experiment.py --dry-run`、
-   `scripts/lexical_experiment.py --dry-run` 做复验
+   `scripts/lexical_experiment.py --dry-run`、
+   `scripts/hybrid_experiment.py --dry-run` 做复验

@@ -160,6 +160,13 @@ uv run python scripts/embedding_experiment.py --dry-run
 uv run python scripts/lexical_experiment.py --dry-run
 uv run python scripts/lexical_experiment.py --output results/lexical-phase8.json
 
+# Phase 9 Hybrid Search（只写隔离库；先 dry-run 校验数据与参数）
+uv run python scripts/hybrid_experiment.py --dry-run
+uv run python scripts/hybrid_experiment.py \
+  --database-url 'postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/aitkp_hybrid'
+uv run python scripts/hybrid_sweep.py \
+  --database-url 'postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/aitkp_hybrid'
+
 # 真实实验；完整参数和隔离库前置条件见 docs/EMBEDDING_EXPERIMENT.md
 uv run python scripts/embedding_experiment.py \
   --database-url 'postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/aitkp_embedding'
@@ -217,11 +224,12 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）、
-Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（BM25 词法检索）
-已完成。Phase 6 / 7 / 8 报告分别见
+Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（BM25 词法检索）
+与 Phase 9（Hybrid Search 实验）已完成。Phase 6–9 报告分别见
 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
 [`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)、
-[`docs/LEXICAL_SEARCH_EXPERIMENT.md`](docs/LEXICAL_SEARCH_EXPERIMENT.md)。
+[`docs/LEXICAL_SEARCH_EXPERIMENT.md`](docs/LEXICAL_SEARCH_EXPERIMENT.md)、
+[`docs/HYBRID_SEARCH_EXPERIMENT.md`](docs/HYBRID_SEARCH_EXPERIMENT.md)。
 默认 SQLite 路径与真实 PostgreSQL 均以本地实际输出为准，全程 TDD（先红后绿）。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -250,6 +258,9 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（
 - [x] Phase 8 BM25 / Lexical Search：应用层分词 + 倒排索引 + BM25，
   对比 `ILIKE` 与 BM25，并提供 Chunk 级可解释打分接口
   （见 `docs/LEXICAL_SEARCH_EXPERIMENT.md`）
+- [x] Phase 9 Hybrid Search：Vector + BM25 的 Weighted / RRF 融合、
+  Chunk 级 `hybrid_search()` 接缝与参数敏感性实验
+  （见 `docs/HYBRID_SEARCH_EXPERIMENT.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
 - [ ] 将 Gold Set 扩大到约 100 条人工确认 Query 后复验 Recall@K / MRR
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
@@ -262,16 +273,16 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（
 
 | 事项 | 当前选择 | 原因 |
 |---|---|---|
-| 统一 `/search` 关键词 | 仍走 `ILIKE`（原实体 API 契约） | Phase 8 先新增 Chunk 级 BM25；统一 API 的分数与融合契约留给 Phase 9 |
+| 统一 `/search` 关键词 | 仍走 `ILIKE`（原实体 API 契约） | Phase 9 先新增 Chunk 级 Hybrid；公开 API 的分数契约仍未确定 |
 | Chunk 词法检索 | 应用层分词 + BM25，查询时建内存索引 | 不依赖 zhparser / pg_jieba，SQLite / PG 同逻辑；大库需持久化倒排表 |
-| 检索结果打分 | `/search` 仍不返回 `score`；Chunk BM25 返回分数 | Phase 8 只在有明确 BM25 依据的接缝暴露分数；统一响应待 Phase 9 |
+| 检索结果打分 | `/search` 仍不返回 `score`；Chunk 接缝返回通道分数与名次 | Phase 9 保留可追溯融合字段，但不在未稳定前扩大公开 API |
 | 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
-| 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
+| 检索参数 | `retrieval_*` 已由 Chunk `hybrid_search()` 消费 | 统一 `/search` / RAG 接入与 Rerank 仍在后续阶段 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | Embedding 选型 | 默认 `bge-m3-mlx-4bit`（1024 维） | Phase 7 小样本 MRR 最高；`embeddinggemma` 接近且更快，待更大 Gold Set 复验 |
 | Embedding 实验索引 | 模型独立表 + 精确距离扫描，未建 HNSW | 先隔离模型变量；46 个 Chunk 上 ANN 参数没有可解释性 |
 | 报告与 manifest | 指标由一致性测试校验，延迟以 manifest 为准 | 延迟受机器负载影响；报告中的数字必须能追溯到同一次原始结果 |
-| RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword 已具备独立通道；Hybrid / Rerank 在 Phase 9–11 接入 |
+| RAG 检索 | 仍仅 Vector Search TopK | Hybrid 已有独立 Chunk 接缝；未过滤 / Rerank 前不替换 RAG |
 | RAG 拒答 | 检索为空即拒答；未引用回答统一降级；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
 | RAG 延迟 | 实验性同步接口 + 45 秒预算（LLM 30 秒）| 默认推理模型较慢，Phase 14/20 再做性能与异步化 |
 | Citation 信号 | `citation_valid` 只表示编号合法 | 不代表 Faithfulness / Citation Accuracy，Phase 14 单独评测 |
@@ -280,8 +291,10 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（
 | 文档导入不生成向量 | Phase 5 导入只写 Chunk，`embedding` 为空 | 批量导入不与模型服务耦合；由 `index_entities.py --only document` 增量补齐 |
 | Chunking 结论 | 当前只在 3 篇模拟文档、40 条 Query 上验证 | 语料太小，semantic / entity+heading 的优势需在更大 Gold Set 上复验 |
 | 词法检索结论 | Phase 8 只有 24 条 Query、47 个 Chunk | 足以验证编号 / 版本 / 组合关键词失败模式，不足以证明生产分布 |
+| 混合检索结论 | 24 条 Query 上 RRF 仅比 BM25 多命中 1 条证据 | 只证明融合接口与失败模式；参数扫描存在小样本过拟合风险 |
+| 混合检索延迟 | 只含 pgvector + BM25 + 融合，未含 Query Embedding | 47 行精确扫描且未建实验索引，不是 ANN 或 API P95 结论 |
 | 中文分词 | 中文 unigram + bigram，Unicode 字母数字标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
-| 不可回答 Query | BM25 在 6 条负样本上全部有结果 | 有词项交集不等于证据充分，Phase 9 不能把非空当可回答 |
+| 不可回答 Query | 四个通道在 6 条负样本上全部有结果 | 融合不解决拒答；非空结果不等于证据充分 |
 | 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
 | `/models` 健康探测 | 依赖上游实现 `GET /models` 且模型名精确匹配 | 部分 OpenAI-compatible 服务不实现该端点或返回别名，会误报不可用（探测失败会写 warning 日志） |

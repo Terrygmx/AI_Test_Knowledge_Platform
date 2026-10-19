@@ -427,6 +427,12 @@ Latency
 
 个人 80%。
 
+> 当前状态：已完成 Phase 8 Gold Set 上的 Vector / BM25 / Weighted / RRF
+> 对比与参数敏感性实验；新增 `KnowledgeChunkService.hybrid_search()` 作为 Chunk
+> 级接缝，但尚未替换统一 `/search` 或 RAG。见
+> `docs/HYBRID_SEARCH_EXPERIMENT.md`、`results/hybrid-phase9.json` 与
+> `results/hybrid-sweep-phase9.json`。
+
 ------------------------------------------------------------------------
 
 # Phase 10：Metadata Filter

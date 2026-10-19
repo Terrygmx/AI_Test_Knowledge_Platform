@@ -6,6 +6,28 @@
 
 ### Added
 
+#### Phase 9：Hybrid Search（2026-10-20）
+
+- **融合实现**：新增 `app/retrieval/hybrid.py`，支持 Weighted 与 RRF；候选以
+  `(source_type, source_id, chunk_index)` 去重，保留两个通道的名次、原始分数与
+  BM25 `matched_terms`。支持单通道为空和稳定 tie-break。
+- **Chunk 检索接缝**：新增 `KnowledgeChunkService.hybrid_search()`，在
+  PostgreSQL + pgvector 上组合 Vector 与 BM25，并读取既有 `retrieval_*` 配置。
+  统一 `/search`、RAG 与 HTTP 响应契约保持不变。
+- **实验与结果**：新增 `app/evaluation/hybrid_experiment.py`、
+  `scripts/hybrid_experiment.py` 与 `scripts/hybrid_sweep.py`，固定 Phase 8 的
+  24 条 Query / 47 个 Chunk。Vector / BM25 / Weighted / RRF 的 Recall@5 分别为
+  0.917 / 0.944 / 0.972 / 0.972，MRR 分别为 0.748 / 0.792 / 0.764 / 0.794。
+  原始 manifest 为 `results/hybrid-phase9.json`，敏感性结果见
+  `results/hybrid-sweep-phase9.json`，报告见 `docs/HYBRID_SEARCH_EXPERIMENT.md`。
+- **可追溯性**：manifest 记录数据集 / 候选 Chunk 哈希、`git_commit` /
+  `git_dirty`、脱敏命令、Embedding batch / timeout / retries、模型维度与
+  `/models` 元数据。报告一致性测试防止总体、负样本与参数敏感性数字漂移。
+- **身份修复**：线上离线 Chunk 评测保留真实 `chunk_index`，避免同来源多 Chunk
+  被融合器错误合并；实验的 Vector 与 BM25 通道使用完全相同的 47 个候选。
+- **边界**：6 条不可回答 Query 在四个通道上仍全部误召回；实验表未建 HNSW，
+  延迟只含候选检索与融合，不含 Query Embedding，不能作为 ANN / API P95 结论。
+
 #### Phase 8：BM25 / Lexical Search（2026-10-20）
 
 - **词法检索**：新增 `app/retrieval/lexical.py`，实现应用层分词、倒排索引与
@@ -254,7 +276,7 @@
 - **Docker 环境**：首次启动需拉取 `pgvector/pgvector:pg17` 镜像；
   测试库 `aitkp_test` 可重复使用，但测试会 `drop_all` + `create_all`，不要指向开发库。
 - **中文全文检索待定**：当前关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词。
-- **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First），Phase 9 融合打分后引入。
+- **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First）；融合分数目前只在 Chunk 接缝暴露。
 - **`.env` 中 `EMBEDDING_API_KEY` / `RERANK_API_KEY` 为空**：`/health` 的 `capabilities` 会显示 false，
   涉及 Embedding / Rerank 的代码路径暂不可运行；LLM 能力也改为实际探测，而不是恒为 true。
 - **`tags` / `related_cases` 暂不支持查询过滤**：PG 的 `text[] @>` 与 SQLite 不可兼得，Phase 10 元数据过滤时补。
