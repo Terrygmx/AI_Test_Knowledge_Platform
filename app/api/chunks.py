@@ -33,6 +33,7 @@ def list_chunks(
     session: SessionDep,
     source_type: SourceType | None = None,
     source_id: str | None = None,
+    has_embedding: bool | None = None,
 ) -> Page[KnowledgeChunkRead]:
     items, total = KnowledgeChunkService.list(
         session,
@@ -40,6 +41,7 @@ def list_chunks(
         limit=pagination.limit,
         source_type=source_type,
         source_id=source_id,
+        has_embedding=has_embedding,
     )
     return Page[KnowledgeChunkRead].build(
         items=items, total=total, limit=pagination.limit, offset=pagination.offset

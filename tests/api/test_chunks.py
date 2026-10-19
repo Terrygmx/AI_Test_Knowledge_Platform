@@ -79,3 +79,14 @@ class TestChunkAPI:
         response = client.delete(f"{API}/999999")
         assert response.status_code == 404
         assert response.json()["error"]["code"] == "not_found"
+
+    def test_filter_chunks_without_embedding(self, client) -> None:
+        client.post(
+            API,
+            json={"source_type": "testcase", "source_id": "NO-VEC-1", "content": "未索引"},
+        )
+        body = client.get(API, params={"has_embedding": "false"}).json()
+        assert body["total"] == 1
+        assert body["items"][0]["source_id"] == "NO-VEC-1"
+        assert client.get(API, params={"has_embedding": "true"}).json()["total"] == 0
+        assert client.get("/health").json()["metrics"]["chunks_without_embedding"] == 1

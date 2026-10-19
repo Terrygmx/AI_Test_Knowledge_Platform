@@ -111,7 +111,8 @@ class TestVectorSearch:
             embedding_client=client,
             llm=EchoLLM(),
         )
-        assert result.grounded is True
+        assert result.citation_valid is True
+        assert result.evidence_sufficient is None
         assert result.answer.endswith("[1]")
         assert result.citations[0].source_id == "LOGIN-001"
 
@@ -129,4 +130,5 @@ class TestVectorSearch:
             llm_factory=must_not_run,
         )
         assert result.answer == INSUFFICIENT_EVIDENCE
-        assert result.grounded is False
+        assert result.citation_valid is False
+        assert result.evidence_sufficient is False

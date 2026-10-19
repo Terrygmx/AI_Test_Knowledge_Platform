@@ -119,12 +119,17 @@ class KnowledgeChunkService:
         limit: int = 20,
         source_type: str | None = None,
         source_id: str | None = None,
+        has_embedding: bool | None = None,
     ) -> tuple[list[KnowledgeChunk], int]:
         stmt = select(KnowledgeChunk)
         if source_type:
             stmt = stmt.where(KnowledgeChunk.source_type == source_type)
         if source_id:
             stmt = stmt.where(KnowledgeChunk.source_id == source_id)
+        if has_embedding is True:
+            stmt = stmt.where(KnowledgeChunk.embedding.is_not(None))
+        elif has_embedding is False:
+            stmt = stmt.where(KnowledgeChunk.embedding.is_(None))
         total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
         rows = session.scalars(
             stmt.order_by(KnowledgeChunk.id).limit(limit).offset(offset)
@@ -168,10 +173,23 @@ class KnowledgeChunkService:
         vector = list(query_embedding)
         distance = KnowledgeChunk.embedding.cosine_distance(vector)
         stmt = select(KnowledgeChunk, distance.label("distance"))
+        stmt = stmt.where(KnowledgeChunk.embedding.is_not(None))
         if source_types:
             stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
         stmt = stmt.order_by(distance).limit(limit)
-        return [(chunk, float(value)) for chunk, value in session.execute(stmt).all()]
+        results = [(chunk, float(value)) for chunk, value in session.execute(stmt).all()]
+        logger.info(
+            "向量检索完成 hits=%s distances=%s",
+            len(results),
+            [round(distance, 4) for _, distance in results],
+        )
+        return results
+
+    @classmethod
+    def count_without_embedding(cls, session: Session) -> int:
+        return session.scalar(
+            select(func.count()).where(KnowledgeChunk.embedding.is_(None))
+        ) or 0
 
     @classmethod
     def _validate_dimension(cls, vector: Sequence[float], expected: int) -> None:

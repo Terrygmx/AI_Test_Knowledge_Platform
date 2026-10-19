@@ -27,7 +27,7 @@
   PostgreSQL 上按 cosine distance 返回候选和距离，并支持来源类型过滤；
   SQLite 下明确拒绝而不是返回假排序。Fake Embedding 结果不能作为召回质量结论。
 - **索引入口**：`scripts/index_entities.py` 支持全量重建 / `--dry-run` / 按来源过滤；
-  先删除该来源旧 Chunk 再重建，重复执行安全。
+  先删除该来源旧 Chunk 再重建，重复执行安全；Document 正文解析留到 Phase 5。
 - **语义探针**：`scripts/embedding_probe.py` 需真实 `EMBEDDING_API_KEY`，不进入默认测试。
 - **Chunk API**：补 `GET /api/v1/chunks`、`DELETE /api/v1/chunks/{id}`；重复写入返回 409。
 - **注意**：Fake Embedding 只证明链路可运行，语义召回质量尚未验证。
@@ -37,9 +37,16 @@
 - **LLM 抽象**：`LLMClient` + OpenAI-compatible 实现，测试用 Fake，不引入 LangChain。
 - **Context Assembly**：按检索顺序生成 `[1] [2]` 证据块，限制单 Chunk / 总上下文字符数。
 - **Answer + Citation**：`POST /api/v1/rag/answer`；回答引用编号必须来自本次证据；
-  无检索结果时返回 `grounded=false` 与“证据不足”，且不构造 / 调用 LLM。
-- **命令行入口**：`scripts/ask.py` 支持 `--top-k` 与 `--source-type`。
+  `citation_valid` 只表示引用编号合法，不冒充 Faithfulness；无检索结果时返回
+  `evidence_sufficient=false` 与“证据不足”，且不构造 / 调用 LLM。
+- **可观测性**：Citation 返回 `rank` / `distance`；支持可选 `max_distance` 阈值；
+  `/health.metrics.chunks_without_embedding` 暴露未完成索引的 Chunk 数。
+- **命令行入口**：`scripts/ask.py` 支持 `--top-k`、`--source-type` 与 `--max-distance`。
 - **验证边界**：Phase 3 只做 Vector Search + TopK，Hybrid / Rerank 仍在后续 Phase。
+- **Review 修复**：拆分 `citation_valid` / `evidence_sufficient`，不再用格式合法冒充
+  Faithfulness；Citation 暴露 `rank` / `distance`；上下文预算首块也受约束；
+  引用解析支持 `[1, 2]` / `[1 ]`；LLM 健康探测改为 60s TTL；
+  Chunk 支持 `has_embedding` 过滤，`/health` 暴露缺向量计数。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 

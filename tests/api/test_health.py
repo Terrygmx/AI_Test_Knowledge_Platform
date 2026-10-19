@@ -12,6 +12,7 @@ class TestHealth:
         body = resp.json()
         assert body["status"] == "ok"
         assert body["checks"]["database"] is True
+        assert body["metrics"]["chunks_without_embedding"] == 0
         assert body["app"]
         assert body["version"]
 
@@ -47,4 +48,24 @@ class TestHealth:
         monkeypatch.setattr(health, "_llm_cache", None)
         monkeypatch.setattr(health.settings, "llm_provider", "ollama")
         monkeypatch.setattr(health.httpx, "get", FailingClient().get)
+        assert health._check_llm() is False
+
+    def test_llm_probe_refreshes_after_ttl(self, monkeypatch) -> None:
+        from app.api import health
+
+        monkeypatch.setattr(health.settings, "llm_provider", "openai_compatible")
+        monkeypatch.setattr(health.settings, "llm_api_key", "")
+        monkeypatch.setattr(health, "_llm_cache", (0.0, True))
+        monkeypatch.setattr(health.time, "monotonic", lambda: 61.0)
+        assert health._check_llm() is False
+
+    def test_llm_probe_catches_non_http_exceptions(self, monkeypatch) -> None:
+        from app.api import health
+
+        def broken(*args, **kwargs):
+            raise TimeoutError("timeout")
+
+        monkeypatch.setattr(health, "_llm_cache", None)
+        monkeypatch.setattr(health.settings, "llm_provider", "ollama")
+        monkeypatch.setattr(health.httpx, "get", broken)
         assert health._check_llm() is False

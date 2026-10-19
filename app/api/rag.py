@@ -25,6 +25,7 @@ def answer(
         llm_factory=get_llm_client,
         top_k=payload.top_k,
         source_types=payload.source_types,
+        max_distance=payload.max_distance,
     )
 
 

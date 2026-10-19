@@ -33,6 +33,9 @@ T = TypeVar("T")
 
 SourceType = Literal["testcase", "defect", "requirement", "document"]
 
+
+SearchStatus = DefectStatus | RequirementStatus
+
 #: 业务编号（Case ID / Bug ID / Req ID / Doc ID）的合法字符集
 BUSINESS_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
 
@@ -169,6 +172,12 @@ def enum_query(enum_cls: type[Enum]) -> Any:
     """查询参数枚举：复用入参归一化，保持 OpenAPI 枚举文档。"""
     return Annotated[enum_cls | None, BeforeValidator(lambda v: normalize_enum(v, enum_cls))]
 
+
+SearchStatusQuery = Annotated[
+    SearchStatus | None,
+    BeforeValidator(lambda v: normalize_enum(v, DefectStatus) or normalize_enum(v, RequirementStatus)),
+]
+
 __all__ = [
     "BUSINESS_ID_PATTERN",
     "BaseSchema",
@@ -181,6 +190,8 @@ __all__ = [
     "Pagination",
     "PriorityField",
     "RequirementStatusField",
+    "SearchStatus",
+    "SearchStatusQuery",
     "SeverityField",
     "SourceType",
     "enum_query",

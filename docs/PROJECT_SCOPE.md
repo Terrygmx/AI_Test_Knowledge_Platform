@@ -130,8 +130,8 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 |---|---|---|
 | Phase 0 | 完成 | 项目范围、学习问题 |
 | Phase 1 | 完成 | FastAPI、四实体、Alembic、PostgreSQL 实机验证 |
-| Phase 2 | 核心完成 | `knowledge_chunks`、Embedding、pgvector、索引入口、向量检索 |
-| Phase 3 | 核心完成 | 手写最小 RAG、Context Assembly、Answer + Citation |
+| Phase 2 | 代码完成（真实语义未验证） | `knowledge_chunks`、Embedding、pgvector、索引入口、向量检索 |
+| Phase 3 | 代码完成（真实链路未验证） | 手写最小 RAG、Context Assembly、Answer + Citation |
 
 ### Phase 2 验证边界
 

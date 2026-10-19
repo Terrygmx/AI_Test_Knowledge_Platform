@@ -52,7 +52,7 @@ def assemble_context(
             f"[{citation_number}] 来源：{chunk.source_type}:{chunk.source_id}"
             f"（chunk_index={chunk.chunk_index}）\n{content}"
         )
-        if citations and used + len(block) > max_context_chars:
+        if used + len(block) > max_context_chars:
             break
         blocks.append(block)
         citations.append(
@@ -61,6 +61,8 @@ def assemble_context(
                 source_id=chunk.source_id,
                 chunk_index=chunk.chunk_index,
                 snippet=raw_content,
+                rank=len(citations) + 1,
+                distance=_distance,
             )
         )
         used += len(block)

@@ -167,7 +167,7 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
-**245 passed + 6 skipped**，真实 PostgreSQL **250 passed + 1 skipped**，全程 TDD
+**256 passed + 6 skipped**，真实 PostgreSQL **261 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -201,6 +201,9 @@ pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLit
 | 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
-| RAG 拒答 | 检索结果为空即 `grounded=false` | 相关性阈值需真实评测集校准，暂不伪造阈值 |
+| RAG 拒答 | 检索为空即拒答；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
+| Citation 信号 | `citation_valid` 只表示编号合法 | 不代表 Faithfulness / Citation Accuracy，Phase 14 单独评测 |
+| Chunk 索引状态 | `GET /chunks?has_embedding=false` + `/health.metrics` | 无向量 Chunk 不会参与向量检索，必须可排查 |
+| CI 范围 | SQLite + ruff | PostgreSQL 门禁仍为手工执行 |
 | 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

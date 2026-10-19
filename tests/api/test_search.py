@@ -77,8 +77,8 @@ class TestSearchAPI:
 
     def test_search_unknown_status_400(self, client) -> None:
         response = client.get(API, params={"status": "not-a-status"})
-        assert response.status_code == 400
-        assert response.json()["error"]["code"] == "domain_error"
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "validation_error"
 
     def test_search_source_type_filter(self, client) -> None:
         _seed(client)
@@ -124,6 +124,15 @@ class TestSearchAPI:
         _seed(client)
         resp = client.get(API, params={"source_type": "nope"})
         assert resp.status_code == 422
+
+    def test_severity_filter_excludes_documents(self, client) -> None:
+        _seed(client)
+        client.post(
+            "/api/v1/documents",
+            json={"doc_id": "DOC-1", "title": "支付规范", "doc_type": "markdown"},
+        )
+        body = client.get(API, params={"source_type": "document", "severity": "major"}).json()
+        assert body["total"] == 0
 
     def test_search_empty(self, client) -> None:
         body = client.get(API).json()

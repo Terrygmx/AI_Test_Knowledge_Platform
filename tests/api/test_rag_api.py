@@ -30,12 +30,14 @@ class TestRAGAPI:
         response = client.post(API, json={"question": "登录失败怎么排查？"})
         if engine.dialect.name == "postgresql":
             assert response.status_code == 200
-            assert response.json()["grounded"] is False
+            body = response.json()
+            assert body["citation_valid"] is False
+            assert body["evidence_sufficient"] is False
         else:
             assert response.status_code == 400
             assert response.json()["error"]["code"] == "domain_error"
 
-    def test_postgres_returns_grounded_answer(
+    def test_rag_answer_returns_grounded_answer(
         self, client, engine, db_session, monkeypatch
     ) -> None:
         if engine.dialect.name != "postgresql":
@@ -66,5 +68,8 @@ class TestRAGAPI:
         response = client.post(API, json={"question": "登录失败怎么排查？", "top_k": 1})
         assert response.status_code == 200
         body = response.json()
-        assert body["grounded"] is True
+        assert body["citation_valid"] is True
+        assert body["evidence_sufficient"] is None
         assert body["citations"][0]["source_id"] == "LOGIN-API-1"
+        assert body["citations"][0]["rank"] == 1
+        assert "distance" in body["citations"][0]

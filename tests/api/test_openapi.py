@@ -13,3 +13,13 @@ class TestOpenAPI:
         ref = priority["schema"]["anyOf"][0]["$ref"]
         assert ref == "#/components/schemas/Priority"
         assert schema["components"]["schemas"]["Priority"]["enum"] == ["P0", "P1", "P2", "P3"]
+
+    def test_search_status_uses_enum_contract(self, client) -> None:
+        schema = client.get("/openapi.json").json()
+        params = schema["paths"]["/api/v1/search"]["get"]["parameters"]
+        status = next(param for param in params if param["name"] == "status")
+        refs = {item["$ref"] for item in status["schema"]["anyOf"] if "$ref" in item}
+        assert refs == {
+            "#/components/schemas/DefectStatus",
+            "#/components/schemas/RequirementStatus",
+        }
