@@ -11,7 +11,9 @@
 - 默认使用真实 Embedding（需要 EMBEDDING_API_KEY）；不使用 Fake，避免把测试向量写入知识库；
 - 重建时按来源删除旧 Chunk 再写入，保证重复执行不会触发唯一约束；
 - ``--dry-run`` 只统计将索引的实体数量，不调用 Embedding、不写数据库；
-- 文档正文暂不在此脚本中解析；Phase 5 接入 Parser / Chunker 后再补 document 内容来源。
+- ``document`` 不重建 Chunk：正文由 Phase 5 的 ``ImportService`` / 表格导入切分，
+  本脚本只给 ``embedding IS NULL`` 的现有 document Chunk **补向量**（增量）。
+- ``--only document`` 是补向量语义；``--only testcase,defect,requirement`` 是重建语义。
 """
 
 from __future__ import annotations
@@ -37,6 +39,10 @@ from app.services.index_service import (
     defect_to_chunk,
     requirement_to_chunk,
 )
+from app.services.knowledge_chunk_service import KnowledgeChunkService
+
+#: 重建语义（按实体重建 Chunk）的类型；document 走补向量语义
+_REBUILD_TYPES = {"testcase", "defect", "requirement"}
 
 
 @dataclass
@@ -44,10 +50,12 @@ class IndexStats:
     testcase: int = 0
     defect: int = 0
     requirement: int = 0
+    #: 本次补齐向量的 document Chunk 数
+    document: int = 0
 
 
 def _parse_only(value: str | None) -> set[str]:
-    allowed = {"testcase", "defect", "requirement"}
+    allowed = _REBUILD_TYPES | {"document"}
     if not value:
         return allowed
     selected = {part.strip() for part in value.split(",") if part.strip()}
@@ -79,24 +87,40 @@ def _stats(items: Sequence[KnowledgeChunkCreate]) -> IndexStats:
 
 
 def rebuild(session: Session, *, only: set[str], dry_run: bool) -> IndexStats:
-    items = _collect(session, only)
+    rebuild_types = only & _REBUILD_TYPES
+    items = _collect(session, rebuild_types)
     stats = _stats(items)
+    stats.document = (
+        KnowledgeChunkService.count_without_embedding(session, source_type="document")
+        if "document" in only
+        else 0
+    )
     if dry_run:
         return stats
 
-    if not items:
-        session.execute(delete(KnowledgeChunk).where(KnowledgeChunk.source_type.in_(sorted(only))))
-        session.commit()
-        return stats
+    if "document" in only:
+        stats.document = KnowledgeChunkService.backfill_embeddings(
+            session,
+            embedding_client=get_embedding_client(),
+            source_types=["document"],
+        )
 
-    from app.services.knowledge_chunk_service import KnowledgeChunkService
+    if not items:
+        if rebuild_types:
+            session.execute(
+                delete(KnowledgeChunk).where(
+                    KnowledgeChunk.source_type.in_(sorted(rebuild_types))
+                )
+            )
+            session.commit()
+        return stats
 
     # 先完成 Embedding 再删除旧索引，避免上游失败时留下空索引。
     KnowledgeChunkService.create_many(
         session,
         items=items,
         embedding_client=get_embedding_client(),
-        replace_source_types=only,
+        replace_source_types=rebuild_types,
     )
     return stats
 
@@ -105,7 +129,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="重建测试知识索引")
     parser.add_argument(
         "--only",
-        help="只索引指定来源，逗号分隔：testcase,defect,requirement",
+        help=(
+            "只处理指定来源，逗号分隔：testcase,defect,requirement,document；"
+            "document 为补齐向量，其余为按实体重建"
+        ),
     )
     parser.add_argument("--dry-run", action="store_true", help="只统计，不调用 Embedding / 写库")
     args = parser.parse_args()
@@ -117,7 +144,7 @@ def main() -> None:
     action = "将索引" if args.dry_run else "已索引"
     print(
         f"{action}：testcase={stats.testcase}, defect={stats.defect}, "
-        f"requirement={stats.requirement}"
+        f"requirement={stats.requirement}, document={stats.document}"
     )
 
 

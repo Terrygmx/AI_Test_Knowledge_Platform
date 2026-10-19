@@ -186,10 +186,58 @@ class KnowledgeChunkService:
         return results
 
     @classmethod
-    def count_without_embedding(cls, session: Session) -> int:
-        return session.scalar(
-            select(func.count()).where(KnowledgeChunk.embedding.is_(None))
-        ) or 0
+    def backfill_embeddings(
+        cls,
+        session: Session,
+        *,
+        embedding_client: EmbeddingClient,
+        source_types: Sequence[str] | None = None,
+    ) -> int:
+        """给缺向量的 Chunk 补齐 Embedding（原地更新，不重建正文）。
+
+        Phase 5 的文档导入刻意不调用 Embedding（避免大批量导入与模型服务耦合），
+        因此 document Chunk 入库时向量为空。这里是补救入口：不重新切分正文，
+        只补向量，否则这部分知识永远进不了向量检索。
+        """
+        stmt = select(KnowledgeChunk).where(KnowledgeChunk.embedding.is_(None))
+        if source_types:
+            stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
+        chunks = list(session.scalars(stmt).all())
+        # 空白正文无法生成向量（上游会拒绝），跳过而不是让整批补向量失败
+        chunks = [chunk for chunk in chunks if chunk.content.strip()]
+        if not chunks:
+            return 0
+
+        vectors = embedding_client.embed_texts([chunk.content for chunk in chunks])
+        for chunk, vector in zip(chunks, vectors, strict=True):
+            cls._validate_dimension(vector, cls.embedding_dimension)
+            chunk.embedding = vector
+        cls._commit(session)
+        logger.info("补齐向量 chunks=%s source_types=%s", len(chunks), source_types)
+        return len(chunks)
+
+    @classmethod
+    def count_without_embedding(cls, session: Session, source_type: str | None = None) -> int:
+        stmt = select(func.count()).where(KnowledgeChunk.embedding.is_(None))
+        if source_type:
+            stmt = stmt.where(KnowledgeChunk.source_type == source_type)
+        return session.scalar(stmt) or 0
+
+    @classmethod
+    def count_with_embedding(
+        cls, session: Session, *, source_id: str, source_type: str = "document"
+    ) -> int:
+        """已生成向量的 Chunk 数，用于导入前判断「替换会清掉已有索引」。"""
+        return (
+            session.scalar(
+                select(func.count()).where(
+                    KnowledgeChunk.source_type == source_type,
+                    KnowledgeChunk.source_id == source_id,
+                    KnowledgeChunk.embedding.is_not(None),
+                )
+            )
+            or 0
+        )
 
     @classmethod
     def _validate_dimension(cls, vector: Sequence[float], expected: int) -> None:

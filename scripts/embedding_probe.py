@@ -36,12 +36,10 @@ def cosine_similarity(left: list[float], right: list[float]) -> float:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Embedding 相似度探针")
-    parser.add_argument(
-        "--pairs",
-        action="store_true",
-        help="运行内置测试对（默认行为，保留用于兼容旧命令）",
-    )
-    parser.parse_args()
+    args, unknown = parser.parse_known_args()
+    if unknown:
+        print(f"忽略无法识别的参数：{' '.join(unknown)}（内置测试对是默认且唯一的模式）")
+    del args
 
     try:
         client = get_embedding_client()

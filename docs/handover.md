@@ -118,7 +118,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 286 passed + 6 skipped；真实 PostgreSQL 291 passed + 1 skipped）
+  （当前 SQLite 301 passed + 6 skipped；真实 PostgreSQL 306 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -128,7 +128,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   - Alembic 初始迁移 `0001`（含 `CREATE EXTENSION vector / pg_trgm`，仅 PG 分支执行）
 - **PostgreSQL 17.11 实机验证通过**：Docker Compose 启动 `pgvector/pgvector:pg17`，
   Alembic 升级到 `0002 (head)`；`vector 0.8.7` / `pg_trgm 1.6` 已安装；
-  专用测试库 `aitkp_test` 上 291 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
+  专用测试库 `aitkp_test` 上 306 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
 - Phase 2 核心链路：`knowledge_chunks` ORM / Schema / 迁移、Embedding 抽象、
   实体到 Chunk 的索引脚本、PostgreSQL cosine 向量检索、Chunk API
 - Phase 2 验证边界：Fake Embedding 只证明链路可运行；本机 OMLX 已具备真实
@@ -139,14 +139,23 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   PostgreSQL + pgvector + OMLX Embedding + OMLX LLM 已端到端验证
 - 真实链路结果记录在 `docs/RAG_EXPERIMENT.md`：正常回答、引用追溯、无关问题拒答
   与严格 `max_distance` 过滤均通过；`Ling-3.0-tiny-oQ6e` 的推理输出会使单次回答
-  延迟达到约 11–60 秒；API 已加 `RAG_REQUEST_TIMEOUT`（默认 30 秒）并标注为
-  实验性慢接口，生产使用前仍需做异步化与性能评估
+  延迟达到约 11–60 秒；API 已加 `RAG_REQUEST_TIMEOUT`（默认 45 秒）、
+  `RAG_MAX_CONCURRENCY` 并发闸门与模块级共享线程池，并标注为实验性慢接口。
+  **503 只是提前放弃等待**：底层 LLM 调用无法被中断，会继续占用线程到
+  `LLM_TIMEOUT`（默认 30 秒，配置层强制 `LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT`）；
+  生产使用前仍需做异步化与性能评估
 - Phase 3 的 `citation_valid` 只表示引用编号合法；Faithfulness / Citation Accuracy
   仍需 Phase 14 的真实评测，不能据此宣称回答有据
 - Phase 4 已完成知识模型收口：TestCase / Defect 字段契约、业务编号校验、
   KnowledgeChunk 边界与完整 Metadata 映射；详见 `docs/PHASE4_KNOWLEDGE_MODEL.md`
 - Phase 5 已完成数据接入：CSV / Excel 幂等导入、Markdown 标题树与文档 Chunk、
   普通文本 PDF；详见 `docs/PHASE5_INGESTION.md`
+- **Phase 5 的两个使用前提（新接手者最容易踩）**：
+  1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
+     `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
+     才能参与向量检索；缺口看 `/health.metrics.chunks_without_embedding`；
+  2. 重复导入同一 `doc_id` 会清掉已有向量，CLI 会打印
+     `indexed_chunks_replaced=N` 提示需要重新补向量。
 - 文档：README / CHANGELOG 与代码同步
 
 ### 未完成 / 待办（按优先级）
@@ -195,8 +204,8 @@ uv run alembic upgrade head               # 应用迁移
 
 ## 8. 给接手 agent 的第一步建议
 
-1. `uv sync && uv run pytest` 确认默认路径 286 passed + 6 skipped（以实际输出为准）
+1. `uv sync && uv run pytest` 确认默认路径 301 passed + 6 skipped（以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
 4. Phase 2/3 真实链路已完成；本机启动 OMLX 后运行
-   `scripts/embedding_probe.py --pairs` 与 `scripts/ask.py` 做真实链路验证
+   `scripts/embedding_probe.py` 与 `scripts/ask.py` 做真实链路验证

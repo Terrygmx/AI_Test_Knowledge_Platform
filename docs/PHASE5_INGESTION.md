@@ -49,6 +49,17 @@ uv run python scripts/ingest.py pdf data/spec.pdf --doc-id DOC-002
 - 不自动创建缺失的业务编号；
 - Excel 多 Sheet 暂不批量导入，一次导入一个 Sheet / 文件。
 
+### 表格导入 document 的正文
+
+`documents` 表只存元数据，没有 `content` 列。因此表格里的 `content` 不会写进
+`documents`，而是落成一条 `source_type=document` 的 KnowledgeChunk（正文即检索单元）。
+按 `doc_id` 替换，重复导入不会产生重复 Chunk；`Type` 列在文档语义下归一为 `doc_type`
+（在用例语义下是 `case_type`）。
+
+> 这里有个已经踩过的坑：早期实现把 `content` 直接交给 `DocumentCreate`，
+> 而 `ORMInput` 未设 `extra="forbid"`，Pydantic 会**静默忽略**多余字段，
+> 结果正文无声丢失且测试全绿。现在正文显式走 Chunk，并有落库断言。
+
 ## 3. Markdown
 
 流程：
@@ -66,6 +77,16 @@ Markdown
 - `path` 保存标题层级，例如 `("支付", "失败重试")`；
 - 重复导入同一 `doc_id` 会更新文档元数据并替换该文档旧 Chunk。
 
+边界（Review 后补齐）：
+
+- **无标题文档**：整篇作为一个 Section（`title=fallback_title`、`level=1`）。
+  这是纯文本 PDF 抽取结果的常态；早期实现会产出 0 个 Chunk、正文整体丢失且无任何报错；
+- **首个标题之前的“前言”**：保留为标题 `前言` 的独立 Section，不再被丢弃；
+- 空标题（`## ` 之类）：正文并入上一个 Section（首个标题就为空时落到文档标题下），
+  不再连带正文一起丢弃；
+- 空正文 Section（``# A`` 紧接 ``## B``）：正文用标题路径兜底（如 `A / B`），
+  标题本身是有效检索锚点，且不会产生空向量（上游拒绝空白输入）。
+
 当前不做固定长度切分、Semantic Chunking；这些在 Phase 6 对比实验。
 
 ## 4. PDF
@@ -81,11 +102,17 @@ Markdown
 
 - Phase 5 只负责解析、规范化、去重和保存 Document / Chunk；
 - 不在导入时调用 Embedding，避免大批量导入与模型服务耦合；
-- 导入后的 Chunk 可通过 `scripts/index_entities.py` 统一生成向量；
+- 导入后的 document Chunk 通过 `scripts/index_entities.py --only document` **补向量**
+  （增量：只处理 `embedding IS NULL` 的 Chunk，不重建正文）；
+  `--only testcase,defect,requirement` 仍是「按实体重建」语义，两者不要混淆；
+- 重复导入文档会清掉已有向量（新 Chunk 的 `embedding` 为空），
+  `MarkdownImportResult.indexed_chunks_replaced` 会带回被清掉的条数，CLI 会打印提示；
 - Metadata Filter、Hybrid Search、Rerank 仍属于 Phase 8–11。
 
 ## 6. 验收测试
 
 - `tests/test_ingestion.py`：CSV / Excel / Markdown / PDF / 事务回滚 / 重复导入；
+- 无标题文档与无标题 PDF 各产出 1 个 Chunk；前言保留；重复导入返回
+  `indexed_chunks_replaced`；document Chunk 可通过 `backfill_embeddings` 补向量；
 - `tests/test_ingest_script.py`：CLI 参数与错误退出；
 - `tests/services/test_knowledge_chunk_service.py`：实体到 Chunk 映射。

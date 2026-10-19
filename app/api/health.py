@@ -54,6 +54,8 @@ def health(session: SessionDep) -> HealthResponse:
     capabilities = {
         # 本机 OpenAI-compatible 服务不需要 Key，但仍需服务与模型真实可用
         "embedding": embedding_ready,
+        # Rerank 在 Phase 11 才接入，这里只表示“已配置 Key”，不是真实可用性探测；
+        # 与 llm / embedding 的口径不同，接入时统一改为 _model_available 探测
         "rerank": bool(settings.rerank_api_key),
         "llm": llm_ready,
         # 向量检索依赖 PostgreSQL + pgvector；SQLite 默认测试路径不支持
@@ -132,6 +134,9 @@ def _check_embedding() -> bool:
 
 def _model_available(base_url: str, api_key: str, model: str) -> bool:
     """检查 ``GET /models`` 是否返回目标模型。"""
+    # 前提：上游是 OpenAI-compatible 且实现了 ``GET /models``。部分兼容服务不实现该端点
+    # 或返回带后缀的别名，此时会误报不可用（见 README 已知取舍）。失败必须写 warning，
+    # 不能静默吞掉：否则「模型不可用」只能靠猜。
     try:
         response = httpx.get(
             f"{base_url.rstrip('/')}/models",
@@ -139,11 +144,16 @@ def _model_available(base_url: str, api_key: str, model: str) -> bool:
             timeout=1.5,
         )
         if response.status_code != 200:
+            logger.warning("模型探测失败 base_url=%s status=%s", base_url, response.status_code)
             return False
         payload = response.json()
         models = payload.get("data", [])
-        return any(item.get("id") == model for item in models if isinstance(item, dict))
-    except Exception:
+        available = any(item.get("id") == model for item in models if isinstance(item, dict))
+        if not available:
+            logger.warning("模型探测未命中 base_url=%s model=%s", base_url, model)
+        return available
+    except Exception as exc:
+        logger.warning("模型探测异常 base_url=%s error=%s", base_url, exc)
         return False
 
 

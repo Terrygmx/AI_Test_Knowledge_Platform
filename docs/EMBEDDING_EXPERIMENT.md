@@ -11,7 +11,7 @@
 命令：
 
 ```bash
-uv run python scripts/embedding_probe.py --pairs
+uv run python scripts/embedding_probe.py
 ```
 
 结果：

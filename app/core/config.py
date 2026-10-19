@@ -5,9 +5,9 @@
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import computed_field
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -57,9 +57,14 @@ class Settings(BaseSettings):
     llm_model: str = "Ling-3.0-tiny-oQ6e"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 2048
-    llm_timeout: int = 120
-    #: RAG 请求的端到端预算；超时返回明确错误，避免慢模型长期占用 worker
-    rag_request_timeout: float = 30.0
+    # 必须 <= rag_request_timeout：否则「到点返回 503」之后底层调用还能继续占用资源。
+    # 30 秒来自实测：本机 OMLX Ling-3.0-tiny-oQ6e 单次生成约 30 秒（含推理过程输出），
+    # 再调小会先把真实请求掐断，而不是保护服务。
+    llm_timeout: int = 30
+    #: RAG 请求的端到端预算（含 Embedding + 检索 + LLM）；超时返回 503
+    rag_request_timeout: float = 45.0
+    #: 同时执行的 RAG 推理任务上限；超出的请求直接返回 503，避免线程与连接被拖垮
+    rag_max_concurrency: int = 4
 
     # ---------------- 检索参数（Phase 9/11 起被 Hybrid / Rerank 消费）----------------
     retrieval_vector_top_k: int = 20
@@ -76,6 +81,22 @@ class Settings(BaseSettings):
             f"postgresql+psycopg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @model_validator(mode="after")
+    def _validate_timeout_budget(self) -> Self:
+        """端到端预算必须不大于底层超时，否则「30 秒预算」是无效承诺。
+
+        关系颠倒时（``llm_timeout`` > ``rag_request_timeout``）接口会先返回 503，
+        但底层调用还能继续占用资源数十秒；在配置层 fail fast，避免误判超时生效。
+        """
+        if float(self.llm_timeout) > float(self.rag_request_timeout):
+            raise ValueError(
+                "LLM_TIMEOUT 必须 <= RAG_REQUEST_TIMEOUT，"
+                f"当前 llm_timeout={self.llm_timeout}, rag_request_timeout={self.rag_request_timeout}"
+            )
+        if self.rag_max_concurrency < 1:
+            raise ValueError("RAG_MAX_CONCURRENCY 必须 >= 1")
+        return self
 
 
 @lru_cache

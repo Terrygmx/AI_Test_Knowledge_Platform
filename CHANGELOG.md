@@ -82,6 +82,32 @@
 - **CLI**：新增 `scripts/ingest.py table|markdown|pdf`。
 - **文档**：新增 `docs/PHASE5_INGESTION.md`，说明表头、清洗、幂等与边界。
 
+#### Review 修复：Phase 3–5（2026-10-20）
+
+- **无标题文档不再丢正文**：`MarkdownParser` 在无标题时整篇回退为单个 Section，
+  首个标题之前的“前言”也保留为 `前言` Section。修复前纯文本 PDF（无标题）会
+  导入“成功”却产出 0 个 Chunk，正文整体丢失且无报错。
+- **document Chunk 补向量入口**：`KnowledgeChunkService.backfill_embeddings()`
+  与 `scripts/index_entities.py --only document` 给 `embedding IS NULL` 的 Chunk
+  增量补向量（不重建正文）；`--only testcase,defect,requirement` 仍是重建语义。
+  修复前 `docs/PHASE5_INGESTION.md` 承诺的入口实际不认 `document`。
+- **重复导入不再静默清向量**：`MarkdownImportResult.indexed_chunks_replaced`
+  带回被替换的已向量化 Chunk 数，服务层写 warning，CLI 打印补救命令。
+- **RAG 超时真正释放请求**：改用模块级共享线程池（原先每请求 `with
+  ThreadPoolExecutor`，退出时 `shutdown(wait=True)` 会把工作时间完整算进请求耗时），
+  并加 `RAG_MAX_CONCURRENCY` 并发闸门，满载立即 503。
+- **超时预算不再颠倒**：`Settings` 强制 `LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT`
+  （默认 LLM 30 秒 / 请求 45 秒，按实测 30 秒生成耗时留余量）；
+  README / OpenAPI 如实说明 503 只是提前放弃等待，底层调用无法被中断，
+  会继续占用线程到 `LLM_TIMEOUT`。
+- **CSV 导入 document 不再丢正文**：`documents` 表无 `content` 列，正文改为写入
+  `document` Chunk（按 `doc_id` 替换）；`Type` 列在文档语义下归一为 `doc_type`。
+  修复前该列被 Pydantic 静默忽略，正文无声丢失。
+- **`/models` 探测可排查**：探测失败 / 未命中模型时写 warning 日志，不再静默吞异常；
+  文档标注该探测依赖上游实现 `GET /models` 且模型名精确匹配。
+- **`--pairs` 参数删除**：`scripts/embedding_probe.py` 只保留内置测试对这一种模式，
+  未知参数显式提示被忽略。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，

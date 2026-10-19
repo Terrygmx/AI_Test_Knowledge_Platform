@@ -20,6 +20,23 @@ from app.core.db import SessionLocal
 from app.ingestion import ImportService, TableImporter
 
 
+def _print_embedding_tips(indexed_chunks_replaced: int) -> None:
+    """导入阶段刻意不调用 Embedding，所以必须把「还不能检索」说清楚。
+
+    大批量导入与模型服务耦合会让一次导入既慢又难重试，向量生成交给
+    ``index_entities.py``；代价是调用方很容易忘记这一步，这里显式提示。
+    """
+    print(
+        "提示：Chunk 尚未生成向量，还不能参与检索；"
+        "执行 scripts/index_entities.py --only document 补齐（增量，不重建正文）"
+    )
+    if indexed_chunks_replaced:
+        print(
+            f"注意：本次导入替换了 {indexed_chunks_replaced} 条已向量化的 Chunk，"
+            "必须重新执行 scripts/index_entities.py --only document 补向量"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="导入测试知识数据")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -54,7 +71,14 @@ def main() -> None:
             print(
                 f"导入完成：type={result.entity_type} created={result.created} "
                 f"updated={result.updated} skipped={result.skipped}"
+                + (
+                    f" document_chunks={result.document_chunks}"
+                    if result.entity_type == "document"
+                    else ""
+                )
             )
+            if result.entity_type == "document" and result.document_chunks:
+                _print_embedding_tips(result.indexed_chunks_replaced)
             return
 
         if args.command == "markdown":
@@ -77,6 +101,7 @@ def main() -> None:
             f"导入完成：{action} document={result.document_id} "
             f"sections={result.section_count}"
         )
+        _print_embedding_tips(result.indexed_chunks_replaced)
 
 
 if __name__ == "__main__":

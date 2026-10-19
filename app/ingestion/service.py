@@ -9,12 +9,16 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import DomainError
+from app.core.logging import get_logger
 from app.ingestion.markdown import MarkdownDocument, MarkdownParser
 from app.ingestion.pdf import PdfParser
 from app.models import KnowledgeChunk
 from app.retrieval.embedding import content_sha256
 from app.schemas.document import DocumentCreate, DocumentUpdate
 from app.services.document_service import DocumentService
+from app.services.knowledge_chunk_service import KnowledgeChunkService
+
+logger = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -24,6 +28,8 @@ class MarkdownImportResult:
     document_id: str
     section_count: int
     created: bool
+    #: 被本次导入替换掉的「已生成向量」Chunk 数；> 0 表示需要重新补向量
+    indexed_chunks_replaced: int = 0
 
 
 class ImportService:
@@ -110,6 +116,11 @@ class ImportService:
                 )
                 created = False
 
+            # 新 Chunk 的 embedding 为 None；旧 Chunk 若已完成向量化，替换会让文档
+            # 重新变成检索不可见。这里计数并返回，由调用方（CLI）明确提示补救入口。
+            indexed_before = (
+                KnowledgeChunkService.count_with_embedding(session, source_id=doc_id)
+            )
             session.execute(
                 delete(KnowledgeChunk).where(
                     KnowledgeChunk.source_type == "document",
@@ -135,6 +146,13 @@ class ImportService:
             ]
             session.add_all(chunks)
             session.commit()
+            if indexed_before:
+                logger.warning(
+                    "重复导入替换了已向量化的 Chunk：doc_id=%s chunks=%s，"
+                    "需重新执行 scripts/index_entities.py --only document 补向量",
+                    doc_id,
+                    indexed_before,
+                )
         except DomainError:
             session.rollback()
             raise
@@ -146,6 +164,7 @@ class ImportService:
             document_id=doc_id,
             section_count=len(parsed.sections),
             created=created,
+            indexed_chunks_replaced=indexed_before,
         )
 
 

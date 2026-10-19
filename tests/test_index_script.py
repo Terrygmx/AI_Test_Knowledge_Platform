@@ -16,6 +16,9 @@ class TestIndexScript:
         with pytest.raises(ValueError, match="未知实体类型"):
             _parse_only("testcase,nope")
 
+    def test_parse_only_accepts_document(self) -> None:
+        assert _parse_only("document") == {"document"}
+
     def test_dry_run_counts_without_writing(self, db_session) -> None:
         db_session.add_all(
             [
