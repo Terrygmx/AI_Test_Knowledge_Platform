@@ -87,7 +87,9 @@ cp .env.example .env
 
 | 变量 | 说明 |
 |---|---|
-| `EMBEDDING_API_KEY` | Embedding 服务密钥（默认指向硅基流动 bge-m3） |
+| `EMBEDDING_BASE_URL` | 默认本机 OMLX：`http://127.0.0.1:28080/v1` |
+| `EMBEDDING_API_KEY` | 默认 `omlx`（本机占位 Key） |
+| `EMBEDDING_MODEL` | 默认 `bge-m3-mlx-4bit`（1024 维） |
 | `RERANK_API_KEY` | Reranker 服务密钥 |
 | `LLM_*` | 默认走本地 Ollama（`qwen3:8b`）；切云 API 时改 `LLM_PROVIDER=openai_compatible` 并填 Key |
 
@@ -132,13 +134,13 @@ uv run ruff check .                 # 静态检查
 # 只统计将索引多少实体，不调用外部 API
 uv run python scripts/index_entities.py --dry-run
 
-# 需要真实 EMBEDDING_API_KEY；按来源重建并写入 pgvector
+# 默认调用本机 OMLX；按来源重建并写入 pgvector
 uv run python scripts/index_entities.py --only testcase,defect
 
-# Phase 2.1 语义相似度探针（需要 Key）
+# Phase 2.1 语义相似度探针（默认 OMLX）
 uv run python scripts/embedding_probe.py --pairs
 
-# Phase 3 最小 RAG（需要 PostgreSQL + Embedding Key + 可用 LLM）
+# Phase 3 最小 RAG（需要 PostgreSQL + OMLX + 可用 LLM）
 uv run python scripts/ask.py "登录失败怎么测试？"
 ```
 
@@ -167,7 +169,7 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
-**256 passed + 6 skipped**，真实 PostgreSQL **261 passed + 1 skipped**，全程 TDD
+**258 passed + 6 skipped**，真实 PostgreSQL **263 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -185,8 +187,9 @@ pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLit
 - [x] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
 - [x] Phase 2：`knowledge_chunks`、Embedding 抽象、pgvector 向量检索
 - [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
-- [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py --pairs`（需 Key）
-- [ ] 真实 bge-m3 语义质量实验（需配置 `EMBEDDING_API_KEY`）
+- [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py --pairs`（默认 OMLX）
+- [x] 本机 OMLX bge-m3 链路实验（见 `docs/EMBEDDING_EXPERIMENT.md`）
+- [ ] 人工 Gold Set 上的 Recall@K / MRR 语义质量评测
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
   - `POST /api/v1/rag/answer` 与 `scripts/ask.py`
   - 无证据时明确拒答，不调用 LLM；回答只能引用本次检索编号

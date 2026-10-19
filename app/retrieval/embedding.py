@@ -14,6 +14,7 @@ import hashlib
 import math
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
+from urllib.parse import urlparse
 
 from openai import OpenAI
 
@@ -71,18 +72,21 @@ def _validate_vectors(
 
 
 class OpenAICompatibleEmbeddingClient:
-    """OpenAI-compatible Embedding 客户端（默认硅基流动 bge-m3）。"""
+    """OpenAI-compatible Embedding 客户端（默认本机 OMLX bge-m3）。"""
 
     def __init__(self, config: Settings | None = None) -> None:
         self._settings = config or settings
         self._dimension = self._settings.embedding_dim
-        if not self._settings.embedding_api_key:
+        if not self._settings.embedding_api_key and not _is_local_url(
+            self._settings.embedding_base_url
+        ):
             raise EmbeddingError(
                 "EMBEDDING_API_KEY 未配置",
                 detail={"model": self._settings.embedding_model},
             )
         self._client = OpenAI(
-            api_key=self._settings.embedding_api_key,
+            # OpenAI SDK 要求非空 Key；本机服务可用占位值。
+            api_key=self._settings.embedding_api_key or "local-no-key",
             base_url=self._settings.embedding_base_url,
             timeout=60.0,
             max_retries=2,
@@ -168,8 +172,13 @@ class FakeEmbeddingClient:
 
 
 def get_embedding_client(config: Settings | None = None) -> EmbeddingClient:
-    """应用默认 Embedding 客户端；未配 Key 时抛出可读错误。"""
+    """应用默认 Embedding 客户端；远端服务未配 Key 时抛出可读错误。"""
     return OpenAICompatibleEmbeddingClient(config)
+
+
+def _is_local_url(url: str) -> bool:
+    host = urlparse(url).hostname
+    return host in {"127.0.0.1", "localhost", "::1"}
 
 
 __all__ = [

@@ -33,7 +33,7 @@
 - **FastAPI + Pydantic v2 + pydantic-settings**
 - **PostgreSQL 17 + pgvector 0.8**（关系数据 / Metadata / 全文检索 / 向量四合一，**不引入 Milvus**）
 - **SQLAlchemy 2.0 + Alembic**（Schema 单一事实来源，见 §4）
-- **Embedding**: bge-m3（1024 维，硅基流动 OpenAI-compatible API）
+- **Embedding**: bge-m3（1024 维，本机 OMLX OpenAI-compatible API）
 - **Reranker**: bge-reranker-v2-m3；**LLM**: 本地 Ollama `qwen3:8b`（默认）↔ 云 API 双通道
 - 工程：pytest + ruff（lint 规则见 `pyproject.toml`）
 
@@ -41,8 +41,9 @@
 
 统一从 `.env` 读取，模板 `.env.example`。关键点：
 
-- `EMBEDDING_API_KEY` / `RERANK_API_KEY` 目前为空 → 相关代码路径不可运行，
-  `GET /health` 的 `capabilities` 字段会如实显示各项能力可用性
+- Embedding 默认走本机 OMLX（`http://127.0.0.1:28080/v1`，模型
+  `bge-m3-mlx-4bit`，Key 为 `omlx`）；`RERANK_API_KEY` 为空时 Rerank 不可运行。
+  `GET /health` 的 `capabilities` 会如实显示各项能力可用性
 - LLM 默认走本地 Ollama（`127.0.0.1:11434`，本机服务在运行，但**尚未 pull 任何模型**）
 - 数据库连接只有 `.env` 一个来源（`alembic.ini` 不写死 url，由 `alembic/env.py` 从 config 读）
 
@@ -63,7 +64,7 @@ app/
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
 └── evaluation/  # 空，Phase 13（Recall@K / MRR / NDCG）
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
-tests/           # 262 个用例（api / services / models / schemas / types / exceptions / migrations）
+tests/           # 264 个用例（api / services / models / schemas / types / exceptions / migrations）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
 scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upgrade head
 ```
@@ -116,7 +117,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 256 passed + 6 skipped；真实 PostgreSQL 261 passed + 1 skipped）
+  （当前 SQLite 258 passed + 6 skipped；真实 PostgreSQL 263 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -126,11 +127,12 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   - Alembic 初始迁移 `0001`（含 `CREATE EXTENSION vector / pg_trgm`，仅 PG 分支执行）
 - **PostgreSQL 17.11 实机验证通过**：Docker Compose 启动 `pgvector/pgvector:pg17`，
   Alembic 升级到 `0002 (head)`；`vector 0.8.7` / `pg_trgm 1.6` 已安装；
-  专用测试库 `aitkp_test` 上 261 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
+  专用测试库 `aitkp_test` 上 263 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
 - Phase 2 核心链路：`knowledge_chunks` ORM / Schema / 迁移、Embedding 抽象、
   实体到 Chunk 的索引脚本、PostgreSQL cosine 向量检索、Chunk API
-- Phase 2 验证边界：Fake Embedding 只证明链路可运行，不代表语义召回质量；
-  配置 `EMBEDDING_API_KEY` 后需用 bge-m3 做真实相似度实验
+- Phase 2 验证边界：Fake Embedding 只证明链路可运行；本机 OMLX 已具备真实
+  bge-m3 能力，相似度 / 索引 / pgvector 链路已写入 `docs/EMBEDDING_EXPERIMENT.md`；
+  Recall@K / MRR 仍需人工 Gold Set 验证
 - Phase 3 代码完成、真实链路未验证：`POST /api/v1/rag/answer`、`scripts/ask.py`、
   Context Assembly（字符预算）、Citation 编号校验、可选 `max_distance`、无证据拒答
 - Phase 3 的 `citation_valid` 只表示引用编号合法；Faithfulness / Citation Accuracy
@@ -182,8 +184,8 @@ uv run alembic upgrade head               # 应用迁移
 
 ## 8. 给接手 agent 的第一步建议
 
-1. `uv sync && uv run pytest` 确认默认路径 256 passed + 6 skipped（以实际输出为准）
+1. `uv sync && uv run pytest` 确认默认路径 258 passed + 6 skipped（以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3 核心已完成；先配置 `EMBEDDING_API_KEY`，运行
+4. Phase 2/3 核心已完成；本机启动 OMLX 后运行
    `scripts/embedding_probe.py --pairs` 与 `scripts/ask.py` 做真实链路验证

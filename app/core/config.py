@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     postgres_password: str = "postgres"
 
     # ---------------- Embedding（OpenAI-compatible）----------------
-    embedding_base_url: str = "https://api.siliconflow.cn/v1"
+    embedding_base_url: str = "http://127.0.0.1:28080/v1"
     embedding_api_key: str = ""
-    embedding_model: str = "BAAI/bge-m3"
+    embedding_model: str = "bge-m3-mlx-4bit"
     embedding_dim: int = 1024
     embedding_batch_size: int = 32
 

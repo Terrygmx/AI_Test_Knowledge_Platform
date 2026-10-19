@@ -47,6 +47,9 @@
   Faithfulness；Citation 暴露 `rank` / `distance`；上下文预算首块也受约束；
   引用解析支持 `[1, 2]` / `[1 ]`；LLM 健康探测改为 60s TTL；
   Chunk 支持 `has_embedding` 过滤，`/health` 暴露缺向量计数。
+- **本机 Embedding**：默认切换到 OMLX `bge-m3-mlx-4bit`
+  （`http://127.0.0.1:28080/v1`，Key `omlx`），完成真实相似度、索引和
+  pgvector 检索验证，详见 `docs/EMBEDDING_EXPERIMENT.md`。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 

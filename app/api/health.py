@@ -51,7 +51,8 @@ def health(session: SessionDep) -> HealthResponse:
     llm_ready = _check_llm()
     capabilities = {
         # 本地 Ollama 不需要 Key；云 API 通道需要
-        "embedding": bool(settings.embedding_api_key),
+        "embedding": bool(settings.embedding_api_key)
+        or settings.embedding_base_url.startswith(("http://127.0.0.1", "http://localhost")),
         "rerank": bool(settings.rerank_api_key),
         "llm": llm_ready,
         # 向量检索依赖 PostgreSQL + pgvector；SQLite 默认测试路径不支持
