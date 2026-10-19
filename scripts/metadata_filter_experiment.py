@@ -87,6 +87,25 @@ def _redact_command(command: list[str]) -> list[str]:
     return redacted
 
 
+def _worktree_dirty() -> bool:
+    """只把已跟踪文件改动视为脏。
+
+    仓库里可能长期存在未跟踪的评审记录或占位文件；它们不改变代码、数据集或
+    候选，因此不能让正式实验的 ``git_dirty`` 永远为 true。正式产物自身也是
+    未跟踪文件，写入后同样不能把 manifest 标记为脏。
+    """
+    try:
+        return bool(
+            subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            text=True,
+            stderr=subprocess.DEVNULL,
+            ).strip()
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return True
+
+
 def _candidate_digest(documents: list[Any]) -> str:
     payload = [
         [
@@ -195,7 +214,7 @@ def _manifest(
         "finished_at": finished_at.isoformat(),
         "git_commit": _git_output(["rev-parse", "HEAD"]) or "unknown",
         "git_commit_role": "generation",
-        "git_dirty": bool(_git_output(["status", "--porcelain"])),
+        "git_dirty": _worktree_dirty(),
         "command": _redact_command(command),
         "result_path": str(result_path),
         "mode": mode,

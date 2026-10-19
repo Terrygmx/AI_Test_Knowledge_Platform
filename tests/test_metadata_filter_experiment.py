@@ -10,7 +10,7 @@ from app.evaluation.metadata_filter_experiment import (
     evaluate_metadata_filters,
     matches_metadata,
 )
-from scripts.metadata_filter_experiment import _filter_sql, _manifest
+from scripts.metadata_filter_experiment import _filter_sql, _manifest, _worktree_dirty
 
 DATASET = "eval/fixtures/phase10_simulated.json"
 
@@ -53,6 +53,35 @@ class TestMetadataFilterSemantics:
     def test_missing_or_wrong_type_does_not_match(self) -> None:
         assert not matches_metadata({}, {"module": "login"})
         assert not matches_metadata({"tags": "smoke"}, {"tags": ["smoke"]})
+
+
+class TestManifestDirtyState:
+    def test_untracked_files_do_not_make_generation_dirty(self, monkeypatch) -> None:
+        calls: list[list[str]] = []
+
+        def fake_check_output(arguments, **kwargs):
+            calls.append(arguments)
+            return ""
+
+        monkeypatch.setattr(
+            "scripts.metadata_filter_experiment.subprocess.check_output",
+            fake_check_output,
+        )
+
+        assert _worktree_dirty() is False
+        assert calls[0][:2] == ["git", "status"]
+        assert calls[0][3] == "--untracked-files=no"
+
+    def test_tracked_changes_make_manifest_dirty(self, monkeypatch) -> None:
+        def fake_check_output(arguments, **kwargs):
+            return " M app/retrieval/filters.py\n"
+
+        monkeypatch.setattr(
+            "scripts.metadata_filter_experiment.subprocess.check_output",
+            fake_check_output,
+        )
+
+        assert _worktree_dirty() is True
 
 
 class TestMetadataFilterExperiment:
