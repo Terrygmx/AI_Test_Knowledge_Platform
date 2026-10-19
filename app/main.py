@@ -27,6 +27,7 @@ OPENAPI_TAGS = [
     {"name": "defects", "description": "缺陷"},
     {"name": "requirements", "description": "需求"},
     {"name": "documents", "description": "文档元数据"},
+    {"name": "chunks", "description": "知识检索单元"},
     {"name": "search", "description": "统一知识检索（Phase 1 最小版）"},
 ]
 

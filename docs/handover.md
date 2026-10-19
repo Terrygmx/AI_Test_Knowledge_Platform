@@ -58,7 +58,7 @@ app/
 ├── schemas/     # Pydantic 请求/响应模型（入参规范化在这里做）
 ├── services/    # EntityService CRUD 基类 + 四实体服务 + UnifiedSearchService
 ├── ingestion/   # 空，Phase 5（Parser → Normalizer → Chunker）
-├── retrieval/   # 空，Phase 3+（Vector / Keyword / Hybrid Fusion）
+├── retrieval/   # Embedding 抽象；Phase 3+ 增加 Vector / Keyword / Hybrid Fusion
 ├── rerank/      # 空，Phase 11
 ├── generation/  # 空，Phase 17（Context Assembly + Citation）
 └── evaluation/  # 空，Phase 13（Recall@K / MRR / NDCG）
@@ -127,11 +127,15 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - **PostgreSQL 17.11 实机验证通过**：Docker Compose 启动 `pgvector/pgvector:pg17`，
   Alembic 升级到 `0001 (head)`；`vector 0.8.7` / `pg_trgm 1.6` 已安装；
   专用测试库 `aitkp_test` 上 192 个测试全部通过；`GET /health` 返回数据库检查 `true`
+- Phase 2 已开始：`knowledge_chunks` ORM / Schema / 迁移、Embedding 抽象、
+  实体到 Chunk 的索引映射、PostgreSQL cosine 向量检索
+- Phase 2 验证边界：Fake Embedding 只证明链路可运行，不代表语义召回质量；
+  配置 `EMBEDDING_API_KEY` 后需用 bge-m3 做真实相似度实验
 - 文档：README / CHANGELOG 与代码同步
 
 ### 未完成 / 待办（按优先级）
 
-1. **Phase 2：Embedding + pgvector + `knowledge_chunks` 表**（下一个编码大项）
+1. **Phase 2 收尾**：补充 API / 文档，接入真实 Embedding 服务后做语义检索实验
 2. **Phase 3：手写最小 RAG**（明确不上 LangChain / LlamaIndex）
 3. `eval/` 评测数据集（目标约 100 条人工确认 Query，Phase 12）
 4. Ollama 尚无模型，需 `ollama pull qwen3:8b` 才能跑 LLM 链路

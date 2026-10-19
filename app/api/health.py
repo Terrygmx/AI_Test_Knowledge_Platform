@@ -42,6 +42,8 @@ def health(session: SessionDep) -> HealthResponse:
         "embedding": bool(settings.embedding_api_key),
         "rerank": bool(settings.rerank_api_key),
         "llm": True,
+        # 向量检索依赖 PostgreSQL + pgvector；SQLite 默认测试路径不支持
+        "vector_search": _supports_vector_search(session),
     }
     return HealthResponse(
         status="ok" if database else "degraded",
@@ -61,6 +63,10 @@ def _check_database(session: SessionDep) -> bool:
         logger.warning("数据库健康检查失败：%s", exc)
         session.rollback()
         return False
+
+
+def _supports_vector_search(session: SessionDep) -> bool:
+    return session.bind is not None and session.bind.dialect.name == "postgresql"
 
 
 __all__ = ["HealthResponse", "router"]

@@ -46,7 +46,7 @@ AI_Test_Knowledge_Platform/
 │   ├── schemas/        # Pydantic 请求 / 响应模型
 │   ├── services/       # 业务服务层：CRUD 基类 + 实体服务 + 统一检索
 │   ├── ingestion/      # 数据接入：Parser → Normalizer → Knowledge Model → Chunker（Phase 5）
-│   ├── retrieval/      # 检索：Vector / Keyword / Hybrid Fusion / Metadata Filter（Phase 3+）
+│   ├── retrieval/      # 检索：Embedding / Vector / Keyword / Hybrid Fusion / Metadata Filter
 │   ├── rerank/         # 重排（Phase 11）
 │   ├── generation/     # 上下文组装 + LLM + Citation（Phase 17）
 │   └── evaluation/     # 离线评测指标与运行器（Phase 13）
@@ -162,7 +162,7 @@ Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
 - [x] Alembic 初始迁移（含 pgvector / pg_trgm 扩展）+ 漂移检查
 - [x] **PostgreSQL 17.11 实机验证**（`vector 0.8.7` / `pg_trgm 1.6`）
 - [x] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
-- [ ] Phase 2：Embedding + pgvector（`knowledge_chunks`）
+- [x] Phase 2：`knowledge_chunks`、Embedding 抽象、pgvector 向量检索
 - [ ] Phase 3：手写最小 RAG（先不上 LangChain / LlamaIndex）
 
 ### 已知取舍（需要时 revisit）
@@ -171,5 +171,6 @@ Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
 |---|---|---|
 | 中文全文检索 | 关键词检索走 `ILIKE`（全表扫描） | PG 内置 `to_tsvector` 对中文无效；Phase 8 再定 zhparser / pg_jieba / 应用层分词 |
 | 检索结果打分 | 不返回 `score` | 没有打分依据时不编数字（Evidence First）；Phase 9 融合后引入 |
+| 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
 | 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

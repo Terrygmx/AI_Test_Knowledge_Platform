@@ -133,6 +133,12 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 | Phase 2 | 进行中 | `knowledge_chunks`、Embedding、pgvector 向量检索 |
 | Phase 3 | 待开始 | 手写最小 RAG |
 
+### Phase 2 验证边界
+
+`FakeEmbeddingClient` 只用于验证“实体 → Chunk → 向量 → pgvector → 距离返回”链路，
+不提供真实语义能力。Embedding API Key 配置后，必须用 bge-m3 在真实测试 Query 上重新验证
+相似文本是否更接近；不能把 Fake 结果当作召回质量结论。
+
 ## 9. Human Review Points
 
 以下判断需要项目负责人确认，而不是由代码实现默认替代：
@@ -142,4 +148,3 @@ MVP 不实现登录、组织、项目、团队和权限模型。权限过滤在 
 - 测试数据中版本、模块、优先级词表的业务规范。
 - Embedding / Reranker 模型和成本可接受范围。
 - 首版 Citation 展示粒度和“证据不足”的判定阈值。
-

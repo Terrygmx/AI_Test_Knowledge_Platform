@@ -15,12 +15,13 @@ class TestHealth:
         assert body["app"]
         assert body["version"]
 
-    def test_capabilities_reported(self, client) -> None:
+    def test_capabilities_reported(self, client, engine) -> None:
         """让使用者一眼看出 Embedding / Rerank / LLM 是否可用。"""
         body = client.get("/health").json()
         caps = body["capabilities"]
-        assert set(caps) == {"embedding", "rerank", "llm"}
+        assert set(caps) == {"embedding", "rerank", "llm", "vector_search"}
         assert all(isinstance(v, bool) for v in caps.values())
+        assert caps["vector_search"] is (engine.dialect.name == "postgresql")
 
     def test_health_does_not_need_auth_or_body(self, client) -> None:
         resp = client.get("/health")

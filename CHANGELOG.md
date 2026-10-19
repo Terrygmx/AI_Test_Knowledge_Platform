@@ -13,6 +13,19 @@
 - 新增 `docs/LEARNING_QUESTIONS.md`：记录 Embedding、Chunk、Vector / BM25、Rerank、TopK、
   Recall@K / MRR、Faithfulness、RAG 幻觉、适用边界与持续优化问题。
 
+#### Phase 2：Embedding + pgvector（2026-10-19）
+
+- **检索单元**：新增 `knowledge_chunks` ORM / Schema / 迁移 `0002`，包含来源类型、
+  来源编号、文档编号、Chunk 序号、正文、Metadata、1024 维向量、内容哈希与版本。
+- **向量索引**：PostgreSQL 上使用 `vector(1024)` 与 HNSW `vector_cosine_ops`；
+  SQLite 默认测试库仍可建表，但不支持距离运算。
+- **Embedding 抽象**：新增 `EmbeddingClient` 协议、OpenAI-compatible 客户端、
+  确定性 Fake 客户端、批量维度校验与 SHA-256 内容哈希。
+- **索引服务**：TestCase / Defect / Requirement / Document 到 Chunk 的映射，
+  支持单条与批量 Embedding 入库。
+- **向量检索**：`KnowledgeChunkService.search()` 在 PostgreSQL 上按 cosine distance
+  返回候选和距离，并支持来源类型过滤；SQLite 下明确拒绝而不是返回假排序。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，

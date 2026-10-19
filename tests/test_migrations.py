@@ -70,6 +70,15 @@ def _parse_migrations() -> dict[str, MigrationTable]:
                 names = _string_args(node)
                 if len(names) >= 2:
                     tables.setdefault(names[1], MigrationTable()).indexes.add(names[0])
+            elif node.func.attr == "execute":
+                names = _string_args(node)
+                if not names:
+                    continue
+                sql = names[0]
+                if "USING hnsw" in sql and " ON knowledge_chunks " in sql:
+                    tables.setdefault("knowledge_chunks", MigrationTable()).indexes.add(
+                        "idx_knowledge_chunks_embedding_hnsw"
+                    )
     return tables
 
 
@@ -179,7 +188,18 @@ class TestMigrationExecutable:
                     ).scalars()
                 )
 
-            assert installed == {"vector", "pg_trgm"}
+                assert installed == {"vector", "pg_trgm"}
+
+                hnsw_indexes = set(
+                    conn.execute(
+                        text(
+                            "SELECT indexname FROM pg_indexes "
+                            "WHERE tablename = 'knowledge_chunks' "
+                            "AND indexname = 'idx_knowledge_chunks_embedding_hnsw'"
+                        )
+                    ).scalars()
+                )
+                assert hnsw_indexes == {"idx_knowledge_chunks_embedding_hnsw"}
         finally:
             command.downgrade(config, "base")
             with engine.begin() as conn:

@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import BigInteger, DateTime, Integer, String, Text
 
 from app.core.db import Base
-from app.models import Defect, Document, Requirement, TestCase
+from app.models import Defect, Document, KnowledgeChunk, Requirement, TestCase
 
 
 def _columns(table_name: str) -> set[str]:
@@ -203,3 +203,45 @@ class TestColumnTypes:
 
     def test_id_is_integer(self) -> None:
         assert isinstance(Base.metadata.tables["defects"].c.id.type, Integer)
+
+
+class TestKnowledgeChunkModel:
+    def test_table_name_and_columns(self) -> None:
+        assert KnowledgeChunk.__tablename__ == "knowledge_chunks"
+        assert _columns("knowledge_chunks") == {
+            "id",
+            "source_type",
+            "source_id",
+            "document_id",
+            "chunk_index",
+            "content",
+            "metadata",
+            "embedding",
+            "content_hash",
+            "version",
+            "created_at",
+            "updated_at",
+        }
+
+    def test_indexes_and_unique_constraint(self) -> None:
+        assert _indexes("knowledge_chunks") == {
+            "idx_knowledge_chunks_content_hash",
+            "idx_knowledge_chunks_document",
+            "idx_knowledge_chunks_embedding_hnsw",
+            "idx_knowledge_chunks_source",
+        }
+        table = Base.metadata.tables["knowledge_chunks"]
+        unique_names = {
+            constraint.name
+            for constraint in table.constraints
+            if constraint.__class__.__name__ == "UniqueConstraint"
+        }
+        assert "uq_knowledge_chunks_source_chunk" in unique_names
+
+    def test_embedding_is_vector_1024(self) -> None:
+        from pgvector.sqlalchemy import Vector
+
+        embedding = Base.metadata.tables["knowledge_chunks"].c.embedding
+        assert isinstance(embedding.type, Vector)
+        assert embedding.type.dim == 1024
+        assert embedding.nullable is True

@@ -14,6 +14,7 @@ from app.models.enums import (
     RequirementStatus,
     Severity,
 )
+from app.models.knowledge_chunk import KnowledgeChunk
 from app.models.requirement import Requirement
 from app.models.test_case import TestCase
 from app.models.types import JSONMap, TextArray
@@ -24,6 +25,7 @@ __all__ = [
     "DefectStatus",
     "Document",
     "JSONMap",
+    "KnowledgeChunk",
     "Priority",
     "Requirement",
     "RequirementStatus",
