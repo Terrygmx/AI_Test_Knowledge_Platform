@@ -127,6 +127,23 @@ class TestRAGService:
         assert result.evidence_sufficient is False
         assert result.citations == []
 
+    def test_partial_answer_keeps_citations_when_model_also_mentions_gap(
+        self, db_session
+    ) -> None:
+        chunks = _seed_chunks(db_session)
+        result = RAGService.answer_from_results(
+            question="登录失败怎么测试？",
+            results=[(chunks[0], 0.1), (chunks[1], 0.2)],
+            llm=FakeLLM("验证码错误时应保留输入。[1]\n缓存过期会导致无法登录。[2]\n证据不足。"),
+        )
+
+        assert result.citation_valid is True
+        assert result.evidence_sufficient is None
+        assert [citation.source_id for citation in result.citations] == [
+            "LOGIN-001",
+            "BUG-001",
+        ]
+
     def test_distance_threshold_rejects_weak_evidence(self, db_session) -> None:
         chunks = _seed_chunks(db_session)
         llm = FakeLLM("不应调用")

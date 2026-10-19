@@ -91,7 +91,7 @@ cp .env.example .env
 | `EMBEDDING_API_KEY` | 默认 `omlx`（本机占位 Key） |
 | `EMBEDDING_MODEL` | 默认 `bge-m3-mlx-4bit`（1024 维） |
 | `RERANK_API_KEY` | Reranker 服务密钥 |
-| `LLM_*` | 默认走本地 Ollama（`qwen3:8b`）；切云 API 时改 `LLM_PROVIDER=openai_compatible` 并填 Key |
+| `LLM_*` | 默认走本机 OMLX（`Ling-3.0-tiny-oQ6e`）；也可切 Ollama 或云 API |
 
 > 未配置 Key 时，涉及 Embedding / Rerank / LLM 的代码路径不可运行，但项目可正常导入与启动。
 > `GET /health` 的 `capabilities` 字段会直接告诉你各项能力是否可用。
@@ -113,7 +113,9 @@ Schema 由 Alembic 管理：新增表或改列时，改 `app/models/` 后执行
 ### 4. 本地 LLM（可选）
 
 ```bash
-ollama pull qwen3:8b     # 本机 Ollama 服务已在运行（127.0.0.1:11434），但尚无任何模型
+# 默认复用本机 OMLX（127.0.0.1:28080），无需再启动 Ollama
+# 如切回 Ollama，则先执行：
+ollama pull qwen3:8b
 ```
 
 ---
@@ -140,7 +142,7 @@ uv run python scripts/index_entities.py --only testcase,defect
 # Phase 2.1 语义相似度探针（默认 OMLX）
 uv run python scripts/embedding_probe.py --pairs
 
-# Phase 3 最小 RAG（需要 PostgreSQL + OMLX + 可用 LLM）
+# Phase 3 最小 RAG（需要 PostgreSQL + OMLX Embedding + OMLX LLM）
 uv run python scripts/ask.py "登录失败怎么测试？"
 ```
 
@@ -169,7 +171,7 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
-**258 passed + 6 skipped**，真实 PostgreSQL **263 passed + 1 skipped**，全程 TDD
+**261 passed + 6 skipped**，真实 PostgreSQL **266 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -193,6 +195,8 @@ pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLit
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
   - `POST /api/v1/rag/answer` 与 `scripts/ask.py`
   - 无证据时明确拒答，不调用 LLM；回答只能引用本次检索编号
+  - 真实链路已验证：本机 OMLX `Ling-3.0-tiny-oQ6e` + PostgreSQL pgvector
+    （见 `docs/RAG_EXPERIMENT.md`）
 
 ### 已知取舍（需要时 revisit）
 

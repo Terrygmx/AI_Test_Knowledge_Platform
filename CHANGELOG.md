@@ -50,6 +50,10 @@
 - **本机 Embedding**：默认切换到 OMLX `bge-m3-mlx-4bit`
   （`http://127.0.0.1:28080/v1`，Key `omlx`），完成真实相似度、索引和
   pgvector 检索验证，详见 `docs/EMBEDDING_EXPERIMENT.md`。
+- **本机 LLM + Phase 3 真实链路**：默认 LLM 切换到 OMLX
+  `Ling-3.0-tiny-oQ6e`（同一地址与 Key），完成 `scripts/ask.py` 与
+  `POST /api/v1/rag/answer` 的 PostgreSQL + pgvector 端到端验证；
+  修复“部分回答带合法引用、末尾又写证据不足”时引用被整体丢弃的问题。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 

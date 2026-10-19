@@ -87,7 +87,8 @@ class RAGService:
         raw_answer = llm.generate(build_prompt(question, bundle.text))
         if not raw_answer.strip():
             raise LLMError("LLM 返回了空回答")
-        if "证据不足" in raw_answer:
+        citations = extract_citations(raw_answer, bundle.citations)
+        if not citations and "证据不足" in raw_answer:
             return RAGResponse(
                 question=question,
                 answer=raw_answer.strip(),
@@ -96,7 +97,6 @@ class RAGService:
                 citations=[],
                 retrieved_count=len(bundle.citations),
             )
-        citations = extract_citations(raw_answer, bundle.citations)
         return RAGResponse(
             question=question,
             answer=raw_answer.strip(),

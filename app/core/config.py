@@ -51,10 +51,10 @@ class Settings(BaseSettings):
     rerank_top_n: int = 5
 
     # ---------------- LLM（双通道可切换）----------------
-    llm_provider: Literal["ollama", "openai_compatible"] = "ollama"
-    llm_base_url: str = "http://127.0.0.1:11434/v1"
-    llm_api_key: str = "ollama"
-    llm_model: str = "qwen3:8b"
+    llm_provider: Literal["ollama", "openai_compatible"] = "openai_compatible"
+    llm_base_url: str = "http://127.0.0.1:28080/v1"
+    llm_api_key: str = "omlx"
+    llm_model: str = "Ling-3.0-tiny-oQ6e"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 2048
     llm_timeout: int = 120

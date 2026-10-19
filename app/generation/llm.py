@@ -31,7 +31,7 @@ class LLMClient(Protocol):
 class OpenAICompatibleLLMClient:
     """OpenAI-compatible Chat Completions 客户端。
 
-    同时支持本地 Ollama（``/v1``）与云 API；两者都走同一套接口。
+    默认连接本机 OMLX，也兼容 Ollama（``/v1``）与云 API。
     """
 
     def __init__(self, config: Settings | None = None) -> None:
@@ -39,7 +39,8 @@ class OpenAICompatibleLLMClient:
         if self._settings.llm_provider == "openai_compatible" and not self._settings.llm_api_key:
             raise LLMError("LLM_API_KEY 未配置")
         self._client = OpenAI(
-            api_key=self._settings.llm_api_key or "ollama",
+            # OpenAI SDK 要求非空 Key；本机 OMLX 使用配置中的占位值。
+            api_key=self._settings.llm_api_key or "local-no-key",
             base_url=self._settings.llm_base_url,
             timeout=self._settings.llm_timeout,
             max_retries=1,
