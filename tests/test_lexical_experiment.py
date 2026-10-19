@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import sys
 from datetime import UTC, datetime
 
 import pytest
 
 from app.evaluation.dataset import load_dataset
 from app.evaluation.lexical_experiment import (
+    ILikeSearcher,
     RetrievedChunk,
     demonstrate_baseline_failure,
     evaluate_lexical,
+    evaluate_searcher,
+    retrieve_chunks,
 )
 from app.retrieval.lexical import BM25Index, LexicalDocument
 from scripts.lexical_experiment import _manifest
@@ -93,6 +97,7 @@ def test_manifest_records_algorithm_parameters_and_dataset_hash() -> None:
         command=["python", "scripts/lexical_experiment.py"],
         k1=1.2,
         b=0.75,
+        top_k=10,
     )
 
     assert manifest["phase"] == 8
@@ -100,11 +105,13 @@ def test_manifest_records_algorithm_parameters_and_dataset_hash() -> None:
         "name": "bm25",
         "k1": 1.2,
         "b": 0.75,
-        "tokenizer": "ascii-whole+cjk-unigram-bigram",
+        "tokenizer": "unicode-whole+cjk-unigram-bigram",
     }
     assert manifest["dataset"]["sha256"] == dataset.dataset_sha256
     assert manifest["git_commit"]
     assert isinstance(manifest["git_dirty"], bool)
+    assert manifest["top_k"] == 10
+    assert manifest["k_values"] == [5, 10]
 
 
 def test_manifest_rejects_non_positive_parameters() -> None:
@@ -121,7 +128,72 @@ def test_manifest_rejects_non_positive_parameters() -> None:
             command=[],
             k1=0,
             b=0.75,
+            top_k=10,
         )
+
+
+@pytest.mark.parametrize(
+    ("top_k", "expected_k_values", "expected_recall_metrics"),
+    [
+        (1, (1,), {"recall@1"}),
+        (5, (5,), {"recall@5"}),
+        (7, (5, 7), {"recall@5", "recall@7"}),
+        (10, (5, 10), {"recall@5", "recall@10"}),
+    ],
+)
+def test_metrics_follow_top_k(
+    top_k: int,
+    expected_k_values: tuple[int, ...],
+    expected_recall_metrics: set[str],
+) -> None:
+    dataset = load_dataset(DATASET)
+    result = evaluate_searcher(
+        ILikeSearcher(retrieve_chunks(dataset)),
+        dataset,
+        name="ilike",
+        top_k=top_k,
+    )
+
+    recall_metrics = {
+        key
+        for key in result.metrics
+        if key.startswith("recall@") and not key.endswith(("_hits", "_labels"))
+    }
+    assert result.k_values == expected_k_values
+    assert recall_metrics == expected_recall_metrics
+
+
+def test_cli_top_k_one_only_emits_recall_at_one(tmp_path, monkeypatch, capsys) -> None:
+    from scripts import lexical_experiment
+
+    output = tmp_path / "lexical-top1.json"
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "lexical_experiment.py",
+            "--dataset",
+            DATASET,
+            "--output",
+            str(output),
+            "--top-k",
+            "1",
+        ],
+    )
+
+    lexical_experiment.main()
+
+    import json
+
+    manifest = json.loads(output.read_text(encoding="utf-8"))
+    assert manifest["top_k"] == 1
+    assert manifest["k_values"] == [1]
+    assert all("recall@5" not in result["metrics"] for result in manifest["results"])
+    assert all("recall@10" not in result["metrics"] for result in manifest["results"])
+    stdout = capsys.readouterr().out
+    assert "R@1=" in stdout
+    assert "R@5=" not in stdout
+    assert "R@10=" not in stdout
 
 
 def test_report_metrics_match_manifest() -> None:
@@ -157,12 +229,16 @@ def test_report_metrics_match_manifest() -> None:
         ]
         for match in re.finditer(
             r"^\| `(?P<name>[^`]+)` \| (?P<ilike>[0-9.]+) \| "
-            r"\*\*(?P<bm25>[0-9.]+)\*\* \| (?:\*\*)?(?P<mrr>[0-9.]+)(?:\*\*)? \|$",
+            r"(?:\*\*)?(?P<bm25>[0-9.]+)(?:\*\*)? \| "
+            r"(?:\*\*)?(?P<mrr>[0-9.]+)(?:\*\*)? \|$",
             report,
             re.MULTILINE,
         )
         if match.group("name") != "类别"
     }
+    assert set(category_rows) == (
+        set(results["bm25"]["categories"]) - {"unanswerable"}
+    )
     for category, values in category_rows.items():
         assert values[0] == round(results["ilike"]["categories"][category]["recall@5"], 3)
         assert values[1] == round(results["bm25"]["categories"][category]["recall@5"], 3)

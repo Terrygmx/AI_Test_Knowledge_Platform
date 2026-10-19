@@ -39,6 +39,8 @@ class RetrievedChunk:
 @dataclass(frozen=True)
 class LexicalResult:
     name: str
+    top_k: int
+    k_values: tuple[int, ...]
     metrics: dict[str, float | int]
     categories: dict[str, dict[str, float | int]]
     query_latencies: list[float]
@@ -126,7 +128,7 @@ def _evaluate_queries(
     *,
     top_k: int,
 ) -> tuple[dict[str, float | int], list[float]]:
-    evaluator = RetrievalEvaluation(k_values=(5, 10))
+    evaluator = RetrievalEvaluation(k_values=k_values_for(top_k))
     latencies: list[float] = []
     for query in queries:
         started = time.perf_counter()
@@ -134,6 +136,15 @@ def _evaluate_queries(
         latencies.append(time.perf_counter() - started)
         evaluator.add(query, [_MetricChunk(item) for item in results])
     return evaluator.summary(), latencies
+
+
+def k_values_for(top_k: int) -> tuple[int, ...]:
+    """返回不超过候选深度的标准 Recall K，并始终包含 ``top_k``。"""
+    if top_k < 1:
+        raise ValueError("top_k 必须大于 0")
+    values = {top_k}
+    values.update(k for k in (5, 10) if k <= top_k)
+    return tuple(sorted(values))
 
 
 def evaluate_searcher(
@@ -159,6 +170,8 @@ def evaluate_searcher(
 
     return LexicalResult(
         name=name,
+        top_k=top_k,
+        k_values=k_values_for(top_k),
         metrics=metrics,
         categories=categories,
         query_latencies=latencies,

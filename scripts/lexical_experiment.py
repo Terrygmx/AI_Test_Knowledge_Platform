@@ -30,6 +30,7 @@ from app.evaluation.lexical_experiment import (
     LexicalResult,
     demonstrate_baseline_failure,
     evaluate_searcher,
+    k_values_for,
     retrieve_chunks,
 )
 
@@ -58,12 +59,14 @@ def _manifest(
     command: list[str],
     k1: float,
     b: float,
+    top_k: int,
     baseline: dict[str, object] | None = None,
 ) -> dict[str, Any]:
     if k1 <= 0:
         raise ValueError("k1 必须大于 0")
     if not 0 <= b <= 1:
         raise ValueError("b 必须在 [0, 1] 内")
+    k_values = k_values_for(top_k)
 
     return {
         "phase": 8,
@@ -72,6 +75,8 @@ def _manifest(
         "git_commit": _git_output(["rev-parse", "HEAD"]) or "unknown",
         "git_dirty": bool(_git_output(["status", "--porcelain"])),
         "command": command,
+        "top_k": top_k,
+        "k_values": list(k_values),
         "dataset": {
             "path": str(dataset_path),
             "sha256": dataset.dataset_sha256,
@@ -83,7 +88,7 @@ def _manifest(
             "name": "bm25",
             "k1": k1,
             "b": b,
-            "tokenizer": "ascii-whole+cjk-unigram-bigram",
+            "tokenizer": "unicode-whole+cjk-unigram-bigram",
         },
         "results": [asdict(result) for result in results],
         "baseline_failure": baseline,
@@ -113,7 +118,8 @@ def main() -> None:
         print(
             f"dataset={args.dataset} sha256={dataset.dataset_sha256[:12]} "
             f"queries={len(dataset.queries)} chunks={len(documents)} "
-            f"tokenizer=ascii-whole+cjk-unigram-bigram k1={args.k1} b={args.b}"
+            f"tokenizer=unicode-whole+cjk-unigram-bigram k1={args.k1} b={args.b} "
+            f"top_k={args.top_k} k_values={list(k_values_for(args.top_k))}"
         )
         return
 
@@ -137,16 +143,18 @@ def main() -> None:
         command=[sys.executable, *sys.argv],
         k1=args.k1,
         b=args.b,
+        top_k=args.top_k,
         baseline=baseline,
     )
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     for result in results:
+        recall = " ".join(
+            f"R@{k}={result.metrics[f'recall@{k}']:.3f}" for k in result.k_values
+        )
         print(
-            f"{result.name:6s} R@5={result.metrics['recall@5']:.3f} "
-            f"R@10={result.metrics['recall@10']:.3f} "
-            f"MRR={result.metrics['mrr']:.3f} "
+            f"{result.name:6s} {recall} MRR={result.metrics['mrr']:.3f} "
             f"p95={result.query_p95_seconds:.4f}s"
         )
     print(f"manifest={output}")

@@ -1,6 +1,6 @@
 {
   "version": "2026-10-20",
-  "description": "Phase 8 词法检索实验：在 Phase 6 语料上补充精确编号、版本、优先级与语义改写 Query。",
+  "description": "Phase 8 词法检索实验：复用 Phase 6 的 12 条 TestCase、5 条 Defect、5 条 Requirement 与 3 篇文档，新增 Defect BUG-1234，并补充精确编号、版本、优先级与语义改写 Query。",
   "sources": [
     {
       "name": "ShopSphere QA manual testing portfolio",

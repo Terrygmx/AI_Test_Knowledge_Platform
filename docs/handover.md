@@ -118,7 +118,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 388 passed + 8 skipped；真实 PostgreSQL 395 passed + 1 skipped）
+  （测试数量以当前实际输出为准）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -128,7 +128,8 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   - Alembic 初始迁移 `0001`（含 `CREATE EXTENSION vector / pg_trgm`，仅 PG 分支执行）
 - **PostgreSQL 17.11 实机验证通过**：Docker Compose 启动 `pgvector/pgvector:pg17`，
   Alembic 升级到 `0002 (head)`；`vector 0.8.7` / `pg_trgm 1.6` 已安装；
-  专用测试库 `aitkp_test` 上 314 passed + 1 skipped；`GET /health` 返回数据库检查 `true`
+  历史记录：专用测试库 `aitkp_test` 上 314 passed + 1 skipped；
+  `GET /health` 返回数据库检查 `true`（当前测试数量以实跑为准）
 - Phase 2 核心链路：`knowledge_chunks` ORM / Schema / 迁移、Embedding 抽象、
   实体到 Chunk 的索引脚本、PostgreSQL cosine 向量检索、Chunk API
 - Phase 2 验证边界：Fake Embedding 只证明链路可运行；本机 OMLX 已具备真实
@@ -172,12 +173,17 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 7 每个模型使用独立向量表，未截断 / 补零；实验表未建 HNSW，因此只比较
   语义质量与调用成本，不把 46 个 Chunk 上的精确扫描延迟当作 ANN 结论
 - Phase 8 已完成 BM25 / Lexical Search：应用层分词 + 倒排索引，ASCII 标识符 /
-  版本号整串保留，中文 unigram + bigram；`KnowledgeChunkService.lexical_search()`
+  版本号整串保留，中文 unigram + bigram（Unicode 字母数字标识符也整串保留）；
+  `KnowledgeChunkService.lexical_search()`
   在 SQLite / PostgreSQL 上返回 `(chunk, bm25_score, matched_terms)`。独立
   Gold Set 上 `ILIKE` Recall@5 0.056、BM25 0.944，MRR 0.056 / 0.792；
   `P0 BUG-1234 login-api v1.3` 在 `ILIKE` 下 0 命中、BM25 首位命中 `BUG-1234`。
   详见 `docs/LEXICAL_SEARCH_EXPERIMENT.md`，manifest 为
   `results/lexical-phase8.json`
+- Phase 8 数据集不是 Phase 6 的完全复用：复用 12 TestCase / 5 Defect /
+  5 Requirement / 3 Document，并新增 `BUG-1234`，最终 6 Defect、47 Chunk；
+  该 Defect 是组合关键词坏例的来源。manifest 要求从干净提交生成，当前实验的
+  `git_commit` / `git_dirty` 以文件内记录为准
 - 当前统一 `/search` 仍走 `ILIKE` 且不返回 score；Phase 8 的 BM25 是独立 Chunk
   检索接缝，供 Phase 9 融合使用。不要在没有融合 / 归一化契约时把 BM25 score 直接
   塞进现有 `SearchHit`

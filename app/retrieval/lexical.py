@@ -3,8 +3,9 @@
 本模块不依赖 PostgreSQL 扩展，SQLite 测试与 PostgreSQL 服务都走同一套逻辑。
 分词策略针对测试知识中的混合文本：
 
-- ASCII 标识符、版本号、优先级保留完整 token，例如 ``BUG-1234``、``v1.3``、``P0``；
-- 连续中文生成 unigram + bigram，既保留单字召回，又能表达常见双字词；
+- Unicode 字母数字标识符、版本号、优先级保留完整 token，例如 ``BUG-1234``、
+  ``v1.3``、``P0``、``café-déjà``；
+- 连续 CJK 字符生成 unigram + bigram，既保留单字召回，又能表达常见双字词；
 - 不做停用词删除，避免把 ``不``、``无`` 等否定词从证据中抹掉。
 
 BM25 分数只在词法检索内部用于排序，不能与 cosine distance 直接比较；Phase 9
@@ -14,14 +15,13 @@ BM25 分数只在词法检索内部用于排序，不能与 cosine distance 直�
 from __future__ import annotations
 
 import math
-import re
 import unicodedata
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 
-#: 保留 ASCII 字母、数字及测试知识中常见的连接符；``v1.3``、``BUG-1234`` 不会被拆碎。
-_ASCII_TOKEN = re.compile(r"[a-z0-9]+(?:[-_.][a-z0-9]+)*")
+#: Unicode 标识符内部允许连接符，但连接符两侧都必须是字母数字。
+_WORD_CONNECTORS = frozenset("-._")
 
 
 @dataclass(frozen=True)
@@ -51,27 +51,63 @@ def _normalize(text: str) -> str:
 def tokenize(text: str) -> list[str]:
     """把混合中英文正文切成稳定、可复现的词项序列。
 
-    标点与空白是分隔符，不进入索引；中文片段按字符生成 unigram 与 bigram，
-    ASCII 片段保留完整标识符。返回顺序与正文出现顺序一致，便于解释命中。
+    标点与空白是分隔符，不进入索引；CJK 片段按字符生成 unigram 与 bigram，
+    其他 Unicode 字母数字片段保留完整标识符。返回顺序与正文出现顺序一致，
+    便于解释命中。
     """
     normalized = _normalize(text)
     tokens: list[str] = []
-    for match in re.finditer(
-        r"[a-z0-9]+(?:[-_.][a-z0-9]+)*|[\u3400-\u4dbf\u4e00-\u9fff]+",
-        normalized,
-    ):
-        value = match.group(0)
-        if _ASCII_TOKEN.fullmatch(value):
-            tokens.append(value)
+    index = 0
+    while index < len(normalized):
+        char = normalized[index]
+        if _is_cjk_char(char):
+            end = index + 1
+            while end < len(normalized) and _is_cjk_char(normalized[end]):
+                end += 1
+            value = normalized[index:end]
+            # CJK 连续串：unigram 后跟 bigram。这样“支付超时”既能匹配“超时”，
+            # 也能保留“支付”这个更强的双字信号。
+            tokens.extend(value)
+            tokens.extend(value[offset : offset + 2] for offset in range(len(value) - 1))
+            index = end
             continue
 
-        # 中文连续串：unigram 后跟 bigram。这样“支付超时”既能匹配“超时”，
-        # 也能保留“支付”这个更强的双字信号。
-        for char in value:
-            tokens.append(char)
-        for index in range(len(value) - 1):
-            tokens.append(value[index : index + 2])
+        if _is_word_char(char):
+            end = index + 1
+            while end < len(normalized):
+                if _is_word_char(normalized[end]):
+                    end += 1
+                    continue
+                if (
+                    normalized[end] in _WORD_CONNECTORS
+                    and end + 1 < len(normalized)
+                    and _is_word_char(normalized[end + 1])
+                ):
+                    end += 2
+                    continue
+                break
+            tokens.append(normalized[index:end])
+            index = end
+            continue
+
+        index += 1
     return tokens
+
+
+def _is_cjk_char(char: str) -> bool:
+    """判断字符是否属于常见 CJK 统一表意文字区间。"""
+    codepoint = ord(char)
+    return (
+        0x3400 <= codepoint <= 0x4DBF
+        or 0x4E00 <= codepoint <= 0x9FFF
+        or 0xF900 <= codepoint <= 0xFAFF
+        or 0x20000 <= codepoint <= 0x2FA1F
+    )
+
+
+def _is_word_char(char: str) -> bool:
+    """Unicode 字母数字，但 CJK 字符由单独的 n-gram 路径处理。"""
+    return char.isalnum() and not _is_cjk_char(char)
 
 
 class InvertedIndex:

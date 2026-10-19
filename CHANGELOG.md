@@ -9,9 +9,9 @@
 #### Phase 8：BM25 / Lexical Search（2026-10-20）
 
 - **词法检索**：新增 `app/retrieval/lexical.py`，实现应用层分词、倒排索引与
-  Okapi BM25（`k1=1.2`、`b=0.75`）。ASCII 标识符 / 版本号 / 优先级整串保留，
-  中文采用 unigram + bigram；不依赖 PostgreSQL 扩展，SQLite 与 PostgreSQL 共用
-  同一套排序逻辑。
+  Okapi BM25（`k1=1.2`、`b=0.75`）。Unicode 字母数字标识符 / 版本号 / 优先级
+  整串保留，中文采用 unigram + bigram；不依赖 PostgreSQL 扩展，SQLite 与
+  PostgreSQL 共用同一套排序逻辑。
 - **Chunk 检索接口**：新增 `KnowledgeChunkService.lexical_search()`，返回
   `(chunk, bm25_score, matched_terms)`；当前只在有明确 BM25 依据的 Chunk 接缝
   暴露分数，统一 `/search` 响应契约保持不变。
@@ -24,6 +24,11 @@
   `results/lexical-phase8.json`，报告见 `docs/LEXICAL_SEARCH_EXPERIMENT.md`。
 - **回归护栏**：新增报告与 manifest 一致性测试，防止指标漂移；PostgreSQL 集成
   路径验证 `lexical_search` 与 SQLite 行为一致。
+- **Review 修复**：Recall K 改为由 `top_k` 动态生成（manifest 记录 `top_k` /
+  `k_values`），阻止 `--top-k 1` 冒用 Recall@5/10；报告一致性测试覆盖
+  `exact_priority`；分词支持 `café` 等 Unicode 拉丁词项；增加中文命中词项、
+  服务层输入边界与 1,000 Chunk 规模护栏。Phase 8 数据集明确为 Phase 6 的
+  5 条 Defect 加新增 `BUG-1234`（共 6 条）。
 
 #### Phase 7：Embedding 模型对比（2026-10-20）
 

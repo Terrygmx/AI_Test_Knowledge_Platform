@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from app.core.exceptions import DomainError
-from app.models import Defect, Document, Requirement, TestCase
-from app.retrieval.embedding import EmbeddingError, FakeEmbeddingClient
+from app.models import Defect, Document, KnowledgeChunk, Requirement, TestCase
+from app.retrieval.embedding import EmbeddingError, FakeEmbeddingClient, content_sha256
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from app.services.index_service import IndexService, case_to_chunk
 from app.services.knowledge_chunk_service import KnowledgeChunkService
@@ -72,6 +74,68 @@ class TestKnowledgeChunkCreate:
     def test_lexical_search_rejects_non_positive_limit(self, db_session) -> None:
         with pytest.raises(ValueError, match="limit"):
             KnowledgeChunkService.lexical_search(db_session, query="登录", limit=0)
+
+    @pytest.mark.parametrize("query", ["", "   \n"])
+    def test_lexical_search_returns_empty_for_blank_query(self, db_session, query) -> None:
+        KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="TC-BLANK",
+                content="登录接口验证码校验",
+            ),
+        )
+
+        assert KnowledgeChunkService.lexical_search(db_session, query=query) == []
+
+    def test_lexical_search_returns_empty_for_unknown_source_type(self, db_session) -> None:
+        KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="TC-FILTER",
+                content="登录接口验证码校验",
+            ),
+        )
+
+        assert (
+            KnowledgeChunkService.lexical_search(
+                db_session,
+                query="登录接口",
+                source_types=["unknown"],
+            )
+            == []
+        )
+
+    def test_lexical_search_one_thousand_chunks_stays_within_loose_budget(
+        self, db_session
+    ) -> None:
+        """守护 SQL 全量读取 + ORM 转换 + 建索引的小规模边界，不是性能基准。"""
+        chunks = []
+        for index in range(1_000):
+            content = f"登录接口超时 第 {index} 条记录，支付状态待确认"
+            chunks.append(
+                KnowledgeChunk(
+                    source_type="document",
+                    source_id=f"SCALE-{index // 10:04d}",
+                    chunk_index=index % 10,
+                    content=content,
+                    content_hash=content_sha256(content),
+                )
+            )
+        db_session.add_all(chunks)
+        db_session.commit()
+
+        started = time.perf_counter()
+        results = KnowledgeChunkService.lexical_search(
+            db_session,
+            query="登录接口超时",
+            limit=5,
+        )
+        elapsed = time.perf_counter() - started
+
+        assert len(results) == 5
+        assert elapsed < 20.0
 
     def test_backfill_commits_completed_batches_when_upstream_fails(self, db_session) -> None:
         """上游中途失败时已补批次不回滚，否则大批量补向量等于全或无。"""

@@ -38,6 +38,12 @@ class TestTokenizer:
     def test_normalizes_width_and_case(self) -> None:
         assert tokenize("ＢＵＧ－１２３４ Login-API") == ["bug-1234", "login-api"]
 
+    def test_keeps_unicode_latin_words_and_identifiers_whole(self) -> None:
+        assert tokenize("Café café-déjà") == ["café", "café-déjà"]
+
+    def test_unicode_word_next_to_chinese_still_splits_at_script_boundary(self) -> None:
+        assert tokenize("café中文") == ["café", "中", "文", "中文"]
+
     def test_empty_and_punctuation_only_text(self) -> None:
         assert tokenize("") == []
         assert tokenize("，。！？ \n") == []
@@ -103,6 +109,14 @@ class TestBM25:
         assert hits[0].document.source_id == "BUG-1234"
         assert hits[0].matched_terms == ["p0", "bug-1234", "login-api", "v1.3"]
         assert set(hits[0].term_scores) == set(hits[0].matched_terms)
+
+    def test_chinese_matched_terms_are_tokenized_terms_not_business_concepts(self) -> None:
+        index = BM25Index(_documents())
+
+        hits = index.search("支付超时", limit=3)
+
+        assert hits[0].document.source_id == "DOC-1"
+        assert hits[0].matched_terms == ["支", "付", "超", "时", "支付", "付超", "超时"]
 
     def test_rare_identifier_has_higher_idf_than_common_chinese_term(self) -> None:
         index = BM25Index(_documents())

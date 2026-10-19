@@ -3,9 +3,9 @@
 - 日期：2026-10-20
 - 分支：`phase-8-bm25`
 - 检索实现：应用层倒排索引 + Okapi BM25
-- 分词：ASCII 标识符完整保留；连续中文 unigram + bigram
+- 分词：Unicode 字母数字标识符完整保留；连续 CJK 字符 unigram + bigram
 - 数据集：`eval/fixtures/phase8_simulated.json`
-- 数据集 SHA-256：`6fff76006f2bdb206ace6695674bc03722dfa1964a7894f92ceb353652007cf4`
+- 数据集 SHA-256：`da92624f5f287fcc83943fb68ebc6d969d6d71b35e5b519215c687606e996150`
 - Gold Set：24 条 Query（18 可回答 / 6 不可回答）
 - 原始 manifest：`results/lexical-phase8.json`
 - BM25 参数：`k1=1.2`、`b=0.75`
@@ -25,12 +25,17 @@ Phase 8 要回答两个问题：
 ## 2. 数据集与标注
 
 Phase 6 的 40 条 Query 主要描述业务场景，不足以单独验证“精确编号”检索。
-Phase 8 因此新增一份独立 Gold Set，复用同一批 12 条 TestCase、6 条 Defect、
-5 条 Requirement 和 3 篇 Markdown 文档，并加入一个明确的混合标识符案例：
+Phase 8 因此新增一份独立 Gold Set，复用 Phase 6 的 12 条 TestCase、5 条 Defect、
+5 条 Requirement 和 3 篇 Markdown 文档，并新增 1 条 Defect（`BUG-1234`），
+用于一个明确的混合标识符案例：
 
 ```text
 P0 BUG-1234 login-api v1.3
 ```
+
+因此 Phase 8 共 6 条 Defect、47 个 Chunk。新增项不是无关数据：它正是组合关键词
+坏例和负样本误召回分析的证据来源，同时会改变 BM25 的文档频率与 IDF，不能把
+Phase 8 语料描述成与 Phase 6 完全相同。
 
 24 条 Query 分为：
 
@@ -57,10 +62,13 @@ Query 共 26 条证据标注。
 | `BUG-1234` | `bug-1234` |
 | `login-api` | `login-api` |
 | `v1.3` | `v1.3` |
+| `café-déjà` | `café-déjà` |
 | `支付超时` | `支`、`付`、`超`、`时`、`支付`、`付超`、`超时` |
 
 - Unicode 先做 NFKC 规范化并转小写，因此全角编号和大小写差异不会破坏匹配；
-- ASCII 标识符允许 `-`、`_`、`.` 连接，避免把版本号和模块名拆成无意义片段；
+- Unicode 标识符允许 `-`、`_`、`.` 连接，避免把版本号和模块名拆成无意义片段；
+- 拉丁扩展字母（如 `café`）保留在 token 内；拉丁字母与 CJK 相邻时在 script
+  边界切开，分别走标识符与中文 n-gram 路径；
 - 中文 unigram 保留单字召回，bigram 提供更强的双字词语信号；
 - 不删除停用词，尤其保留 `不`、`无` 等否定词，避免改变证据语义。
 
@@ -81,6 +89,12 @@ score(D, Q) = Σ idf(t) * tf * (k1 + 1)
 查询中的多个词项会累加分数；`matched_terms` 与每个词项的贡献单独保留，便于
 解释为什么命中。排序使用分数降序，再以 `source_type + source_id` 稳定打破平局。
 
+`matched_terms` 是**分词后的词项**，不是已经归纳好的业务概念。中文 Query 的命中项
+可能是单字和跨词 bigram，例如 `支付超时` 会得到 `支`、`付`、`超`、`时`、`支付`、
+`付超`、`超时`。这能证明词项交集和分数来源，但不能单独证明语义相关性；Phase 9
+若向用户展示解释，应优先提取原 Query 中的连续片段或可读词，而不是直接罗列全部
+unigram / bigram。
+
 ### 3.3 为什么暂不选数据库扩展
 
 - PostgreSQL 内置 `to_tsvector('simple')` 不会正确切分中文；
@@ -97,6 +111,10 @@ score(D, Q) = Σ idf(t) * tf * (k1 + 1)
 |---|---:|---:|---:|---:|
 | `ILIKE` 整串子串 | 0.056 | 0.056 | 0.056 | <0.001s |
 | BM25 | **0.944** | **0.972** | **0.792** | <0.001s |
+
+上表对应默认 `--top-k 10`；K 值集合由 `top_k` 动态决定，不会产生截断后仍冒用
+`recall@10` 的字段。`--top-k 1` 只输出 Recall@1，`--top-k 5` 只输出 Recall@5，
+`--top-k 7` 输出 Recall@5 / Recall@7。manifest 同时记录 `top_k` 与 `k_values`。
 
 BM25 在 Recall@5 的 26 条证据中命中 24 条，Recall@10 命中 25 条。`ILIKE`
 只命中 1 条，因为大部分 Query 不是正文中的连续子串。
@@ -167,7 +185,8 @@ uv run python scripts/lexical_experiment.py \
 
 脚本完全离线，不需要 PostgreSQL、Docker、OMLX 或 API Key。manifest 记录
 数据集 SHA-256、`git_commit` / `git_dirty`、分词规则、BM25 参数、逐类指标与
-基线坏例。
+基线坏例。已提交的 manifest 必须来自 `git_dirty=false` 的提交；如果从脏工作区
+生成，只能作为临时结果，不能作为长期引用的实验事实源。
 
 生产侧可通过：
 
@@ -184,7 +203,9 @@ KnowledgeChunkService.lexical_search(session, query="BUG-1234", limit=10)
 - 只有 24 条 Phase 8 Query 和 47 个 Chunk，指标受小样本影响；
 - 中文 unigram + bigram 不理解词性、实体边界和同义表达；
 - 查询与文档使用同一种轻量规范化，没有 stemming / 拼音 / 错别字纠错；
-- 每次查询重建内存索引，尚未提供增量倒排表和大规模延迟数据；
+- 每次查询全量读取 Chunk、经 ORM 转成 Python 对象并重建内存索引；
+- 服务层只有 1,000 个合成 Chunk 的宽松耗时上限测试，没有 P50 / P95 端到端延迟，
+  也没有 10k+ Chunk、并发和内存占用数据；该测试只守护明显退化，不是生产容量结论；
 - `ILIKE` 基线是应用层等价实现，延迟不包含 SQL 全表扫描成本；
 - 未评测 Precision@K、NDCG、Rerank 或生成答案质量；
 - 负样本误召回率很高，当前没有可用于生产的“无证据”阈值。

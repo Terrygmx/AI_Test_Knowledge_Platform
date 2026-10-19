@@ -222,8 +222,7 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（
 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
 [`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)、
 [`docs/LEXICAL_SEARCH_EXPERIMENT.md`](docs/LEXICAL_SEARCH_EXPERIMENT.md)。
-默认 SQLite 路径 **388 passed + 8 skipped**，真实 PostgreSQL
-**395 passed + 1 skipped**，全程 TDD（先红后绿）。测试数随用例增长，以本地实际输出为准。
+默认 SQLite 路径与真实 PostgreSQL 均以本地实际输出为准，全程 TDD（先红后绿）。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
@@ -281,7 +280,7 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（
 | 文档导入不生成向量 | Phase 5 导入只写 Chunk，`embedding` 为空 | 批量导入不与模型服务耦合；由 `index_entities.py --only document` 增量补齐 |
 | Chunking 结论 | 当前只在 3 篇模拟文档、40 条 Query 上验证 | 语料太小，semantic / entity+heading 的优势需在更大 Gold Set 上复验 |
 | 词法检索结论 | Phase 8 只有 24 条 Query、47 个 Chunk | 足以验证编号 / 版本 / 组合关键词失败模式，不足以证明生产分布 |
-| 中文分词 | 中文 unigram + bigram，ASCII 标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
+| 中文分词 | 中文 unigram + bigram，Unicode 字母数字标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
 | 不可回答 Query | BM25 在 6 条负样本上全部有结果 | 有词项交集不等于证据充分，Phase 9 不能把非空当可回答 |
 | 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
