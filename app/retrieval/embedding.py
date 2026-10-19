@@ -74,7 +74,13 @@ def _validate_vectors(
 class OpenAICompatibleEmbeddingClient:
     """OpenAI-compatible Embedding 客户端（默认本机 OMLX bge-m3）。"""
 
-    def __init__(self, config: Settings | None = None) -> None:
+    def __init__(
+        self,
+        config: Settings | None = None,
+        *,
+        allow_non_production_dimension: bool = False,
+    ) -> None:
+        """``allow_non_production_dimension`` 仅供使用独立表的离线实验。"""
         self._settings = config or settings
         self._dimension = self._settings.embedding_dim
         if not self._settings.embedding_api_key and not _is_local_url(
@@ -93,7 +99,7 @@ class OpenAICompatibleEmbeddingClient:
         )
 
         # 数据库列是 Vector(EMBEDDING_DIM)；配置漂移必须在进程启动 / 建客户端时暴露。
-        if self._dimension != 1024:
+        if self._dimension != 1024 and not allow_non_production_dimension:
             logger.warning(
                 "EMBEDDING_DIM=%s 与数据库向量维度 1024 不一致，写库将被拒绝",
                 self._dimension,

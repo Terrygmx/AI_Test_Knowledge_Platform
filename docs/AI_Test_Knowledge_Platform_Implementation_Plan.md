@@ -362,6 +362,11 @@ Latency
 
 个人 70%。
 
+> 当前状态：已固定 Phase 6 的 `entity+heading` 基线，在隔离库比较 3 个 OMLX
+> 模型（1024 / 768 / 384 维）。小样本中 `bge-m3-mlx-4bit` 的 Recall@5 0.966 /
+> MRR 0.936 最优，`embeddinggemma-2-oQ8e` 接近，`all-MiniLM-L6-v2` 明显不适用；
+> 结论与局限见 `docs/EMBEDDING_EXPERIMENT.md`。
+
 ------------------------------------------------------------------------
 
 # Phase 8：BM25 / Full Text Search

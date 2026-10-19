@@ -111,14 +111,14 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-6-chunking`，Phase 0–6 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-7-embedding`，Phase 0–7 核心链路已完成，数据库实机验证已完成。**
 
 ### 已完成
 
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 346 passed + 6 skipped；真实 PostgreSQL 351 passed + 1 skipped）
+  （当前 SQLite 354 passed + 7 skipped；真实 PostgreSQL 360 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -163,6 +163,14 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   最高（0.936），Semantic Recall@5 最高（0.975）但切分阶段额外调用 Embedding，
   总准备成本更高；不可回答 Query 仍全部在 Top-10 有结果，不能把 Top-K 非空
   当作证据充分
+- Phase 7 已完成 Embedding 模型对比：固定 Phase 6 的 `entity+heading` 基线，
+  在隔离库 `aitkp_embedding` 中比较 1024 / 768 / 384 维三个 OMLX 模型；
+  `bge-m3-mlx-4bit` Recall@5 0.966 / MRR 0.936，`embeddinggemma-2-oQ8e`
+  0.941 / 0.934，`all-MiniLM-L6-v2` 0.466 / 0.447。默认继续使用 bge-m3；
+  详见 `docs/EMBEDDING_EXPERIMENT.md`，原始 manifest 为
+  `results/embedding-phase7.json`
+- Phase 7 每个模型使用独立向量表，未截断 / 补零；实验表未建 HNSW，因此只比较
+  语义质量与调用成本，不把 46 个 Chunk 上的精确扫描延迟当作 ANN 结论
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
@@ -178,9 +186,9 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ### 未完成 / 待办（按优先级）
 
-1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 结论
+1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 结论
 2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
-3. Phase 7 Embedding 对比：固定当前 Chunking 基线，分别比较模型与延迟
+3. Phase 8：BM25 / Full Text Search，重点验证中文精确编号、版本号与关键词召回
 4. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
@@ -222,9 +230,10 @@ uv run alembic upgrade head               # 应用迁移
 
 ## 8. 给接手 agent 的第一步建议
 
-1. `uv sync && uv run pytest` 确认默认路径 346 passed + 6 skipped（以实际输出为准）
+1. `uv sync && uv run pytest` 确认默认路径测试通过（数量以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3/6 真实链路已完成；本机启动 OMLX 后运行
+4. Phase 2/3/6/7 真实链路已完成；本机启动 OMLX 后运行
    `scripts/embedding_probe.py`、`scripts/ask.py` 与
-   `scripts/chunking_experiment.py --dry-run` 做复验
+   `scripts/chunking_experiment.py --dry-run`、
+   `scripts/embedding_experiment.py --dry-run` 做复验

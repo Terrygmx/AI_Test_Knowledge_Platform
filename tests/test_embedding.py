@@ -61,6 +61,25 @@ class TestOpenAICompatibleClient:
         with pytest.raises(EmbeddingError, match="EMBEDDING_API_KEY"):
             OpenAICompatibleEmbeddingClient(config)
 
+    def test_experiment_can_opt_out_of_production_dimension_warning(
+        self, caplog
+    ) -> None:
+        from app.core.config import Settings
+
+        config = Settings(
+            _env_file=None,
+            embedding_base_url="http://127.0.0.1:28080/v1",
+            embedding_api_key="omlx",
+            embedding_dim=384,
+        )
+        client = OpenAICompatibleEmbeddingClient(
+            config,
+            allow_non_production_dimension=True,
+        )
+
+        assert client.dimension == 384
+        assert "EMBEDDING_DIM=384" not in caplog.text
+
     def test_default_config_points_to_local_omlx(self) -> None:
         from app.core.config import Settings
 

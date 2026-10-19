@@ -150,6 +150,9 @@ uv run python scripts/embedding_probe.py
 
 # Phase 3 最小 RAG（需要 PostgreSQL + OMLX Embedding + OMLX LLM）
 uv run python scripts/ask.py "登录失败怎么测试？"
+
+# Phase 7 Embedding 对比（只写隔离库；dry-run 不调用模型）
+uv run python scripts/embedding_experiment.py --dry-run
 ```
 
 ### 数据接入（Phase 5）
@@ -203,10 +206,11 @@ uv run uvicorn app.main:app --reload
 ## 当前状态
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
-pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）
-与 Phase 6（Chunking 对比实验）已完成，Phase 6 报告见
-[`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)。默认 SQLite 路径
-**346 passed + 6 skipped**，真实 PostgreSQL **351 passed + 1 skipped**，全程 TDD
+pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）、
+Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。Phase 6 / 7
+报告分别见 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
+[`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)。默认 SQLite 路径
+**354 passed + 7 skipped**，真实 PostgreSQL **360 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -230,8 +234,9 @@ pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、
 - [x] Phase 5 数据接入：CSV / Excel / Markdown / PDF + `scripts/ingest.py`
 - [x] Phase 6 Chunking 实验：固定窗口 / 语义 / 实体级对比 + Gold Set 指标
   （见 `docs/CHUNKING_EXPERIMENT.md`）
+- [x] Phase 7 Embedding 实验：固定 entity+heading，对比 1024/768/384 维模型
+  （见 `docs/EMBEDDING_EXPERIMENT.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
-- [x] 本机 OMLX bge-m3 链路实验（见 `docs/EMBEDDING_EXPERIMENT.md`）
 - [ ] 将 Gold Set 扩大到约 100 条人工确认 Query 后复验 Recall@K / MRR
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
   - `POST /api/v1/rag/answer` 与 `scripts/ask.py`
@@ -248,6 +253,8 @@ pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、
 | 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
 | 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
+| Embedding 选型 | 默认 `bge-m3-mlx-4bit`（1024 维） | Phase 7 小样本 MRR 最高；`embeddinggemma` 接近且更快，待更大 Gold Set 复验 |
+| Embedding 实验索引 | 模型独立表 + 精确距离扫描，未建 HNSW | 先隔离模型变量；46 个 Chunk 上 ANN 参数没有可解释性 |
 | RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
 | RAG 拒答 | 检索为空即拒答；未引用回答统一降级；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
 | RAG 延迟 | 实验性同步接口 + 45 秒预算（LLM 30 秒）| 默认推理模型较慢，Phase 14/20 再做性能与异步化 |

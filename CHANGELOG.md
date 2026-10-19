@@ -6,6 +6,22 @@
 
 ### Added
 
+#### Phase 7：Embedding 模型对比（2026-10-20）
+
+- **隔离实验**：新增 `app/evaluation/embedding_experiment.py` 与
+  `scripts/embedding_experiment.py`，固定 Phase 6 的 `entity+heading` 基线，
+  只替换 Embedding；只允许写入库名包含 `embedding` 的 PostgreSQL，并为每个
+  模型建立按其真实维度定义的独立 pgvector 表。
+- **真实结果**：在 `aitkp_embedding` + 本机 OMLX 上比较 `bge-m3-mlx-4bit`
+  （1024 维）、`embeddinggemma-2-oQ8e`（768 维）、`all-MiniLM-L6-v2`
+  （384 维）。Recall@5 分别为 0.966 / 0.941 / 0.466，MRR 分别为
+  0.936 / 0.934 / 0.447；`bge-m3` 保持默认。
+- **可复现性**：manifest 记录数据集 SHA-256、Chunk 统计、模型维度、服务地址、
+  起止时间、`git_commit` / `git_dirty`、脱敏命令与分段延迟；原始结果见
+  `results/embedding-phase7.json`，报告见 `docs/EMBEDDING_EXPERIMENT.md`。
+- **边界校验**：实验客户端可显式关闭“非 1024 维会写生产表”的警告，生产客户端
+  仍保留原保护；本实验未建 HNSW，不把 46 行上的精确扫描延迟当作 ANN 结论。
+
 #### Phase 6：Chunking 对比实验（2026-10-20）
 
 - **数据集契约**：新增 `eval/fixtures/phase6_simulated.json`，包含 12 条 TestCase、
