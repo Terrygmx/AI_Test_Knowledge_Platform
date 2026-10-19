@@ -118,7 +118,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 354 passed + 7 skipped；真实 PostgreSQL 360 passed + 1 skipped）
+  （当前 SQLite 355 passed + 7 skipped；真实 PostgreSQL 361 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、

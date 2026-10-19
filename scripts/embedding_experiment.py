@@ -48,6 +48,7 @@ from app.retrieval.embedding import OpenAICompatibleEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from scripts.chunking_experiment import (
     StrategyConfig,
+    _clear_experiment_data,
     _document_chunks,
     _entity_chunks,
     _seed_entities,
@@ -66,6 +67,8 @@ def _baseline_chunks(
     dataset: ChunkingDataset,
 ) -> list[KnowledgeChunkCreate]:
     """固定 Phase 6 的 entity+heading 基线，不再改变切分。"""
+    # 脚本必须可重复运行；否则第二次执行会在业务编号唯一键上失败。
+    _clear_experiment_data(session)
     _seed_entities(session, dataset)
     return [
         *_entity_chunks(session),

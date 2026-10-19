@@ -16,7 +16,7 @@ from app.evaluation.embedding_experiment import (
 from app.retrieval.embedding import FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from scripts.chunking_experiment import StrategyConfig, _document_chunks
-from scripts.embedding_experiment import _manifest
+from scripts.embedding_experiment import _baseline_chunks, _manifest
 
 
 def test_parse_model_specs_rejects_ambiguous_configuration() -> None:
@@ -80,6 +80,18 @@ def test_phase7_reuses_phase6_entity_heading_baseline() -> None:
 
     assert len(documents) == 24
     assert all(item.metadata["heading_path"] for item in documents)
+
+
+def test_phase7_baseline_can_be_rebuilt_in_the_same_database(db_session) -> None:
+    dataset = load_dataset("eval/fixtures/phase6_simulated.json")
+
+    first = _baseline_chunks(db_session, dataset)
+    second = _baseline_chunks(db_session, dataset)
+
+    assert len(first) == len(second) == 46
+    assert [(item.source_type, item.source_id, item.chunk_index) for item in first] == [
+        (item.source_type, item.source_id, item.chunk_index) for item in second
+    ]
 
 
 def test_run_embedding_experiment_requires_matching_clients() -> None:

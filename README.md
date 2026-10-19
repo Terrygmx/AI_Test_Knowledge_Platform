@@ -210,7 +210,7 @@ pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、
 Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。Phase 6 / 7
 报告分别见 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
 [`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)。默认 SQLite 路径
-**354 passed + 7 skipped**，真实 PostgreSQL **360 passed + 1 skipped**，全程 TDD
+**355 passed + 7 skipped**，真实 PostgreSQL **361 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
