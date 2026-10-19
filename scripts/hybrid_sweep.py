@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 import time
 from datetime import UTC, datetime
@@ -26,7 +27,7 @@ from app.evaluation.hybrid_experiment import (
     HybridCandidate,
     evaluate_hybrid,
 )
-from app.evaluation.lexical_experiment import retrieve_chunks
+from app.evaluation.lexical_experiment import k_values_for, retrieve_chunks
 from app.retrieval.embedding import get_embedding_client
 from scripts.hybrid_experiment import (
     DEFAULT_DATASET,
@@ -50,6 +51,8 @@ def parse_weights(value: str) -> list[tuple[float, float]]:
         if len(parts) != 2:
             raise ValueError(f"权重格式应为 vector:keyword：{item}")
         vector_weight, keyword_weight = (float(part) for part in parts)
+        if not math.isfinite(vector_weight) or not math.isfinite(keyword_weight):
+            raise ValueError(f"权重必须是有限数：{item}")
         if vector_weight < 0 or keyword_weight < 0:
             raise ValueError(f"权重不能为负数：{item}")
         if vector_weight + keyword_weight <= 0:
@@ -75,6 +78,8 @@ def _manifest(
     return {
         "phase": 9,
         "kind": "fusion-sensitivity",
+        "manifest_schema_version": 2,
+        "git_commit_role": "generation",
         **metadata,
         "dataset": {
             "path": str(metadata["dataset_path"]),
@@ -164,10 +169,6 @@ def main() -> None:
             vector_table=table,
             index_seconds=index_seconds,
             query_embedding_seconds=query_embedding_seconds,
-            variants=[
-                ("weighted", "weighted"),
-                ("rrf", "rrf"),
-            ],
         )
         for channel in evaluated.channels:
             results.append(
@@ -180,6 +181,32 @@ def main() -> None:
                     "query_p95_seconds": channel.query_p95_seconds,
                 }
             )
+        evaluated_rrf = evaluate_hybrid(
+            dataset,
+            candidates,
+            query_embeddings,
+            top_k=args.top_k,
+            candidate_k=args.candidate_k,
+            fusion="rrf",
+            vector_weight=vector_weight,
+            keyword_weight=keyword_weight,
+            rrf_k=60,
+            engine=engine,
+            vector_table=table,
+            index_seconds=index_seconds,
+            query_embedding_seconds=query_embedding_seconds,
+        )
+        channel = evaluated_rrf.channels[0]
+        results.append(
+            {
+                "strategy": channel.strategy,
+                "vector_weight": vector_weight,
+                "keyword_weight": keyword_weight,
+                "rrf_k": 60,
+                "metrics": channel.metrics,
+                "query_p95_seconds": channel.query_p95_seconds,
+            }
+        )
     for rrf_k in rrf_values:
         evaluated = evaluate_hybrid(
             dataset,
@@ -193,7 +220,6 @@ def main() -> None:
             vector_table=table,
             index_seconds=index_seconds,
             query_embedding_seconds=query_embedding_seconds,
-            variants=[("rrf", "rrf")],
         )
         channel = evaluated.channels[0]
         results.append(
@@ -215,6 +241,7 @@ def main() -> None:
         git_commit=_git_output(["rev-parse", "HEAD"]) or "unknown",
         git_dirty=bool(_git_output(["status", "--porcelain"])),
         command=_redact_command([sys.executable, *sys.argv]),
+        result_path=args.output,
         dataset_path=args.dataset,
         database_name=args.database_url.rsplit("/", 1)[-1].split("?", 1)[0],
         chunks={"count": len(documents), "sha256": _candidate_digest(dataset, documents)},
@@ -230,6 +257,8 @@ def main() -> None:
         retrieval={
             "candidate_k": args.candidate_k,
             "top_k": args.top_k,
+            "k_values": list(k_values_for(args.top_k)),
+            "evaluated_variants": ["weighted", "rrf"],
             "weights": weights,
             "rrf_k_values": rrf_values,
         },
@@ -243,8 +272,7 @@ def main() -> None:
         metrics = item["metrics"]
         recall = " ".join(
             f"R@{k}={metrics[f'recall@{k}']:.3f}"
-            for k in (5, 10)
-            if k <= args.top_k
+            for k in k_values_for(args.top_k)
         )
         print(
             f"{item['strategy']:8s} w={item['vector_weight']}:{item['keyword_weight']} "

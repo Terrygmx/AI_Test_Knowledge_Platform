@@ -8,6 +8,7 @@ from app.evaluation import hybrid_experiment
 from app.evaluation.dataset import load_dataset
 from app.evaluation.hybrid_experiment import HybridCandidate, evaluate_hybrid
 from app.evaluation.lexical_experiment import retrieve_chunks
+from app.retrieval.hybrid import ChannelHit, fuse
 
 
 def _dataset():
@@ -40,13 +41,37 @@ def _candidates(dimension: int = 4) -> list[HybridCandidate]:
     ]
 
 
+def _hit(
+    source_type: str,
+    source_id: str,
+    chunk_index: int,
+    score: float,
+    *,
+    higher_is_better: bool = True,
+) -> ChannelHit:
+    return ChannelHit(
+        source_type=source_type,
+        source_id=source_id,
+        chunk_index=chunk_index,
+        score=score,
+        higher_is_better=higher_is_better,
+    )
+
+
 class TestHybridExperiment:
     def test_evaluates_all_four_variants_on_the_same_candidates(self) -> None:
         dataset = _dataset()
         candidates = _candidates()
         embeddings = [[1.0, 0.0, 0.0, 0.0] for _ in dataset.queries]
 
-        result = evaluate_hybrid(dataset, candidates, embeddings, candidate_k=3, top_k=2)
+        result = evaluate_hybrid(
+            dataset,
+            candidates,
+            embeddings,
+            candidate_k=3,
+            top_k=2,
+            fusion="all",
+        )
 
         assert [item.name for item in result.channels] == [
             "vector",
@@ -57,6 +82,44 @@ class TestHybridExperiment:
         assert result.chunk_count == 3
         assert result.dataset_queries == len(dataset.queries)
         assert all(item.metrics["recall@2"] >= 0 for item in result.channels)
+
+    @pytest.mark.parametrize(
+        ("fusion", "expected"),
+        [
+            ("weighted", ["weighted"]),
+            ("rrf", ["rrf"]),
+            ("all", ["vector", "keyword", "weighted", "rrf"]),
+        ],
+    )
+    def test_fusion_selection_controls_evaluated_variants(
+        self,
+        fusion: str,
+        expected: list[str],
+    ) -> None:
+        dataset = _dataset()
+        result = evaluate_hybrid(
+            dataset,
+            _candidates(),
+            [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
+            candidate_k=3,
+            top_k=2,
+            fusion=fusion,
+        )
+
+        assert [item.name for item in result.channels] == expected
+
+    def test_explicit_variants_cannot_silently_override_a_fusion_selection(self) -> None:
+        dataset = _dataset()
+        with pytest.raises(ValueError, match="variants"):
+            evaluate_hybrid(
+                dataset,
+                _candidates(),
+                [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
+                candidate_k=3,
+                top_k=2,
+                fusion="rrf",
+                variants=[("weighted", "weighted")],
+            )
 
     def test_candidate_depth_cannot_be_smaller_than_final_top_k(self) -> None:
         with pytest.raises(ValueError, match="candidate_k"):
@@ -104,6 +167,49 @@ class TestHybridExperiment:
         assert weighted.metrics["recall@2"] >= 0
         assert weighted.fused_candidates > 0
 
+    def test_weighted_variant_has_fixed_order_and_scores_on_small_corpus(
+        self,
+    ) -> None:
+        dataset = _dataset()
+        vector = [_hit("document", "DOC-1", 0, 0.1, higher_is_better=False)]
+        keyword = [_hit("document", "DOC-1", 0, 4.0)]
+        result = fuse(
+            vector,
+            keyword,
+            strategy="weighted",
+            vector_weight=0.5,
+            keyword_weight=0.5,
+        )
+        assert [item.source_id for item in result] == ["DOC-1"]
+        assert result[0].score == pytest.approx(1.0)
+
+        keyword = [_hit("document", "DOC-2", 0, 4.0)]
+        result = fuse(
+            vector,
+            keyword,
+            strategy="weighted",
+            vector_weight=0.5,
+            keyword_weight=0.5,
+        )
+        assert [item.source_id for item in result] == ["DOC-1", "DOC-2"]
+        assert result[0].score == pytest.approx(0.5)
+        # 单元素通道全相等时按契约归一化为 1.0，因此 DOC-2 也得到 0.5。
+        assert result[1].score == pytest.approx(0.5)
+
+        evaluated = evaluate_hybrid(
+            dataset,
+            _candidates(),
+            [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
+            candidate_k=3,
+            top_k=1,
+            fusion="weighted",
+            vector_weight=0.5,
+            keyword_weight=0.5,
+        )
+
+        assert [item.name for item in evaluated.channels] == ["weighted"]
+        assert evaluated.channels[0].fused_candidates > 0
+
     def test_vector_variant_does_not_run_keyword_channel(self, monkeypatch) -> None:
         dataset = _dataset()
         monkeypatch.setattr(
@@ -118,7 +224,7 @@ class TestHybridExperiment:
             [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
             candidate_k=3,
             top_k=2,
-            variants=[("vector", "vector")],
+            fusion="vector",
         )
 
         assert result.channels[0].keyword_candidate_hits == 0
@@ -137,7 +243,7 @@ class TestHybridExperiment:
             [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
             candidate_k=3,
             top_k=2,
-            variants=[("keyword", "keyword")],
+            fusion="keyword",
         )
 
         assert result.channels[0].vector_candidate_hits == 0
@@ -150,11 +256,25 @@ class TestHybridExperiment:
             [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
             candidate_k=3,
             top_k=1,
-            variants=[("vector", "vector")],
+            fusion="vector",
         )
 
         assert "recall@1" in result.channels[0].metrics
         assert "recall@5" not in result.channels[0].metrics
+
+    @pytest.mark.parametrize("top_k", [7, 20])
+    def test_dynamic_recall_k_includes_the_requested_top_k(self, top_k: int) -> None:
+        dataset = _dataset()
+        result = evaluate_hybrid(
+            dataset,
+            _candidates(),
+            [[1.0, 0.0, 0.0, 0.0]] * len(dataset.queries),
+            candidate_k=20,
+            top_k=top_k,
+            fusion="vector",
+        )
+
+        assert f"recall@{top_k}" in result.channels[0].metrics
 
 
 def test_phase8_retrieval_documents_are_reusable_without_database() -> None:

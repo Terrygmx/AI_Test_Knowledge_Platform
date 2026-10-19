@@ -20,6 +20,7 @@ from sqlalchemy import Table, select
 from sqlalchemy.engine import Engine
 
 from app.evaluation.dataset import ChunkingDataset
+from app.evaluation.lexical_experiment import k_values_for
 from app.evaluation.metrics import RetrievalEvaluation, percentile
 from app.models.types import POSTGRES
 from app.retrieval.hybrid import ChannelHit, FusedHit, fuse
@@ -194,7 +195,7 @@ def evaluate_hybrid(
     *,
     top_k: int = 10,
     candidate_k: int = 20,
-    fusion: str = "rrf",
+    fusion: str = "all",
     vector_weight: float = 1.0,
     keyword_weight: float = 1.0,
     rrf_k: int = 60,
@@ -204,7 +205,11 @@ def evaluate_hybrid(
     query_embedding_seconds: float = 0.0,
     variants: Sequence[tuple[str, str]] | None = None,
 ) -> HybridExperimentResult:
-    """在同一批候选上评测 Vector / Keyword / Weighted / RRF。"""
+    """在同一批候选上按 ``fusion`` 选择评测通道。
+
+    ``fusion="all"`` 比较 Vector / Keyword / Weighted / RRF；单通道名或
+    ``weighted`` / ``rrf`` 只评测所选通道。生产默认融合策略由调用方另行记录。
+    """
     if len(query_embeddings) != len(dataset.queries):
         raise ValueError("query_embeddings 数量必须与 Query 数一致")
     if top_k < 1 or candidate_k < 1:
@@ -215,19 +220,27 @@ def evaluate_hybrid(
     bm25 = _BM25Adapter(candidates)
     if (engine is None) != (vector_table is None):
         raise ValueError("engine 与 vector_table 必须同时提供")
-    variants = list(
-        variants
-        or [
+    variants_by_fusion = {
+        "all": [
             ("vector", "vector"),
             ("keyword", "keyword"),
             ("weighted", "weighted"),
             ("rrf", "rrf"),
-        ]
-    )
+        ],
+        "vector": [("vector", "vector")],
+        "keyword": [("keyword", "keyword")],
+        "weighted": [("weighted", "weighted")],
+        "rrf": [("rrf", "rrf")],
+    }
+    if fusion not in variants_by_fusion:
+        raise ValueError("fusion 必须是 all、vector、keyword、weighted 或 rrf")
+    if variants is not None:
+        raise ValueError("variants 已由 fusion 选择替代，不能同时传入")
+    variants = variants_by_fusion[fusion]
     results: list[HybridChannelResult] = []
+    k_values = k_values_for(top_k)
 
     for name, strategy in variants:
-        k_values = tuple(k for k in (5, 10) if k <= top_k) or (top_k,)
         evaluator = RetrievalEvaluation(k_values=k_values)
         latencies: list[float] = []
         vector_count = 0

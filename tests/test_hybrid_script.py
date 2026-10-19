@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from datetime import UTC, datetime
 
 import pytest
@@ -60,12 +61,13 @@ def _manifest_for(**overrides):
     now = datetime.now(UTC)
     kwargs = {
         "dataset_path": DATASET,
+        "result_path": "results/hybrid-phase9.json",
         "started_at": now,
         "finished_at": now,
         "command": ["python", "scripts/hybrid_experiment.py"],
         "candidate_k": 20,
         "top_k": 10,
-        "fusion": "rrf",
+        "selection": "all",
         "vector_weight": 1.0,
         "keyword_weight": 1.0,
         "rrf_k": 60,
@@ -86,10 +88,16 @@ def test_manifest_records_phase9_parameters_and_channel_results() -> None:
     manifest = _manifest_for()
 
     assert manifest["phase"] == 9
+    assert manifest["manifest_schema_version"] == 2
+    assert manifest["git_commit_role"] == "generation"
+    assert manifest["result_path"] == "results/hybrid-phase9.json"
     assert manifest["retrieval"] == {
         "candidate_k": 20,
         "top_k": 10,
-        "fusion": "rrf",
+        "k_values": [5, 10],
+        "selection": "all",
+        "evaluated_variants": ["vector", "keyword", "weighted", "rrf"],
+        "default_fusion": "rrf",
         "vector_weight": 1.0,
         "keyword_weight": 1.0,
         "rrf_k": 60,
@@ -121,6 +129,11 @@ def test_manifest_redacts_database_credentials() -> None:
     )
 
     assert manifest["command"][-1] == "postgresql+psycopg://user:***@localhost/aitkp_hybrid"
+
+
+def test_manifest_rejects_selection_result_mismatch() -> None:
+    with pytest.raises(ValueError, match="不一致"):
+        _manifest_for(selection="rrf")
 
 
 def test_fetch_model_metadata_records_provider_fields(monkeypatch) -> None:
@@ -176,9 +189,11 @@ def test_fetch_model_metadata_records_provider_fields(monkeypatch) -> None:
     ("kwargs", "message"),
     [
         ({"candidate_k": 5, "top_k": 10}, "candidate_k"),
-        ({"fusion": "bad"}, "fusion"),
+        ({"selection": "bad"}, "selection"),
         ({"rrf_k": 0}, "rrf_k"),
         ({"vector_weight": -1}, "权重"),
+        ({"vector_weight": math.nan}, "有限"),
+        ({"keyword_weight": math.inf}, "有限"),
     ],
 )
 def test_manifest_rejects_invalid_retrieval_configuration(kwargs, message) -> None:

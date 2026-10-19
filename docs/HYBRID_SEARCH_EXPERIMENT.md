@@ -65,7 +65,10 @@ final = vector_weight * vector_similarity + keyword_weight * keyword_normalized
 ```
 
 如果通道内所有分数相同，统一归一化为 1.0。只出现在一个通道的候选，另一通道
-贡献记为 0。实际实现直接对 distance 取负再归一化，与上式等价。
+贡献记为 0。实际实现按候选声明的 `higher_is_better` 选择方向，不硬编码通道名；
+`higher_is_better=False` 时等价于对距离取负再归一化。单元素通道也属于
+“所有分数相同”，会得到 1.0，因此这类候选的分数只说明它在该通道内排名最高，
+不表示跨查询可比的绝对相似度。
 
 这种方法的优点是保留分数差距；缺点是归一化范围来自当次候选集合，候选深度变化
 可能改变最终排序。
@@ -83,7 +86,9 @@ score(candidate) = Σ channel_weight / (rrf_k + rank)
 
 ### 3.3 实现边界
 
-- 融合器假设每个通道已按自己的方向排好序，不再用统一降序重排；
+- 融合器假设每个通道已按自己的方向排好序，不再用统一降序重排；Weighted
+  按每条候选声明的 `higher_is_better` 归一化，同一通道方向混用会直接拒绝；
+- 非有限权重 / 分数（NaN、Infinity）直接拒绝，避免污染排序；
 - 候选按 `(source_type, source_id, chunk_index)` 去重；
 - 支持一个通道为空，并保留 BM25 的 `matched_terms` 与正文；
 - 最终排序按融合分数降序，再以来源类型、来源编号、Chunk 序号稳定打破平局。
@@ -110,6 +115,12 @@ Keyword (BM25)
 Weighted (1:1)
 RRF (1:1, k=60)
 ```
+
+`scripts/hybrid_experiment.py` 的 `--fusion all`（默认）才会评测上述四个通道；
+`--fusion weighted` / `--fusion rrf` 只评测所选融合策略。manifest 的
+`selection`、`evaluated_variants` 记录实际评测范围，`default_fusion` 单独记录
+生产默认策略（RRF），两者不再混为一个字段。实验脚本 `--top-k` 会按
+`k_values_for()` 输出动态 `Recall@K`，例如 `--top-k 7` 会包含 Recall@7。
 
 ## 5. 结果
 
@@ -210,6 +221,10 @@ Phase 9 新增 `KnowledgeChunkService.hybrid_search()`，返回 `FusedHit`：
 - 保留 `matched_terms`，便于追踪 BM25 命中词项；
 - 默认读取 `retrieval_vector_top_k` / `retrieval_keyword_top_k`、
   `retrieval_fusion`、`retrieval_rrf_k` 与 `retrieval_final_top_k`；
+- 两个通道分别使用自己的候选深度；`candidate_k` 仅作为兼容旧调用的共同覆盖值，
+  显式 `vector_candidate_k` / `keyword_candidate_k` 优先；
+- 向量 SQL 按 `distance, source_type, source_id, chunk_index, id` 稳定排序，
+  相同 embedding / distance 时结果仍可复现；
 - 只在 PostgreSQL + pgvector 上运行，SQLite 明确报错，不伪造向量排序。
 
 当前 **没有** 用 Hybrid 替换统一 `/search`，也 **没有** 改造 RAG。原因是：
@@ -252,16 +267,22 @@ uv run python scripts/hybrid_sweep.py \
 
 脚本只允许写入库名包含 `hybrid` 的 PostgreSQL。每次运行会重建
 `phase9_hybrid_chunks`，Embedding 与 Query 使用同一模型。manifest 记录数据集 /
-候选 Chunk 哈希、`git_commit` / `git_dirty`、脱敏命令、模型 / 维度、Embedding
-batch / timeout / retries、`/models` 元数据与完整指标。已提交的 manifest 必须来自
-`git_dirty=false` 的同一提交；脏工作区结果只能作为临时实验。
+候选 Chunk 哈希、`git_commit` / `git_dirty`、实际结果路径、脱敏命令、模型 /
+维度、Embedding batch / timeout / retries、`/models` 元数据与完整指标。
+
+`git_commit` 与 `git_commit_role=generation` 只表示**指标生成提交**：manifest
+要求在工作区干净时生成。产物可能之后才随文档提交入库，因此它不保证是
+**产物入库提交**。当前两份 manifest 的生成提交是 `a73d963`，实际随
+`2c179e0` 入库；该提交只包含报告 / 结果文件，未改变实验实现。读者应把
+`git_commit` 理解为生成时的代码快照，而不是引用该 manifest 的报告所在提交。
+脏工作区结果只能作为临时实验，不能提交为正式 manifest。
 
 ## 10. 已知局限
 
 - 只有 24 条 Query、47 个 Chunk，且与 Phase 8 共用 Gold Set；参数扫描结论存在
   同源选择与过拟合风险。
-- 只评测 Recall@5 / Recall@10 / MRR，没有 Precision@K、NDCG、分类 Badcase 或
-  统计显著性检验。
+- 默认 `top_k=10` 时只评测 Recall@5 / Recall@10 / MRR，没有 Precision@K、
+  NDCG、分类 Badcase 或统计显著性检验。
 - 6 条负样本全部误召回；不能从当前结果确定拒答阈值。
 - Weighted 的 min-max 范围随候选集合变化，跨查询的可比性和稳定性尚未验证。
 - BM25 每次查询全量读取并建内存索引；服务层 Hybrid 尚未做候选预过滤。

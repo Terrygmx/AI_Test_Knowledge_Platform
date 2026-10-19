@@ -1,9 +1,11 @@
 {
   "phase": 9,
   "kind": "fusion-sensitivity",
+  "manifest_schema_version": 2,
   "started_at": "2026-10-19T21:26:04.730247+00:00",
   "finished_at": "2026-10-19T21:26:07.221858+00:00",
   "git_commit": "a73d96377b25eaeaf372d77dc3ba4629714feb4e",
+  "git_commit_role": "generation",
   "git_dirty": false,
   "command": [
     "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
@@ -13,6 +15,7 @@
     "--output",
     "/tmp/hybrid-sweep-phase9-final2.json"
   ],
+  "result_path": "results/hybrid-sweep-phase9.json",
   "dataset_path": "eval/fixtures/phase8_simulated.json",
   "database_name": "aitkp_hybrid",
   "chunks": {
@@ -44,6 +47,11 @@
   "retrieval": {
     "candidate_k": 20,
     "top_k": 10,
+    "k_values": [5, 10],
+    "evaluated_variants": [
+      "weighted",
+      "rrf"
+    ],
     "weights": [
       [
         1.0,

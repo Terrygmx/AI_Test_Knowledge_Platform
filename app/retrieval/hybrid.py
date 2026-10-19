@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
@@ -81,6 +82,23 @@ def _min_max(values: Sequence[float], *, higher_is_better: bool) -> list[float]:
     return [(value - low) / (high - low) for value in normalized_values]
 
 
+def _channel_direction(
+    hits: Sequence[ChannelHit],
+    *,
+    channel: str,
+) -> bool:
+    """校验同一通道的分数方向一致，并返回该方向。"""
+    directions = {hit.higher_is_better for hit in hits}
+    if len(directions) > 1:
+        raise ValueError(f"{channel} 通道内的 higher_is_better 方向不一致")
+    return next(iter(directions), True)
+
+
+def _validate_finite_hits(hits: Sequence[ChannelHit], *, channel: str) -> None:
+    if any(not math.isfinite(hit.score) for hit in hits):
+        raise ValueError(f"{channel} 通道分数必须是有限数")
+
+
 def fuse(
     vector_hits: Sequence[ChannelHit],
     keyword_hits: Sequence[ChannelHit],
@@ -99,6 +117,8 @@ def fuse(
     """
     if strategy not in {"weighted", "rrf"}:
         raise ValueError("strategy 必须是 weighted 或 rrf")
+    if not math.isfinite(vector_weight) or not math.isfinite(keyword_weight):
+        raise ValueError("通道权重必须是有限数")
     if vector_weight < 0 or keyword_weight < 0:
         raise ValueError("通道权重必须 >= 0")
     if vector_weight == 0 and keyword_weight == 0:
@@ -110,6 +130,10 @@ def fuse(
 
     vector_unique = _deduplicate(vector_hits)
     keyword_unique = _deduplicate(keyword_hits)
+    _validate_finite_hits(vector_unique, channel="vector")
+    _validate_finite_hits(keyword_unique, channel="keyword")
+    vector_direction = _channel_direction(vector_unique, channel="vector")
+    keyword_direction = _channel_direction(keyword_unique, channel="keyword")
     vector_by_key = {_key(hit): hit for hit in vector_unique}
     keyword_by_key = {_key(hit): hit for hit in keyword_unique}
     keys = set(vector_by_key) | set(keyword_by_key)
@@ -130,11 +154,11 @@ def fuse(
     else:
         vector_values = _min_max(
             [hit.score for hit in vector_unique],
-            higher_is_better=False,
+            higher_is_better=vector_direction,
         )
         keyword_values = _min_max(
             [hit.score for hit in keyword_unique],
-            higher_is_better=True,
+            higher_is_better=keyword_direction,
         )
         vector_scores = {
             _key(hit): vector_weight * value

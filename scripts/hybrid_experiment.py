@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import subprocess
 import sys
 import time
@@ -48,7 +49,7 @@ from app.evaluation.hybrid_experiment import (
     HybridExperimentResult,
     evaluate_hybrid,
 )
-from app.evaluation.lexical_experiment import retrieve_chunks
+from app.evaluation.lexical_experiment import k_values_for, retrieve_chunks
 from app.retrieval.embedding import get_embedding_client
 
 DEFAULT_DATASET = Path("eval/fixtures/phase8_simulated.json")
@@ -179,9 +180,10 @@ def _manifest(
     started_at: datetime,
     finished_at: datetime,
     command: list[str],
+    result_path: str | Path,
     candidate_k: int,
     top_k: int,
-    fusion: str,
+    selection: str,
     vector_weight: float,
     keyword_weight: float,
     rrf_k: int,
@@ -196,8 +198,10 @@ def _manifest(
 ) -> dict[str, Any]:
     if top_k < 1 or candidate_k < top_k:
         raise ValueError("必须满足 candidate_k >= top_k >= 1")
-    if fusion not in {"weighted", "rrf"}:
-        raise ValueError("fusion 必须是 weighted 或 rrf")
+    if selection not in {"all", "weighted", "rrf"}:
+        raise ValueError("selection 必须是 all、weighted 或 rrf")
+    if not math.isfinite(vector_weight) or not math.isfinite(keyword_weight):
+        raise ValueError("通道权重必须是有限数")
     if vector_weight < 0 or keyword_weight < 0:
         raise ValueError("通道权重必须 >= 0")
     if rrf_k < 1:
@@ -209,13 +213,29 @@ def _manifest(
     if embedding_max_retries < 0:
         raise ValueError("embedding_max_retries 必须 >= 0")
     database_name = database_url.rsplit("/", 1)[-1].split("?", 1)[0]
+    evaluated_variants = [channel.name for channel in result.channels]
+    if not evaluated_variants:
+        raise ValueError("至少需要评测一个通道")
+    expected_variants = {
+        "all": ["vector", "keyword", "weighted", "rrf"],
+        "weighted": ["weighted"],
+        "rrf": ["rrf"],
+    }
+    if evaluated_variants != expected_variants[selection]:
+        raise ValueError(
+            f"selection={selection} 与实际评测通道 {evaluated_variants} 不一致"
+        )
     return {
         "phase": 9,
+        "manifest_schema_version": 2,
         "started_at": started_at.isoformat(),
         "finished_at": finished_at.isoformat(),
         "git_commit": _git_output(["rev-parse", "HEAD"]) or "unknown",
+        # 产物入库后 HEAD 会前进；该字段只声明指标生成时的干净工作区。
+        "git_commit_role": "generation",
         "git_dirty": bool(_git_output(["status", "--porcelain"])),
         "command": _redact_command(command),
+        "result_path": str(result_path),
         "dataset": {
             "path": str(dataset_path),
             "sha256": dataset.dataset_sha256,
@@ -241,7 +261,10 @@ def _manifest(
         "retrieval": {
             "candidate_k": candidate_k,
             "top_k": top_k,
-            "fusion": fusion,
+            "k_values": list(k_values_for(top_k)),
+            "selection": selection,
+            "evaluated_variants": evaluated_variants,
+            "default_fusion": "rrf",
             "vector_weight": vector_weight,
             "keyword_weight": keyword_weight,
             "rrf_k": rrf_k,
@@ -275,7 +298,13 @@ def main() -> None:
     parser.add_argument("--output", default="results/hybrid-phase9.json")
     parser.add_argument("--candidate-k", type=int, default=20)
     parser.add_argument("--top-k", type=int, default=10)
-    parser.add_argument("--fusion", choices=["weighted", "rrf"], default="rrf")
+    parser.add_argument(
+        "--fusion",
+        dest="selection",
+        choices=["all", "weighted", "rrf"],
+        default="all",
+        help="评测范围；all 比较四通道，weighted/rrf 只评测所选融合策略",
+    )
     parser.add_argument("--vector-weight", type=float, default=1.0)
     parser.add_argument("--keyword-weight", type=float, default=1.0)
     parser.add_argument("--rrf-k", type=int, default=60)
@@ -284,7 +313,7 @@ def main() -> None:
 
     if args.top_k < 1 or args.candidate_k < args.top_k:
         parser.error("必须满足 --candidate-k >= --top-k >= 1")
-    if args.fusion == "weighted" and args.vector_weight + args.keyword_weight <= 0:
+    if args.selection == "weighted" and args.vector_weight + args.keyword_weight <= 0:
         parser.error("Weighted 的通道权重之和必须大于 0")
     if args.rrf_k < 1:
         parser.error("--rrf-k 必须 >= 1")
@@ -296,7 +325,7 @@ def main() -> None:
             f"dataset={args.dataset} sha256={dataset.dataset_sha256[:12]} "
             f"queries={len(dataset.queries)} chunks={len(documents)} "
             f"candidate_k={args.candidate_k} top_k={args.top_k} "
-            f"fusion={args.fusion} vector_weight={args.vector_weight} "
+            f"fusion={args.selection} vector_weight={args.vector_weight} "
             f"keyword_weight={args.keyword_weight} rrf_k={args.rrf_k}"
         )
         return
@@ -357,7 +386,7 @@ def main() -> None:
         query_embeddings,
         top_k=args.top_k,
         candidate_k=args.candidate_k,
-        fusion=args.fusion,
+        fusion=args.selection,
         vector_weight=args.vector_weight,
         keyword_weight=args.keyword_weight,
         rrf_k=args.rrf_k,
@@ -373,9 +402,10 @@ def main() -> None:
         started_at=started_at,
         finished_at=datetime.now(UTC),
         command=[sys.executable, *sys.argv],
+        result_path=args.output,
         candidate_k=args.candidate_k,
         top_k=args.top_k,
-        fusion=args.fusion,
+        selection=args.selection,
         vector_weight=args.vector_weight,
         keyword_weight=args.keyword_weight,
         rrf_k=args.rrf_k,
@@ -395,8 +425,7 @@ def main() -> None:
         metrics = channel.metrics
         recall = " ".join(
             f"R@{k}={metrics[f'recall@{k}']:.3f}"
-            for k in (5, 10)
-            if k <= args.top_k
+            for k in k_values_for(args.top_k)
         )
         print(
             f"{channel.name:8s} {recall} MRR={metrics['mrr']:.3f} "

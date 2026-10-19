@@ -147,11 +147,29 @@ def test_sweep_tables_match_manifest() -> None:
         assert _clean_number(row["MRR"]) == round(float(item["metrics"]["mrr"]), 3)
         observed_weighted += 1
     assert observed_weighted == len(expected_weighted)
+
+    expected_rrf = {
+        (
+            round(item["vector_weight"]),
+            round(item["keyword_weight"]),
+            item["rrf_k"],
+        ): item
+        for item in sweep["results"]
+        if item["strategy"] == "rrf"
+    }
     for row in weighted_rows:
-        if row["方法"] != "RRF" or "k=60" not in row["vector:keyword / k"]:
+        if row["方法"] != "RRF":
             continue
+        weights, raw_k = row["vector:keyword / k"].split(", k=")
+        vector_weight, keyword_weight = (int(item) for item in weights.split(":"))
+        item = expected_rrf[(vector_weight, keyword_weight, int(raw_k))]
+        assert _clean_number(row["Recall@5"]) == round(
+            float(item["metrics"]["recall@5"]), 3
+        )
+        assert _clean_number(row["MRR"]) == round(float(item["metrics"]["mrr"]), 3)
         observed_rrf += 1
-    assert observed_rrf == 5
+    expected_rrf_rows = {key for key in expected_rrf if key[2] == 60}
+    assert observed_rrf == len(expected_rrf_rows)
 
     expected_rrf_k = {
         item["rrf_k"]: item
@@ -178,7 +196,27 @@ def test_report_uses_the_same_dataset_and_chunk_identity() -> None:
     report = REPORT.read_text(encoding="utf-8")
 
     assert manifest["dataset"]["sha256"] in report
+    assert manifest["manifest_schema_version"] == 2
+    assert manifest["git_commit_role"] == "generation"
+    assert manifest["result_path"] == str(MANIFEST)
+    assert manifest["retrieval"]["selection"] == "all"
+    assert manifest["retrieval"]["evaluated_variants"] == [
+        "vector",
+        "keyword",
+        "weighted",
+        "rrf",
+    ]
+    assert manifest["retrieval"]["default_fusion"] == "rrf"
     assert manifest["chunks"]["count"] == 47
     assert "24 条 Query" in report
     assert "(source_type, source_id, chunk_index)" in report
     assert re.search(r"RRF.*?k=60", report, re.DOTALL)
+
+
+def test_report_explains_generation_commit_and_artifact_commit_are_distinct() -> None:
+    report = REPORT.read_text(encoding="utf-8")
+
+    assert "生成提交" in report
+    assert "产物入库提交" in report
+    assert "a73d963" in report
+    assert "2c179e0" in report

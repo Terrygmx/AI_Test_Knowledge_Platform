@@ -63,7 +63,7 @@ app/
 ├── retrieval/   # Embedding 抽象、Chunking、分词 / BM25、Weighted / RRF 融合
 ├── rerank/      # 空，Phase 11
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
-└── evaluation/  # 数据集契约、Recall@K / MRR、Chunking / Embedding / Lexical 实验
+└── evaluation/  # 数据集契约、Recall@K / MRR、Chunking / Embedding / Lexical / Hybrid 实验
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
 tests/           # 通过用例以当前实测为准（SQLite 默认路径）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
@@ -194,10 +194,17 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   manifest 为 `results/hybrid-phase9.json`、`results/hybrid-sweep-phase9.json`
 - Phase 9 新增 `KnowledgeChunkService.hybrid_search()`，返回保留 `chunk_index`、
   `vector_rank`、`keyword_rank`、原始分数与 `matched_terms` 的 `FusedHit`。
+  Vector / BM25 分别使用 `retrieval_vector_top_k` 与
+  `retrieval_keyword_top_k` 作为候选深度；向量 SQL 增加身份 tie-break，
+  Weighted 遵循候选声明的分数方向并拒绝混合方向 / 非有限数。
   该接缝尚未替换统一 `/search` 或 RAG；公开 API 的 score 契约仍未确定
 - Phase 9 的实验表未建 HNSW，Query 延迟只含 pgvector 候选 + BM25 + 融合，
   不含 Query Embedding；6 条不可回答 Query 在四个通道上仍全部误召回。
-  参数扫描中的最佳 MRR 来自同一份小样本，不能直接设为生产默认值
+  参数扫描中的最佳 MRR 来自同一份小样本，不能直接设为生产默认值。
+  实验入口 `--fusion all` 比较四通道，`weighted` / `rrf` 只评测所选策略；
+  manifest 的 `selection` / `evaluated_variants` 与 `default_fusion` 分开记录。
+  `git_commit` 是生成提交，不一定是产物入库提交；当前结果在 `a73d963` 生成、
+  随 `2c179e0` 入库
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）

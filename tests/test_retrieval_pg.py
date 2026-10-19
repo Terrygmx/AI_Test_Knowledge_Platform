@@ -81,6 +81,57 @@ class TestVectorSearch:
         assert all(0.0 <= distance <= 2.0 for _, distance in results)
         assert results == sorted(results, key=lambda item: item[1])
 
+    def test_cosine_search_has_stable_identity_tie_break(self, engine, db_session) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        client = FakeEmbeddingClient(dimension=1024)
+        items = [
+            KnowledgeChunkCreate(
+                source_type="defect",
+                source_id="B-1",
+                chunk_index=0,
+                content="相同向量",
+            ),
+            KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="A-1",
+                chunk_index=0,
+                content="相同向量",
+            ),
+            KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="A-1",
+                chunk_index=1,
+                content="相同向量",
+            ),
+        ]
+        KnowledgeChunkService.create_many(
+            db_session,
+            items=items,
+            embedding_client=client,
+        )
+        query_embedding = client.embed_query(items[0].content)
+
+        orders = [
+            [
+                (chunk.source_type, chunk.source_id, chunk.chunk_index)
+                for chunk, _ in KnowledgeChunkService.search(
+                    db_session,
+                    query_embedding=query_embedding,
+                    limit=3,
+                )
+            ]
+            for _ in range(3)
+        ]
+
+        expected = [
+            ("defect", "B-1", 0),
+            ("testcase", "A-1", 0),
+            ("testcase", "A-1", 1),
+        ]
+        assert orders == [expected] * 3
+
     def test_source_type_filter(self, engine, db_session) -> None:
         if engine.dialect.name != "postgresql":
             pytest.skip("PostgreSQL + pgvector only")

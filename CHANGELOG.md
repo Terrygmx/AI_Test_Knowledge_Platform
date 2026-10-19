@@ -25,6 +25,12 @@
   `/models` 元数据。报告一致性测试防止总体、负样本与参数敏感性数字漂移。
 - **身份修复**：线上离线 Chunk 评测保留真实 `chunk_index`，避免同来源多 Chunk
   被融合器错误合并；实验的 Vector 与 BM25 通道使用完全相同的 47 个候选。
+- **Review 收口**：`--fusion` 现在真正控制评测范围（默认 `all` 比较四通道，
+  `weighted` / `rrf` 只评测所选策略），manifest 分别记录 `selection` /
+  `evaluated_variants` 与 `default_fusion`；Weighted 遵循
+  `higher_is_better` 并拒绝方向混用 / NaN / Infinity；生产向量 SQL 增加身份
+  tie-break；两个通道分别使用自己的候选深度；实验 Recall K 复用 Phase 8 的
+  动态规则；报告一致性测试逐行校验 RRF 权重扫描指标。
 - **边界**：6 条不可回答 Query 在四个通道上仍全部误召回；实验表未建 HNSW，
   延迟只含候选检索与融合，不含 Query Embedding，不能作为 ANN / API P95 结论。
 

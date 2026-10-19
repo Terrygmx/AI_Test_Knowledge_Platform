@@ -175,6 +175,73 @@ class TestKnowledgeChunkCreate:
         assert results[0].vector_rank is not None
         assert results[0].keyword_rank is not None
 
+    def test_hybrid_search_uses_independent_channel_depths(
+        self, engine, db_session, monkeypatch
+    ) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        captured: dict[str, int] = {}
+
+        def fake_search(cls, session, *, query_embedding, limit=10, source_types=None):
+            captured["vector"] = limit
+            return []
+
+        def fake_lexical(cls, session, *, query, limit=10, source_types=None):
+            captured["keyword"] = limit
+            return []
+
+        monkeypatch.setattr(KnowledgeChunkService, "search", classmethod(fake_search))
+        monkeypatch.setattr(
+            KnowledgeChunkService,
+            "lexical_search",
+            classmethod(fake_lexical),
+        )
+
+        KnowledgeChunkService.hybrid_search(
+            db_session,
+            query="登录",
+            query_embedding=[0.0] * 1024,
+            vector_candidate_k=3,
+            keyword_candidate_k=7,
+            limit=2,
+        )
+
+        assert captured == {"vector": 3, "keyword": 7}
+
+    def test_hybrid_search_candidate_k_overrides_both_channel_depths(
+        self, engine, db_session, monkeypatch
+    ) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        captured: dict[str, int] = {}
+
+        def fake_search(cls, session, *, query_embedding, limit=10, source_types=None):
+            captured["vector"] = limit
+            return []
+
+        def fake_lexical(cls, session, *, query, limit=10, source_types=None):
+            captured["keyword"] = limit
+            return []
+
+        monkeypatch.setattr(KnowledgeChunkService, "search", classmethod(fake_search))
+        monkeypatch.setattr(
+            KnowledgeChunkService,
+            "lexical_search",
+            classmethod(fake_lexical),
+        )
+
+        KnowledgeChunkService.hybrid_search(
+            db_session,
+            query="登录",
+            query_embedding=[0.0] * 1024,
+            candidate_k=9,
+            limit=2,
+        )
+
+        assert captured == {"vector": 9, "keyword": 9}
+
     def test_hybrid_search_rejects_sqlite_without_faking_scores(self, engine, db_session) -> None:
         if engine.dialect.name == "postgresql":
             pytest.skip("SQLite-only check")
@@ -189,8 +256,11 @@ class TestKnowledgeChunkCreate:
         ("kwargs", "message"),
         [
             ({"candidate_k": 0}, "candidate_k"),
+            ({"vector_candidate_k": 0}, "vector_candidate_k"),
+            ({"keyword_candidate_k": 0}, "keyword_candidate_k"),
             ({"limit": 0}, "limit"),
             ({"rrf_k": 0}, "rrf_k"),
+            ({"vector_weight": float("nan")}, "有限"),
             ({"candidate_k": 2, "limit": 3}, "不能小于"),
             ({"query": "   "}, "query"),
         ],

@@ -293,6 +293,9 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（B
 | 词法检索结论 | Phase 8 只有 24 条 Query、47 个 Chunk | 足以验证编号 / 版本 / 组合关键词失败模式，不足以证明生产分布 |
 | 混合检索结论 | 24 条 Query 上 RRF 仅比 BM25 多命中 1 条证据 | 只证明融合接口与失败模式；参数扫描存在小样本过拟合风险 |
 | 混合检索延迟 | 只含 pgvector + BM25 + 融合，未含 Query Embedding | 47 行精确扫描且未建实验索引，不是 ANN 或 API P95 结论 |
+| 混合检索候选深度 | Vector / BM25 分别读取 `retrieval_*_top_k` | `candidate_k` 仅作兼容覆盖；最终 Top-K 不得超过两通道深度 |
+| 混合检索排序 | 向量距离后追加来源类型 / 编号 / Chunk 序号 / id | 相同 embedding / distance 时 RRF 名次仍可复现 |
+| 融合器分数方向 | 按 `ChannelHit.higher_is_better` 归一化 | 同通道方向不一致或分数非有限时 fail fast |
 | 中文分词 | 中文 unigram + bigram，Unicode 字母数字标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
 | 不可回答 Query | 四个通道在 6 条负样本上全部有结果 | 融合不解决拒答；非空结果不等于证据充分 |
 | 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |

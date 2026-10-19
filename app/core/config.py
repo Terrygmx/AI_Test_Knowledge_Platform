@@ -104,6 +104,21 @@ class Settings(BaseSettings):
             raise ValueError("EMBEDDING_MAX_RETRIES 必须 >= 0")
         if self.embedding_batch_size < 1:
             raise ValueError("EMBEDDING_BATCH_SIZE 必须 >= 1")
+        if self.retrieval_vector_top_k < 1:
+            raise ValueError("RETRIEVAL_VECTOR_TOP_K 必须 >= 1")
+        if self.retrieval_keyword_top_k < 1:
+            raise ValueError("RETRIEVAL_KEYWORD_TOP_K 必须 >= 1")
+        if self.retrieval_final_top_k < 1:
+            raise ValueError("RETRIEVAL_FINAL_TOP_K 必须 >= 1")
+        if self.retrieval_rrf_k < 1:
+            raise ValueError("RETRIEVAL_RRF_K 必须 >= 1")
+        if self.retrieval_final_top_k > min(
+            self.retrieval_vector_top_k,
+            self.retrieval_keyword_top_k,
+        ):
+            raise ValueError(
+                "RETRIEVAL_FINAL_TOP_K 不能大于两个通道的候选深度"
+            )
         return self
 
 

@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable, Sequence
 
 from sqlalchemy import delete, func, select
@@ -179,7 +180,13 @@ class KnowledgeChunkService:
         stmt = stmt.where(KnowledgeChunk.embedding.is_not(None))
         if source_types:
             stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
-        stmt = stmt.order_by(distance).limit(limit)
+        stmt = stmt.order_by(
+            distance,
+            KnowledgeChunk.source_type,
+            KnowledgeChunk.source_id,
+            KnowledgeChunk.chunk_index,
+            KnowledgeChunk.id,
+        ).limit(limit)
         results = [(chunk, float(value)) for chunk, value in session.execute(stmt).all()]
         logger.info(
             "向量检索完成 hits=%s distances=%s",
@@ -242,6 +249,8 @@ class KnowledgeChunkService:
         query: str,
         query_embedding: Sequence[float],
         candidate_k: int | None = None,
+        vector_candidate_k: int | None = None,
+        keyword_candidate_k: int | None = None,
         limit: int | None = None,
         source_types: Sequence[str] | None = None,
         strategy: str | None = None,
@@ -256,33 +265,47 @@ class KnowledgeChunkService:
         两者都按 ``(source_type, source_id, chunk_index)`` 去重，避免同一来源的
         不同证据片段被合并。
 
-        默认候选深度、最终 Top-K、融合策略和 RRF ``k`` 来自检索配置。当前实现
-        仍会在每次 BM25 查询时读取并建立内存索引，适用于小规模知识库；接入更大
-        数据量前必须先解决候选预过滤与倒排表持久化。
+        两个通道的默认候选深度分别来自 ``retrieval_vector_top_k`` 与
+        ``retrieval_keyword_top_k``。``candidate_k`` 是兼容旧调用的共同覆盖值，
+        显式通道值优先于它。当前实现仍会在每次 BM25 查询时读取并建立内存索引，
+        适用于小规模知识库；接入更大数据量前必须先解决候选预过滤与倒排表持久化。
         """
         if not query.strip():
             raise ValueError("query 不能为空")
+        if not math.isfinite(vector_weight) or not math.isfinite(keyword_weight):
+            raise ValueError("通道权重必须是有限数")
 
         # ``or`` 会把显式 0 变成默认值；先从调用方校验非法值，再应用默认配置。
         if candidate_k is not None and candidate_k < 1:
             raise ValueError("candidate_k 必须大于 0")
+        if vector_candidate_k is not None and vector_candidate_k < 1:
+            raise ValueError("vector_candidate_k 必须大于 0")
+        if keyword_candidate_k is not None and keyword_candidate_k < 1:
+            raise ValueError("keyword_candidate_k 必须大于 0")
         if limit is not None and limit < 1:
             raise ValueError("limit 必须大于 0")
         if rrf_k is not None and rrf_k < 1:
             raise ValueError("rrf_k 必须大于 0")
-        candidate_depth = (
-            candidate_k
-            if candidate_k is not None
-            else max(
-                settings.retrieval_vector_top_k,
-                settings.retrieval_keyword_top_k,
-            )
+        shared_candidate_k = candidate_k
+        vector_depth = (
+            vector_candidate_k
+            if vector_candidate_k is not None
+            else shared_candidate_k
+            if shared_candidate_k is not None
+            else settings.retrieval_vector_top_k
+        )
+        keyword_depth = (
+            keyword_candidate_k
+            if keyword_candidate_k is not None
+            else shared_candidate_k
+            if shared_candidate_k is not None
+            else settings.retrieval_keyword_top_k
         )
         final_limit = limit if limit is not None else settings.retrieval_final_top_k
         selected_strategy = strategy or settings.retrieval_fusion
         selected_rrf_k = rrf_k if rrf_k is not None else settings.retrieval_rrf_k
-        if candidate_depth < final_limit:
-            raise ValueError("candidate_k 不能小于 limit")
+        if min(vector_depth, keyword_depth) < final_limit:
+            raise ValueError("通道候选深度不能小于 limit")
         if session.bind is None or session.bind.dialect.name != POSTGRES:
             raise DomainError(
                 "混合检索仅支持 PostgreSQL + pgvector",
@@ -292,13 +315,13 @@ class KnowledgeChunkService:
         vector_results = cls.search(
             session,
             query_embedding=query_embedding,
-            limit=candidate_depth,
+            limit=vector_depth,
             source_types=source_types,
         )
         keyword_results = cls.lexical_search(
             session,
             query=query,
-            limit=candidate_depth,
+            limit=keyword_depth,
             source_types=source_types,
         )
         vector_hits = [
