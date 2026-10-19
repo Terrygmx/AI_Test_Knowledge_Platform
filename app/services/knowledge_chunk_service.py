@@ -12,10 +12,11 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import DomainError
+from app.core.exceptions import DomainError, DuplicateError, NotFoundError
 from app.core.logging import get_logger
 from app.models import KnowledgeChunk
 from app.models.types import POSTGRES
@@ -56,7 +57,12 @@ class KnowledgeChunkService:
 
         chunk = KnowledgeChunk(**values)
         session.add(chunk)
-        session.commit()
+        cls._commit(
+            session,
+            source_type=data.source_type,
+            source_id=data.source_id,
+            chunk_index=data.chunk_index,
+        )
         logger.info(
             "创建知识片段 source=%s:%s chunk=%s",
             chunk.source_type,
@@ -72,13 +78,25 @@ class KnowledgeChunkService:
         *,
         items: Sequence[KnowledgeChunkCreate],
         embedding_client: EmbeddingClient,
+        replace_source_types: Sequence[str] | None = None,
     ) -> list[KnowledgeChunk]:
-        """批量创建，并为所有 Chunk 生成 Embedding。"""
+        """批量创建，并为所有 Chunk 生成 Embedding。
+
+        ``replace_source_types`` 用于索引重建：先完成 Embedding，再在同一事务中
+        删除旧 Chunk。上游失败时不会提前提交删除。
+        """
         if not items:
             return []
         vectors = embedding_client.embed_texts([item.content for item in items])
         for vector in vectors:
             cls._validate_dimension(vector, cls.embedding_dimension)
+
+        if replace_source_types:
+            session.execute(
+                delete(KnowledgeChunk).where(
+                    KnowledgeChunk.source_type.in_(list(replace_source_types))
+                )
+            )
 
         chunks: list[KnowledgeChunk] = []
         for item, vector in zip(items, vectors, strict=True):
@@ -89,8 +107,41 @@ class KnowledgeChunkService:
             chunks.append(KnowledgeChunk(**values))
 
         session.add_all(chunks)
-        session.commit()
+        cls._commit(session)
         return chunks
+
+    @classmethod
+    def list(
+        cls,
+        session: Session,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+        source_type: str | None = None,
+        source_id: str | None = None,
+    ) -> tuple[list[KnowledgeChunk], int]:
+        stmt = select(KnowledgeChunk)
+        if source_type:
+            stmt = stmt.where(KnowledgeChunk.source_type == source_type)
+        if source_id:
+            stmt = stmt.where(KnowledgeChunk.source_id == source_id)
+        total = session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        rows = session.scalars(
+            stmt.order_by(KnowledgeChunk.id).limit(limit).offset(offset)
+        ).all()
+        return list(rows), total
+
+    @classmethod
+    def get_or_404(cls, session: Session, chunk_id: int) -> KnowledgeChunk:
+        chunk = session.get(KnowledgeChunk, chunk_id)
+        if chunk is None:
+            raise NotFoundError(f"知识片段不存在：id={chunk_id}")
+        return chunk
+
+    @classmethod
+    def delete(cls, session: Session, chunk: KnowledgeChunk) -> None:
+        session.delete(chunk)
+        cls._commit(session)
 
     @classmethod
     def search(
@@ -129,4 +180,29 @@ class KnowledgeChunkService:
                 "Embedding 维度与配置不一致",
                 detail={"expected": expected, "actual": len(vector)},
             )
+
+    @classmethod
+    def _commit(
+        cls,
+        session: Session,
+        *,
+        source_type: str | None = None,
+        source_id: str | None = None,
+        chunk_index: int | None = None,
+    ) -> None:
+        """把唯一约束冲突转换成统一错误信封（409 duplicate）。"""
+        try:
+            session.flush()
+            session.commit()
+        except IntegrityError as exc:
+            session.rollback()
+            detail = {
+                "source_type": source_type,
+                "source_id": source_id,
+                "chunk_index": chunk_index,
+            }
+            logger.warning("知识片段写入冲突：%s", detail)
+            raise DuplicateError("知识片段已存在", detail=detail) from exc
+
+
 __all__ = ["KnowledgeChunkService"]

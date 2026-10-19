@@ -23,8 +23,14 @@
   确定性 Fake 客户端、批量维度校验与 SHA-256 内容哈希。
 - **索引服务**：TestCase / Defect / Requirement / Document 到 Chunk 的映射，
   支持单条与批量 Embedding 入库。
-- **向量检索**：`KnowledgeChunkService.search()` 在 PostgreSQL 上按 cosine distance
-  返回候选和距离，并支持来源类型过滤；SQLite 下明确拒绝而不是返回假排序。
+- **向量检索（链路已通，语义质量待验证）**：`KnowledgeChunkService.search()` 在
+  PostgreSQL 上按 cosine distance 返回候选和距离，并支持来源类型过滤；
+  SQLite 下明确拒绝而不是返回假排序。Fake Embedding 结果不能作为召回质量结论。
+- **索引入口**：`scripts/index_entities.py` 支持全量重建 / `--dry-run` / 按来源过滤；
+  先删除该来源旧 Chunk 再重建，重复执行安全。
+- **语义探针**：`scripts/embedding_probe.py` 需真实 `EMBEDDING_API_KEY`，不进入默认测试。
+- **Chunk API**：补 `GET /api/v1/chunks`、`DELETE /api/v1/chunks/{id}`；重复写入返回 409。
+- **注意**：Fake Embedding 只证明链路可运行，语义召回质量尚未验证。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
@@ -49,7 +55,7 @@
   `X-Process-Time-Ms` + 访问日志，为后续 Badcase 分析打底。
 - **Alembic**：`alembic.ini` + `alembic/env.py` + 初始迁移 `0001_initial_schema.py`
   （含 `CREATE EXTENSION vector` / `pg_trgm`，仅 PG）。
-- **测试**：191 个用例，覆盖模型形状、Schema 规范化、服务 CRUD/过滤/分页、API 全流程、
+- **测试**：覆盖模型形状、Schema 规范化、服务 CRUD/过滤/分页、API 全流程、
   错误信封、中间件、迁移漂移与迁移可执行性。
 - **PostgreSQL 实机验证**：新增 PG 专属迁移测试，在真实 PostgreSQL 上从 base 升级到
   `head` 并校验 `vector` / `pg_trgm` 扩展；SQLite 默认路径自动跳过该用例。
@@ -71,13 +77,13 @@
 
 - **PostgreSQL 17.11 实机验证通过**：`pgvector/pgvector:pg17` 容器运行正常，
   Alembic 升级到 `0001 (head)`，`vector 0.8.7` / `pg_trgm 1.6` 已安装；
-  `aitkp_test` 上 192 个测试全部通过，SQLite 默认路径为 191 passed + 1 skipped。
+  `aitkp_test` 上 231 passed + 1 skipped，SQLite 默认路径为 229 passed + 3 skipped。
 - **Docker 环境**：首次启动需拉取 `pgvector/pgvector:pg17` 镜像；
   测试库 `aitkp_test` 可重复使用，但测试会 `drop_all` + `create_all`，不要指向开发库。
 - **中文全文检索待定**：当前关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词。
 - **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First），Phase 9 融合打分后引入。
 - **`.env` 中 `EMBEDDING_API_KEY` / `RERANK_API_KEY` 为空**：`/health` 的 `capabilities` 会显示 false，
-  涉及 Embedding / Rerank 的代码路径暂不可运行（LLM 走本地 Ollama，无需 Key）。
+  涉及 Embedding / Rerank 的代码路径暂不可运行；LLM 能力也改为实际探测，而不是恒为 true。
 - **`tags` / `related_cases` 暂不支持查询过滤**：PG 的 `text[] @>` 与 SQLite 不可兼得，Phase 10 元数据过滤时补。
 
 ### 历史（Phase 0 之前）

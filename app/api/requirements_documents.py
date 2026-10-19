@@ -7,7 +7,7 @@ from fastapi import APIRouter, status
 from app.api.deps import PaginationDep, SessionDep
 from app.models import Document, Requirement
 from app.models.enums import Priority, RequirementStatus
-from app.schemas.common import Page
+from app.schemas.common import Page, enum_query
 from app.schemas.document import DocumentCreate, DocumentRead, DocumentUpdate
 from app.schemas.requirement import RequirementCreate, RequirementRead, RequirementUpdate
 from app.services.document_service import DocumentService
@@ -36,8 +36,8 @@ def list_requirements(
     session: SessionDep,
     module: str | None = None,
     version: str | None = None,
-    priority: Priority | None = None,
-    status: RequirementStatus | None = None,
+    priority: enum_query(Priority) = None,
+    status: enum_query(RequirementStatus) = None,
     q: str | None = None,
 ) -> Page[RequirementRead]:
     items, total = RequirementService.list(

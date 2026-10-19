@@ -6,14 +6,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import Field
 
 from app.models.enums import Priority
-from app.schemas.common import BaseSchema
-
-SourceType = Literal["testcase", "defect", "requirement", "document"]
+from app.schemas.common import BaseSchema, SourceType
 
 
 class SearchHit(BaseSchema):

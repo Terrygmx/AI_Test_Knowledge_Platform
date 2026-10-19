@@ -7,7 +7,7 @@ from fastapi import APIRouter, status
 from app.api.deps import PaginationDep, SessionDep
 from app.models import Defect
 from app.models.enums import DefectStatus, Priority, Severity
-from app.schemas.common import Page
+from app.schemas.common import Page, enum_query
 from app.schemas.defect import DefectCreate, DefectRead, DefectUpdate
 from app.services.defect_service import DefectService
 
@@ -30,9 +30,9 @@ def list_defects(
     session: SessionDep,
     module: str | None = None,
     version: str | None = None,
-    severity: Severity | None = None,
-    priority: Priority | None = None,
-    status: DefectStatus | None = None,
+    severity: enum_query(Severity) = None,
+    priority: enum_query(Priority) = None,
+    status: enum_query(DefectStatus) = None,
     q: str | None = None,
 ) -> Page[DefectRead]:
     items, total = DefectService.list(

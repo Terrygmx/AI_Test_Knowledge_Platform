@@ -63,6 +63,23 @@ class TestSearchAPI:
         body = client.get(API, params={"status": "fixed"}).json()
         assert body["total"] == 1
 
+    def test_search_severity_filter(self, client) -> None:
+        _seed(client)
+        body = client.get(API, params={"severity": "CRITICAL"}).json()
+        assert body["total"] == 1
+        assert body["items"][0]["source_id"] == "BUG-1021"
+
+    def test_search_enum_queries_are_normalized(self, client) -> None:
+        _seed(client)
+        assert client.get(API, params={"priority": "p0"}).status_code == 200
+        assert client.get(API, params={"status": "FIXED"}).status_code == 200
+        assert client.get(API, params={"type": "Smoke"}).status_code == 200
+
+    def test_search_unknown_status_400(self, client) -> None:
+        response = client.get(API, params={"status": "not-a-status"})
+        assert response.status_code == 400
+        assert response.json()["error"]["code"] == "domain_error"
+
     def test_search_source_type_filter(self, client) -> None:
         _seed(client)
         body = client.get(API, params={"source_type": "defect"}).json()

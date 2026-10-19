@@ -71,6 +71,7 @@ def upgrade() -> None:
     )
 
     if _is_postgresql():
+        # hnsw: idx_knowledge_chunks_embedding_hnsw
         op.execute(
             "CREATE INDEX idx_knowledge_chunks_embedding_hnsw "
             "ON knowledge_chunks USING hnsw (embedding vector_cosine_ops)"

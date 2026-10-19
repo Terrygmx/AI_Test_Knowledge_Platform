@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from enum import Enum
-from typing import Annotated, Any, Generic, TypeVar
+from typing import Annotated, Any, Generic, Literal, TypeVar
 
 from pydantic import (
     BaseModel,
@@ -30,6 +30,8 @@ from app.models.enums import (
 )
 
 T = TypeVar("T")
+
+SourceType = Literal["testcase", "defect", "requirement", "document"]
 
 #: 业务编号（Case ID / Bug ID / Req ID / Doc ID）的合法字符集
 BUSINESS_ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_-]*$"
@@ -162,6 +164,11 @@ SeverityField = _enum_field(Severity)
 DefectStatusField = _enum_field(DefectStatus)
 RequirementStatusField = _enum_field(RequirementStatus)
 
+
+def enum_query(enum_cls: type[Enum]) -> Any:
+    """查询参数枚举：复用入参归一化，保持 OpenAPI 枚举文档。"""
+    return Annotated[enum_cls | None, BeforeValidator(lambda v: normalize_enum(v, enum_cls))]
+
 __all__ = [
     "BUSINESS_ID_PATTERN",
     "BaseSchema",
@@ -175,5 +182,7 @@ __all__ = [
     "PriorityField",
     "RequirementStatusField",
     "SeverityField",
+    "SourceType",
+    "enum_query",
     "normalize_enum",
 ]

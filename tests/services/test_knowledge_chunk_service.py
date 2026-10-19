@@ -66,8 +66,8 @@ class TestKnowledgeChunkCreate:
                 metadata={},
             )
 
-    def test_duplicate_source_chunk_is_rejected(self, db_session) -> None:
-        from sqlalchemy.exc import IntegrityError
+    def test_duplicate_source_chunk_is_rejected_as_duplicate(self, db_session) -> None:
+        from app.core.exceptions import DuplicateError
 
         data = KnowledgeChunkCreate(
             source_type="testcase",
@@ -76,9 +76,9 @@ class TestKnowledgeChunkCreate:
             content="x",
         )
         KnowledgeChunkService.create(db_session, data=data)
-        with pytest.raises(IntegrityError):
+        with pytest.raises(DuplicateError) as exc:
             KnowledgeChunkService.create(db_session, data=data)
-        db_session.rollback()
+        assert exc.value.code == "duplicate"
 
 
 class TestEntityMapping:

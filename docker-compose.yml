@@ -16,7 +16,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ai_test_knowledge}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      # 中文全文检索所需的默认分词配置（zhparser 需另行安装镜像）
+      # 统一 UTF-8 / C locale；中文全文检索方案在 Phase 8 再定
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
     ports:
       - "${POSTGRES_PORT:-5432}:5432"

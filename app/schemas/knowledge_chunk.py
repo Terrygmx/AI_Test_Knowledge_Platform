@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import ConfigDict, Field, field_validator
 
-from app.schemas.common import BaseSchema, ORMInput
-
-SourceType = Literal["testcase", "defect", "requirement", "document"]
+from app.schemas.common import BaseSchema, ORMInput, SourceType
 
 
 class KnowledgeChunkCreate(ORMInput):

@@ -126,6 +126,22 @@ uv run pytest tests/api -q          # 只跑 API 层
 uv run ruff check .                 # 静态检查
 ```
 
+### 索引与 Embedding 探针
+
+```bash
+# 只统计将索引多少实体，不调用外部 API
+uv run python scripts/index_entities.py --dry-run
+
+# 需要真实 EMBEDDING_API_KEY；按来源重建并写入 pgvector
+uv run python scripts/index_entities.py --only testcase,defect
+
+# Phase 2.1 语义相似度探针（需要 Key）
+uv run python scripts/embedding_probe.py --pairs
+```
+
+`IndexService` 不是 HTTP 路由：索引是批量运维任务，交由脚本执行；
+`/api/v1/chunks` 只负责保存 / 查询检索单元，不在请求内生成向量。
+
 **测试不依赖 Docker**：默认用 SQLite 内存库（通过 `app/models/types.py` 的方言分流），
 因此任何机器上都能跑 TDD。要针对真实 PostgreSQL 验证时，指向专用测试库即可：
 
@@ -146,8 +162,9 @@ uv run uvicorn app.main:app --reload
 
 ## 当前状态
 
-Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
-默认 SQLite 路径 **191 passed + 1 skipped**，真实 PostgreSQL **192 passed**，全程 TDD（先红后绿）。
+Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）与 Phase 2（Chunk + Embedding + pgvector）
+核心链路已完成。默认 SQLite 路径 **229 passed + 3 skipped**，真实 PostgreSQL
+**231 passed + 1 skipped**，全程 TDD（先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
@@ -163,6 +180,9 @@ Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
 - [x] **PostgreSQL 17.11 实机验证**（`vector 0.8.7` / `pg_trgm 1.6`）
 - [x] Phase 0：`PROJECT_SCOPE.md` / `LEARNING_QUESTIONS.md`
 - [x] Phase 2：`knowledge_chunks`、Embedding 抽象、pgvector 向量检索
+- [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
+- [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py --pairs`（需 Key）
+- [ ] 真实 bge-m3 语义质量实验（需配置 `EMBEDDING_API_KEY`）
 - [ ] Phase 3：手写最小 RAG（先不上 LangChain / LlamaIndex）
 
 ### 已知取舍（需要时 revisit）
@@ -172,5 +192,7 @@ Phase 0（项目边界）与 Phase 1（FastAPI + PostgreSQL）已完成。
 | 中文全文检索 | 关键词检索走 `ILIKE`（全表扫描） | PG 内置 `to_tsvector` 对中文无效；Phase 8 再定 zhparser / pg_jieba / 应用层分词 |
 | 检索结果打分 | 不返回 `score` | 没有打分依据时不编数字（Evidence First）；Phase 9 融合后引入 |
 | 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
+| 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
+| Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

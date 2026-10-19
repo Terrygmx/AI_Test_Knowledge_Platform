@@ -11,7 +11,7 @@ from fastapi import APIRouter, status
 from app.api.deps import PaginationDep, SessionDep
 from app.models import TestCase
 from app.models.enums import CaseType, Priority
-from app.schemas.common import Page
+from app.schemas.common import Page, enum_query
 from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
 from app.services.testcase_service import TestCaseService
 
@@ -35,8 +35,8 @@ def list_testcases(
     module: str | None = None,
     sub_module: str | None = None,
     version: str | None = None,
-    priority: Priority | None = None,
-    case_type: CaseType | None = None,
+    priority: enum_query(Priority) = None,
+    case_type: enum_query(CaseType) = None,
     q: str | None = None,
 ) -> Page[TestCaseRead]:
     items, total = TestCaseService.list(

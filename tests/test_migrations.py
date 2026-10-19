@@ -126,6 +126,16 @@ class TestMigrationDrift:
         orm = _orm_tables()[table_name]
         assert migration.unique == orm.unique
 
+    def test_hnsw_index_has_stable_marker(self) -> None:
+        """PG 专属索引用注释标记，避免解析器依赖 SQL 字符串细节。"""
+        migration = (
+            Path(__file__).resolve().parents[1]
+            / "alembic"
+            / "versions"
+            / "0002_knowledge_chunks.py"
+        ).read_text(encoding="utf-8")
+        assert "hnsw: idx_knowledge_chunks_embedding_hnsw" in migration
+
 
 class TestMigrationExecutable:
     def test_upgrade_and_downgrade_roundtrip(self, tmp_path) -> None:

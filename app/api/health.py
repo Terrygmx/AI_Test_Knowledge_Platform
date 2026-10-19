@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -21,6 +22,8 @@ from app.schemas.common import BaseSchema
 logger = get_logger(__name__)
 
 router = APIRouter(tags=["health"])
+
+_llm_cache: bool | None = None
 
 
 class HealthResponse(BaseSchema):
@@ -37,11 +40,12 @@ class HealthResponse(BaseSchema):
 @router.get("/health", response_model=HealthResponse, summary="健康检查与能力自检")
 def health(session: SessionDep) -> HealthResponse:
     database = _check_database(session)
+    llm_ready = _check_llm()
     capabilities = {
         # 本地 Ollama 不需要 Key；云 API 通道需要
         "embedding": bool(settings.embedding_api_key),
         "rerank": bool(settings.rerank_api_key),
-        "llm": True,
+        "llm": llm_ready,
         # 向量检索依赖 PostgreSQL + pgvector；SQLite 默认测试路径不支持
         "vector_search": _supports_vector_search(session),
     }
@@ -67,6 +71,26 @@ def _check_database(session: SessionDep) -> bool:
 
 def _supports_vector_search(session: SessionDep) -> bool:
     return session.bind is not None and session.bind.dialect.name == "postgresql"
+
+
+def _check_llm() -> bool:
+    """探测 LLM 通道；结果缓存，避免每次 /health 都等待上游。"""
+    global _llm_cache
+    if _llm_cache is not None:
+        return _llm_cache
+    if settings.llm_provider == "openai_compatible":
+        _llm_cache = bool(settings.llm_api_key)
+        return _llm_cache
+
+    try:
+        base = settings.llm_base_url.rstrip("/")
+        # Ollama 的 OpenAI-compatible base 为 /v1，原生标签接口在根路径。
+        root = base.removesuffix("/v1")
+        response = httpx.get(f"{root}/api/tags", timeout=1.5)
+        _llm_cache = response.status_code == 200
+    except httpx.HTTPError:
+        _llm_cache = False
+    return _llm_cache
 
 
 __all__ = ["HealthResponse", "router"]

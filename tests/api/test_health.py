@@ -27,3 +27,24 @@ class TestHealth:
         resp = client.get("/health")
         assert resp.status_code == 200
         assert resp.json() is not None
+
+    def test_llm_probe_uses_cache(self, monkeypatch) -> None:
+        from app.api import health
+
+        monkeypatch.setattr(health, "_llm_cache", None)
+        monkeypatch.setattr(health.settings, "llm_provider", "openai_compatible")
+        monkeypatch.setattr(health.settings, "llm_api_key", "test-key")
+        assert health._check_llm() is True
+        assert health._check_llm() is True
+
+    def test_llm_probe_failure_is_false(self, monkeypatch) -> None:
+        from app.api import health
+
+        class FailingClient:
+            def get(self, *args, **kwargs):
+                raise health.httpx.ConnectError("offline")
+
+        monkeypatch.setattr(health, "_llm_cache", None)
+        monkeypatch.setattr(health.settings, "llm_provider", "ollama")
+        monkeypatch.setattr(health.httpx, "get", FailingClient().get)
+        assert health._check_llm() is False

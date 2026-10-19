@@ -59,7 +59,7 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 2048
     llm_timeout: int = 120
 
-    # ---------------- 检索参数 ----------------
+    # ---------------- 检索参数（Phase 9/11 起被 Hybrid / Rerank 消费）----------------
     retrieval_vector_top_k: int = 20
     retrieval_keyword_top_k: int = 20
     retrieval_fusion: Literal["rrf", "weighted"] = "rrf"

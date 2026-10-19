@@ -15,7 +15,9 @@ from typing import Annotated
 from fastapi import APIRouter, Query
 
 from app.api.deps import PaginationDep, SessionDep
-from app.models.enums import CaseType, Priority
+from app.core.exceptions import DomainError
+from app.models.enums import CaseType, DefectStatus, Priority, RequirementStatus, Severity
+from app.schemas.common import enum_query
 from app.schemas.search import SearchResponse, SourceType
 from app.services.search_service import UnifiedSearchService
 
@@ -33,17 +35,21 @@ def search(
     ] = None,
     module: str | None = None,
     version: str | None = None,
-    priority: Priority | None = None,
+    severity: enum_query(Severity) = None,
+    priority: enum_query(Priority) = None,
     status: str | None = Query(
-        default=None, description="状态，取规范值如 open / fixed / approved"
+        default=None,
+        description="缺陷或需求状态，如 open / fixed / approved，大小写不敏感",
     ),
-    case_type: Annotated[CaseType | None, Query(alias="type")] = None,
+    case_type: Annotated[enum_query(CaseType), Query(alias="type")] = None,
 ) -> SearchResponse:
+    status_value = _normalize_status(status)
     filters = {
         "module": module,
         "version": version,
+        "severity": severity.value if severity else None,
         "priority": priority.value if priority else None,
-        "status": status,
+        "status": status_value,
         "case_type": case_type.value if case_type else None,
     }
     effective = {key: value for key, value in filters.items() if value is not None}
@@ -64,6 +70,21 @@ def search(
         offset=pagination.offset,
         items=hits,
     )
+
+
+def _normalize_status(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    allowed = {member.value for member in DefectStatus} | {
+        member.value for member in RequirementStatus
+    }
+    if normalized not in allowed:
+        raise DomainError(
+            "未知状态值",
+            detail={"allowed": sorted(allowed), "value": value},
+        )
+    return normalized
 
 
 __all__ = ["router"]
