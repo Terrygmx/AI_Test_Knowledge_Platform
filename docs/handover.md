@@ -60,10 +60,10 @@ app/
 ├── schemas/     # Pydantic 请求/响应模型（入参规范化在这里做）
 ├── services/    # EntityService CRUD 基类 + 四实体服务 + UnifiedSearchService
 ├── ingestion/   # Phase 5：表格 / Markdown / PDF 解析与文档导入
-├── retrieval/   # Embedding 抽象；Phase 3+ 增加 Vector / Keyword / Hybrid Fusion
+├── retrieval/   # Embedding 抽象、Chunking、Phase 8 分词 / 倒排 / BM25
 ├── rerank/      # 空，Phase 11
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
-└── evaluation/  # Phase 6 数据集契约 + Recall@K / MRR；Phase 13 扩展 NDCG
+└── evaluation/  # 数据集契约、Recall@K / MRR、Chunking / Embedding / Lexical 实验
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
 tests/           # 通过用例以当前实测为准（SQLite 默认路径）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
@@ -111,14 +111,14 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-7-embedding`，Phase 0–7 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-8-bm25`，Phase 0–8 核心链路已完成，数据库实机验证已完成。**
 
 ### 已完成
 
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 355 passed + 7 skipped；真实 PostgreSQL 361 passed + 1 skipped）
+  （当前 SQLite 388 passed + 8 skipped；真实 PostgreSQL 395 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -171,6 +171,16 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   `results/embedding-phase7.json`
 - Phase 7 每个模型使用独立向量表，未截断 / 补零；实验表未建 HNSW，因此只比较
   语义质量与调用成本，不把 46 个 Chunk 上的精确扫描延迟当作 ANN 结论
+- Phase 8 已完成 BM25 / Lexical Search：应用层分词 + 倒排索引，ASCII 标识符 /
+  版本号整串保留，中文 unigram + bigram；`KnowledgeChunkService.lexical_search()`
+  在 SQLite / PostgreSQL 上返回 `(chunk, bm25_score, matched_terms)`。独立
+  Gold Set 上 `ILIKE` Recall@5 0.056、BM25 0.944，MRR 0.056 / 0.792；
+  `P0 BUG-1234 login-api v1.3` 在 `ILIKE` 下 0 命中、BM25 首位命中 `BUG-1234`。
+  详见 `docs/LEXICAL_SEARCH_EXPERIMENT.md`，manifest 为
+  `results/lexical-phase8.json`
+- 当前统一 `/search` 仍走 `ILIKE` 且不返回 score；Phase 8 的 BM25 是独立 Chunk
+  检索接缝，供 Phase 9 融合使用。不要在没有融合 / 归一化契约时把 BM25 score 直接
+  塞进现有 `SearchHit`
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
@@ -186,16 +196,20 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ### 未完成 / 待办（按优先级）
 
-1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 结论
+1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 / 8 结论
 2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
-3. Phase 8：BM25 / Full Text Search，重点验证中文精确编号、版本号与关键词召回
+3. Phase 9：Vector Top-K + BM25 Top-K 融合，比较 Weighted Score 与 RRF
 4. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
 
-- 中文关键词检索走 `ILIKE`（全表扫描），Phase 8 再定 zhparser / pg_jieba / 应用层分词
+- 统一 `/search` 关键词仍走 `ILIKE`；Phase 8 已新增独立 BM25 Chunk 检索，
+  但尚未替换统一 API，融合在 Phase 9
 - `tags` / `related_cases` 数组暂不支持查询过滤（PG `text[] @>` 与 SQLite 不可兼得，Phase 10 补）
-- 检索结果暂无 `score` 字段（Phase 9 融合打分后引入）
+- 统一 `/search` 暂无 `score` 字段；Chunk BM25 返回可解释分数，统一响应契约在
+  Phase 9 融合后确定
+- BM25 每次查询读取候选 Chunk 并建内存索引，只适用于当前小规模验证；大库需
+  持久化倒排表或独立搜索服务
 - CI 目前覆盖 Ruff + SQLite pytest；PostgreSQL 集成测试仍为手工执行
 
 ---
@@ -233,7 +247,8 @@ uv run alembic upgrade head               # 应用迁移
 1. `uv sync && uv run pytest` 确认默认路径测试通过（数量以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3/6/7 真实链路已完成；本机启动 OMLX 后运行
+4. Phase 2/3/6/7/8 已完成；本机启动 OMLX 后运行
    `scripts/embedding_probe.py`、`scripts/ask.py` 与
    `scripts/chunking_experiment.py --dry-run`、
-   `scripts/embedding_experiment.py --dry-run` 做复验
+   `scripts/embedding_experiment.py --dry-run`、
+   `scripts/lexical_experiment.py --dry-run` 做复验

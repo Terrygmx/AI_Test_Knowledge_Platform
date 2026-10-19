@@ -22,6 +22,7 @@ from app.core.logging import get_logger
 from app.models import KnowledgeChunk
 from app.models.types import POSTGRES
 from app.retrieval.embedding import EmbeddingClient, content_sha256
+from app.retrieval.lexical import BM25Index, LexicalDocument
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 
 logger = get_logger(__name__)
@@ -183,6 +184,52 @@ class KnowledgeChunkService:
             "向量检索完成 hits=%s distances=%s",
             len(results),
             [round(distance, 4) for _, distance in results],
+        )
+        return results
+
+    @classmethod
+    def lexical_search(
+        cls,
+        session: Session,
+        *,
+        query: str,
+        limit: int = 10,
+        source_types: Sequence[str] | None = None,
+    ) -> list[tuple[KnowledgeChunk, float, list[str]]]:
+        """按 BM25 返回 ``(chunk, score, matched_terms)``。
+
+        Phase 8 的应用层实现不依赖 PostgreSQL 扩展，SQLite 与 PostgreSQL
+        使用同一套分词和排序。每次查询从数据库读取候选 Chunk 并建内存倒排索引，
+        适用于当前小规模知识库；数据量增大后应改为持久化倒排表 / 搜索服务，
+        不能把这个实现当作大库的性能方案。
+        """
+        if limit < 1:
+            raise ValueError("limit 必须大于 0")
+        stmt = select(KnowledgeChunk)
+        if source_types:
+            stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
+        chunks = list(session.scalars(stmt.order_by(KnowledgeChunk.id)).all())
+        if not chunks:
+            return []
+
+        index = BM25Index(
+            [
+                LexicalDocument(
+                    source_type=chunk.source_type,
+                    source_id=chunk.source_id,
+                    content=chunk.content,
+                )
+                for chunk in chunks
+            ]
+        )
+        hits = index.search(query, limit=limit)
+        results: list[tuple[KnowledgeChunk, float, list[str]]] = []
+        for hit in hits:
+            results.append((chunks[hit.document_index], hit.score, hit.matched_terms))
+        logger.info(
+            "BM25 检索完成 hits=%s terms=%s",
+            len(results),
+            [terms for _, _, terms in results],
         )
         return results
 

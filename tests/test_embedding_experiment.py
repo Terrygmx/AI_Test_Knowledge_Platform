@@ -79,6 +79,11 @@ def test_chunk_length_summary_is_stable() -> None:
 
 
 def test_clear_experiment_tables_only_drops_phase7_tables(engine) -> None:
+    if engine.dialect.name == "postgresql":
+        # 真实 PG 测试库不会被进程内 fixture 销毁；先清掉前一用例留下的实验表，
+        # 否则返回值会包含本轮之外的 phase7 表，掩盖本用例真正要验证的前缀边界。
+        clear_experiment_tables(engine)
+
     metadata = MetaData()
     for name in ("phase7_embedding_old_8", "phase7_embedding_older_16", "keep_me"):
         Table(name, metadata, Column("id", Integer, primary_key=True))

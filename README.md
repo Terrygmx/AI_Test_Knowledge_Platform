@@ -156,6 +156,10 @@ uv run python scripts/ask.py "登录失败怎么测试？"
 # Phase 7 Embedding 对比（只写隔离库；dry-run 不调用模型）
 uv run python scripts/embedding_experiment.py --dry-run
 
+# Phase 8 BM25 词法检索实验（完全离线，不访问数据库 / 模型）
+uv run python scripts/lexical_experiment.py --dry-run
+uv run python scripts/lexical_experiment.py --output results/lexical-phase8.json
+
 # 真实实验；完整参数和隔离库前置条件见 docs/EMBEDDING_EXPERIMENT.md
 uv run python scripts/embedding_experiment.py \
   --database-url 'postgresql+psycopg://USER:PASSWORD@127.0.0.1:5432/aitkp_embedding'
@@ -213,11 +217,13 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）、
-Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。Phase 6 / 7
-报告分别见 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
-[`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)。默认 SQLite 路径
-**355 passed + 7 skipped**，真实 PostgreSQL **361 passed + 1 skipped**，全程 TDD
-（先红后绿）。测试数随用例增长，以本地实际输出为准。
+Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）与 Phase 8（BM25 词法检索）
+已完成。Phase 6 / 7 / 8 报告分别见
+[`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
+[`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)、
+[`docs/LEXICAL_SEARCH_EXPERIMENT.md`](docs/LEXICAL_SEARCH_EXPERIMENT.md)。
+默认 SQLite 路径 **388 passed + 8 skipped**，真实 PostgreSQL
+**395 passed + 1 skipped**，全程 TDD（先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
@@ -242,6 +248,9 @@ Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。P
   （见 `docs/CHUNKING_EXPERIMENT.md`）
 - [x] Phase 7 Embedding 实验：固定 entity+heading，对比 1024/768/384 维模型
   （见 `docs/EMBEDDING_EXPERIMENT.md`）
+- [x] Phase 8 BM25 / Lexical Search：应用层分词 + 倒排索引 + BM25，
+  对比 `ILIKE` 与 BM25，并提供 Chunk 级可解释打分接口
+  （见 `docs/LEXICAL_SEARCH_EXPERIMENT.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
 - [ ] 将 Gold Set 扩大到约 100 条人工确认 Query 后复验 Recall@K / MRR
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
@@ -254,15 +263,16 @@ Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。P
 
 | 事项 | 当前选择 | 原因 |
 |---|---|---|
-| 中文全文检索 | 关键词检索走 `ILIKE`（全表扫描） | PG 内置 `to_tsvector` 对中文无效；Phase 8 再定 zhparser / pg_jieba / 应用层分词 |
-| 检索结果打分 | 不返回 `score` | 没有打分依据时不编数字（Evidence First）；Phase 9 融合后引入 |
+| 统一 `/search` 关键词 | 仍走 `ILIKE`（原实体 API 契约） | Phase 8 先新增 Chunk 级 BM25；统一 API 的分数与融合契约留给 Phase 9 |
+| Chunk 词法检索 | 应用层分词 + BM25，查询时建内存索引 | 不依赖 zhparser / pg_jieba，SQLite / PG 同逻辑；大库需持久化倒排表 |
+| 检索结果打分 | `/search` 仍不返回 `score`；Chunk BM25 返回分数 | Phase 8 只在有明确 BM25 依据的接缝暴露分数；统一响应待 Phase 9 |
 | 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
 | 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
 | Embedding 选型 | 默认 `bge-m3-mlx-4bit`（1024 维） | Phase 7 小样本 MRR 最高；`embeddinggemma` 接近且更快，待更大 Gold Set 复验 |
 | Embedding 实验索引 | 模型独立表 + 精确距离扫描，未建 HNSW | 先隔离模型变量；46 个 Chunk 上 ANN 参数没有可解释性 |
 | 报告与 manifest | 指标由一致性测试校验，延迟以 manifest 为准 | 延迟受机器负载影响；报告中的数字必须能追溯到同一次原始结果 |
-| RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
+| RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword 已具备独立通道；Hybrid / Rerank 在 Phase 9–11 接入 |
 | RAG 拒答 | 检索为空即拒答；未引用回答统一降级；可选 `max_distance` | 阈值需真实评测集校准，默认不伪造阈值 |
 | RAG 延迟 | 实验性同步接口 + 45 秒预算（LLM 30 秒）| 默认推理模型较慢，Phase 14/20 再做性能与异步化 |
 | Citation 信号 | `citation_valid` 只表示编号合法 | 不代表 Faithfulness / Citation Accuracy，Phase 14 单独评测 |
@@ -270,6 +280,9 @@ Phase 6（Chunking 对比实验）与 Phase 7（Embedding 对比）已完成。P
 | CI 范围 | SQLite + ruff | PostgreSQL 门禁仍为手工执行 |
 | 文档导入不生成向量 | Phase 5 导入只写 Chunk，`embedding` 为空 | 批量导入不与模型服务耦合；由 `index_entities.py --only document` 增量补齐 |
 | Chunking 结论 | 当前只在 3 篇模拟文档、40 条 Query 上验证 | 语料太小，semantic / entity+heading 的优势需在更大 Gold Set 上复验 |
+| 词法检索结论 | Phase 8 只有 24 条 Query、47 个 Chunk | 足以验证编号 / 版本 / 组合关键词失败模式，不足以证明生产分布 |
+| 中文分词 | 中文 unigram + bigram，ASCII 标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
+| 不可回答 Query | BM25 在 6 条负样本上全部有结果 | 有词项交集不等于证据充分，Phase 9 不能把非空当可回答 |
 | 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
 | `/models` 健康探测 | 依赖上游实现 `GET /models` 且模型名精确匹配 | 部分 OpenAI-compatible 服务不实现该端点或返回别名，会误报不可用（探测失败会写 warning 日志） |

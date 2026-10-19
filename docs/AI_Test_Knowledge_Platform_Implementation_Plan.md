@@ -388,6 +388,10 @@ P0 BUG-1234 login-api v1.3
 
 可能更适合关键词检索，而不是 Vector Search？
 
+> 当前状态：已实现应用层分词 + 倒排索引 + BM25，SQLite / PostgreSQL 共用同一
+> 排序逻辑；在独立 Phase 8 Gold Set 上完成 `ILIKE` 与 BM25 对比。见
+> `docs/LEXICAL_SEARCH_EXPERIMENT.md` 与 `results/lexical-phase8.json`。
+
 ------------------------------------------------------------------------
 
 # Phase 9：Hybrid Search

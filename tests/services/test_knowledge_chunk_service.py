@@ -13,6 +13,66 @@ from app.services.knowledge_chunk_service import KnowledgeChunkService
 
 
 class TestKnowledgeChunkCreate:
+    def test_lexical_search_works_on_sqlite(self, db_session) -> None:
+        for index, (source_type, source_id, content) in enumerate(
+            [
+                ("defect", "BUG-1234", "P0 BUG-1234 login-api v1.3 登录接口超时"),
+                ("testcase", "TC-1", "登录接口验证码校验"),
+                ("document", "DOC-1", "支付超时后查询网关交易状态"),
+            ]
+        ):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type=source_type,
+                    source_id=source_id,
+                    chunk_index=index,
+                    content=content,
+                ),
+            )
+
+        results = KnowledgeChunkService.lexical_search(
+            db_session,
+            query="P0 BUG-1234 login-api v1.3",
+            limit=3,
+        )
+
+        assert results[0][0].source_id == "BUG-1234"
+        assert results[0][1] > 0
+        assert "bug-1234" in results[0][2]
+
+    def test_lexical_search_filters_source_types_and_limit(self, db_session) -> None:
+        for index, (source_type, source_id, content) in enumerate(
+            [
+                ("defect", "BUG-1", "登录接口超时"),
+                ("testcase", "TC-1", "登录接口超时"),
+                ("document", "DOC-1", "登录接口超时"),
+            ]
+        ):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type=source_type,
+                    source_id=source_id,
+                    chunk_index=index,
+                    content=content,
+                ),
+            )
+
+        results = KnowledgeChunkService.lexical_search(
+            db_session,
+            query="登录接口超时",
+            source_types=["testcase", "document"],
+            limit=1,
+        )
+
+        assert len(results) == 1
+        assert results[0][0].source_type in {"testcase", "document"}
+
+    def test_lexical_search_rejects_non_positive_limit(self, db_session) -> None:
+        with pytest.raises(ValueError, match="limit"):
+            KnowledgeChunkService.lexical_search(db_session, query="登录", limit=0)
+
     def test_backfill_commits_completed_batches_when_upstream_fails(self, db_session) -> None:
         """上游中途失败时已补批次不回滚，否则大批量补向量等于全或无。"""
         for index in range(4):

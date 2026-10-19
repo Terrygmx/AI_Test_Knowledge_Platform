@@ -15,6 +15,39 @@ from app.services.knowledge_chunk_service import KnowledgeChunkService
 
 
 class TestVectorSearch:
+    def test_bm25_lexical_search_returns_stable_scores_on_postgresql(
+        self, engine, db_session
+    ) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL integration check")
+
+        for index, (source_type, source_id, content) in enumerate(
+            [
+                ("defect", "BUG-1234", "P0 BUG-1234 login-api v1.3 登录接口超时"),
+                ("testcase", "TC-2001", "P1 登录接口验证码校验"),
+                ("document", "DOC-1", "支付超时后查询网关交易状态"),
+            ]
+        ):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type=source_type,
+                    source_id=source_id,
+                    chunk_index=index,
+                    content=content,
+                ),
+            )
+
+        results = KnowledgeChunkService.lexical_search(
+            db_session,
+            query="P0 BUG-1234 login-api v1.3",
+            limit=3,
+        )
+
+        assert results[0][0].source_id == "BUG-1234"
+        assert results[0][1] >= results[-1][1] > 0
+        assert "bug-1234" in results[0][2]
+
     def test_cosine_search_returns_scored_results(self, engine, db_session) -> None:
         if engine.dialect.name != "postgresql":
             pytest.skip("PostgreSQL + pgvector only")
