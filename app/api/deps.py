@@ -24,4 +24,5 @@ def _pagination(
 #: 分页查询参数
 PaginationDep = Annotated[Pagination, Depends(_pagination)]
 
+
 __all__ = ["PaginationDep", "SessionDep"]

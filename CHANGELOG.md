@@ -32,6 +32,15 @@
 - **Chunk API**：补 `GET /api/v1/chunks`、`DELETE /api/v1/chunks/{id}`；重复写入返回 409。
 - **注意**：Fake Embedding 只证明链路可运行，语义召回质量尚未验证。
 
+#### Phase 3：手写最小 RAG（2026-10-20）
+
+- **LLM 抽象**：`LLMClient` + OpenAI-compatible 实现，测试用 Fake，不引入 LangChain。
+- **Context Assembly**：按检索顺序生成 `[1] [2]` 证据块，限制单 Chunk / 总上下文字符数。
+- **Answer + Citation**：`POST /api/v1/rag/answer`；回答引用编号必须来自本次证据；
+  无检索结果时返回 `grounded=false` 与“证据不足”，且不构造 / 调用 LLM。
+- **命令行入口**：`scripts/ask.py` 支持 `--top-k` 与 `--source-type`。
+- **验证边界**：Phase 3 只做 Vector Search + TopK，Hybrid / Rerank 仍在后续 Phase。
+
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
 - **ORM 实体**（`app/models/`）：`test_cases` / `defects` / `requirements` / `documents` 四张业务实体表，

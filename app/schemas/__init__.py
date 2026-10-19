@@ -19,6 +19,7 @@ from app.schemas.common import (
 )
 from app.schemas.defect import DefectCreate, DefectRead, DefectUpdate
 from app.schemas.document import DocumentCreate, DocumentRead, DocumentUpdate
+from app.schemas.rag import Citation, RAGRequest, RAGResponse
 from app.schemas.requirement import RequirementCreate, RequirementRead, RequirementUpdate
 from app.schemas.search import SearchHit, SearchResponse, SourceType
 from app.schemas.test_case import TestCaseCreate, TestCaseRead, TestCaseUpdate
@@ -27,6 +28,7 @@ __all__ = [
     "BUSINESS_ID_PATTERN",
     "BaseSchema",
     "CaseTypeField",
+    "Citation",
     "DefectCreate",
     "DefectRead",
     "DefectStatusField",
@@ -40,6 +42,8 @@ __all__ = [
     "Page",
     "Pagination",
     "PriorityField",
+    "RAGRequest",
+    "RAGResponse",
     "RequirementCreate",
     "RequirementRead",
     "RequirementStatusField",

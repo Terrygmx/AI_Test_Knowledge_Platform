@@ -29,6 +29,7 @@ OPENAPI_TAGS = [
     {"name": "documents", "description": "文档元数据"},
     {"name": "chunks", "description": "知识检索单元"},
     {"name": "search", "description": "统一知识检索（Phase 1 最小版）"},
+    {"name": "rag", "description": "最小 RAG：回答与 Citation（Phase 3）"},
 ]
 
 

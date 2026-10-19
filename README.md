@@ -137,6 +137,9 @@ uv run python scripts/index_entities.py --only testcase,defect
 
 # Phase 2.1 语义相似度探针（需要 Key）
 uv run python scripts/embedding_probe.py --pairs
+
+# Phase 3 最小 RAG（需要 PostgreSQL + Embedding Key + 可用 LLM）
+uv run python scripts/ask.py "登录失败怎么测试？"
 ```
 
 `IndexService` 不是 HTTP 路由：索引是批量运维任务，交由脚本执行；
@@ -162,9 +165,10 @@ uv run uvicorn app.main:app --reload
 
 ## 当前状态
 
-Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）与 Phase 2（Chunk + Embedding + pgvector）
-核心链路已完成。默认 SQLite 路径 **229 passed + 3 skipped**，真实 PostgreSQL
-**231 passed + 1 skipped**，全程 TDD（先红后绿）。测试数随用例增长，以本地实际输出为准。
+Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
+pgvector）与 Phase 3（手写最小 RAG）核心链路已完成。默认 SQLite 路径
+**245 passed + 6 skipped**，真实 PostgreSQL **250 passed + 1 skipped**，全程 TDD
+（先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
 - [x] 依赖与虚拟环境（uv + Python 3.11）
@@ -183,7 +187,9 @@ Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）与 Phase 2（Chunk
 - [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
 - [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py --pairs`（需 Key）
 - [ ] 真实 bge-m3 语义质量实验（需配置 `EMBEDDING_API_KEY`）
-- [ ] Phase 3：手写最小 RAG（先不上 LangChain / LlamaIndex）
+- [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
+  - `POST /api/v1/rag/answer` 与 `scripts/ask.py`
+  - 无证据时明确拒答，不调用 LLM；回答只能引用本次检索编号
 
 ### 已知取舍（需要时 revisit）
 
@@ -194,5 +200,7 @@ Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）与 Phase 2（Chunk
 | 向量索引 | HNSW + cosine distance | 先验证召回链路；数据量增大后再对比 HNSW / IVFFlat 参数 |
 | 检索参数 | TopK / Fusion 配置暂未消费 | 在 Phase 9 / 11 接入 Hybrid / Rerank 时生效 |
 | Embedding 语义 | Fake 只验证链路 | 真实召回质量需 bge-m3 + 人工 Gold Set |
+| RAG 检索 | Phase 3 仅 Vector Search TopK | Keyword / Hybrid / Rerank 在 Phase 8–11 接入 |
+| RAG 拒答 | 检索结果为空即 `grounded=false` | 相关性阈值需真实评测集校准，暂不伪造阈值 |
 | 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

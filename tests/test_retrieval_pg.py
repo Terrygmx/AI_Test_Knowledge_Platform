@@ -8,6 +8,7 @@ from __future__ import annotations
 import pytest
 
 from app.core.exceptions import DomainError
+from app.generation.rag import INSUFFICIENT_EVIDENCE, RAGService
 from app.retrieval.embedding import FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from app.services.knowledge_chunk_service import KnowledgeChunkService
@@ -83,3 +84,49 @@ class TestVectorSearch:
                 db_session,
                 query_embedding=[0.0] * 1024,
             )
+
+    def test_rag_pipeline_returns_citation(self, engine, db_session) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        class EchoLLM:
+            def generate(self, prompt: str) -> str:
+                assert "LOGIN-001" in prompt
+                return "登录失败时应检查验证码流程。[1]"
+
+        client = FakeEmbeddingClient(dimension=1024)
+        KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="LOGIN-001",
+                content="用例编号：LOGIN-001\n标题：登录失败\n预期结果：提示错误",
+            ),
+            embedding_client=client,
+        )
+
+        result = RAGService.answer(
+            db_session,
+            question="登录失败怎么测试？",
+            embedding_client=client,
+            llm=EchoLLM(),
+        )
+        assert result.grounded is True
+        assert result.answer.endswith("[1]")
+        assert result.citations[0].source_id == "LOGIN-001"
+
+    def test_rag_without_evidence_does_not_build_llm(self, engine, db_session) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        def must_not_run():
+            raise AssertionError("无证据时不应构造 LLM")
+
+        result = RAGService.answer(
+            db_session,
+            question="没有知识的问题",
+            embedding_client=FakeEmbeddingClient(dimension=1024),
+            llm_factory=must_not_run,
+        )
+        assert result.answer == INSUFFICIENT_EVIDENCE
+        assert result.grounded is False
