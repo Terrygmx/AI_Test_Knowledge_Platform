@@ -1,0 +1,401 @@
+{
+  "phase": 9,
+  "kind": "fusion-sensitivity",
+  "started_at": "2026-10-19T21:26:04.730247+00:00",
+  "finished_at": "2026-10-19T21:26:07.221858+00:00",
+  "git_commit": "a73d96377b25eaeaf372d77dc3ba4629714feb4e",
+  "git_dirty": false,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/hybrid_sweep.py",
+    "--database-url",
+    "postgresql+psycopg://postgres:***@127.0.0.1:5432/aitkp_hybrid",
+    "--output",
+    "/tmp/hybrid-sweep-phase9-final2.json"
+  ],
+  "dataset_path": "eval/fixtures/phase8_simulated.json",
+  "database_name": "aitkp_hybrid",
+  "chunks": {
+    "count": 47,
+    "sha256": "a90ac870bee23ce8ae0647dc4582273041d5a8a9485f0f6450ff02346a42e8a3"
+  },
+  "environment": {
+    "embedding_base_url": "http://127.0.0.1:28080/v1",
+    "embedding_model": "bge-m3-mlx-4bit",
+    "embedding_dimension": 1024,
+    "embedding_batch_size": 32,
+    "embedding_timeout_seconds": 60.0,
+    "embedding_max_retries": 2
+  },
+  "embedding_service": {
+    "model_metadata": {
+      "status": "available",
+      "models": {
+        "bge-m3-mlx-4bit": {
+          "object": "model",
+          "created": 1792445166,
+          "owned_by": "omlx",
+          "max_model_len": 8194
+        }
+      },
+      "missing_models": []
+    }
+  },
+  "retrieval": {
+    "candidate_k": 20,
+    "top_k": 10,
+    "weights": [
+      [
+        1.0,
+        1.0
+      ],
+      [
+        2.0,
+        1.0
+      ],
+      [
+        1.0,
+        2.0
+      ],
+      [
+        3.0,
+        1.0
+      ],
+      [
+        1.0,
+        3.0
+      ]
+    ],
+    "rrf_k_values": [
+      10,
+      20,
+      40,
+      60,
+      100
+    ]
+  },
+  "index_seconds": 1.0808881249977276,
+  "query_embedding_seconds": 0.6326753750036005,
+  "dataset": {
+    "path": "eval/fixtures/phase8_simulated.json",
+    "sha256": "da92624f5f287fcc83943fb68ebc6d969d6d71b35e5b519215c687606e996150",
+    "queries": 24
+  },
+  "results": [
+    {
+      "strategy": "weighted",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7638888888888888,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.005573750007897615
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0037008749932283536
+    },
+    {
+      "strategy": "weighted",
+      "vector_weight": 2.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7518518518518519,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.002318040991667658
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 2.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7962962962962963,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0021198330068727955
+    },
+    {
+      "strategy": "weighted",
+      "vector_weight": 1.0,
+      "keyword_weight": 2.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7731481481481483,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0023398330085910857
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 2.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.8101851851851851,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0020184169989079237
+    },
+    {
+      "strategy": "weighted",
+      "vector_weight": 3.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7361111111111112,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.001916915993206203
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 3.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7962962962962963,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0019178749935235828
+    },
+    {
+      "strategy": "weighted",
+      "vector_weight": 1.0,
+      "keyword_weight": 3.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7731481481481483,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0020573749934555963
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 3.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7824074074074073,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0020372500002849847
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 10,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7962962962962963,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0032800829940242693
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 20,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.002015999998548068
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 40,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0020457500068005174
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 60,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0030799590022070333
+    },
+    {
+      "strategy": "rrf",
+      "vector_weight": 1.0,
+      "keyword_weight": 1.0,
+      "rrf_k": 100,
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p95_seconds": 0.0019904170039808378
+    }
+  ]
+}

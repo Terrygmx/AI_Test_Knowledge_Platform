@@ -1,0 +1,155 @@
+{
+  "phase": 9,
+  "started_at": "2026-10-19T21:26:01.568618+00:00",
+  "finished_at": "2026-10-19T21:26:03.991444+00:00",
+  "git_commit": "a73d96377b25eaeaf372d77dc3ba4629714feb4e",
+  "git_dirty": false,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/hybrid_experiment.py",
+    "--database-url",
+    "postgresql+psycopg://postgres:***@127.0.0.1:5432/aitkp_hybrid",
+    "--output",
+    "/tmp/hybrid-phase9-final2.json"
+  ],
+  "dataset": {
+    "path": "eval/fixtures/phase8_simulated.json",
+    "sha256": "da92624f5f287fcc83943fb68ebc6d969d6d71b35e5b519215c687606e996150",
+    "queries": 24,
+    "answerable": 18,
+    "unanswerable": 6
+  },
+  "chunks": {
+    "count": 47,
+    "sha256": "a90ac870bee23ce8ae0647dc4582273041d5a8a9485f0f6450ff02346a42e8a3",
+    "strategy": "entity+heading"
+  },
+  "environment": {
+    "database_name": "aitkp_hybrid",
+    "embedding_base_url": "http://127.0.0.1:28080/v1",
+    "embedding_model": "bge-m3-mlx-4bit",
+    "embedding_dimension": 1024,
+    "embedding_batch_size": 32,
+    "embedding_timeout_seconds": 60.0,
+    "embedding_max_retries": 2
+  },
+  "embedding_service": {
+    "model_metadata": {
+      "status": "available",
+      "models": {
+        "bge-m3-mlx-4bit": {
+          "object": "model",
+          "created": 1792445163,
+          "owned_by": "omlx",
+          "max_model_len": 8194
+        }
+      },
+      "missing_models": []
+    }
+  },
+  "retrieval": {
+    "candidate_k": 20,
+    "top_k": 10,
+    "fusion": "rrf",
+    "vector_weight": 1.0,
+    "keyword_weight": 1.0,
+    "rrf_k": 60,
+    "normalization": "per-channel-min-max"
+  },
+  "index_seconds": 1.6029285420081578,
+  "query_embedding_seconds": 0.55076154100243,
+  "results": [
+    {
+      "name": "vector",
+      "strategy": "vector",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.2801689720103422,
+        "unanswerable_top1_distance_median": 0.3841240589581686,
+        "mrr": 0.7476851851851851,
+        "recall@5": 0.9166666666666666,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 23,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p50_seconds": 0.0021499580034287646,
+      "query_p95_seconds": 0.0033269580017076805,
+      "vector_candidate_hits": 480,
+      "keyword_candidate_hits": 0,
+      "fused_candidates": 240
+    },
+    {
+      "name": "keyword",
+      "strategy": "keyword",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7916666666666666,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p50_seconds": 9.495799895375967e-05,
+      "query_p95_seconds": 0.0002076660020975396,
+      "vector_candidate_hits": 0,
+      "keyword_candidate_hits": 395,
+      "fused_candidates": 213
+    },
+    {
+      "name": "weighted",
+      "strategy": "weighted",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7638888888888888,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p50_seconds": 0.0018702499946812168,
+      "query_p95_seconds": 0.002929374997620471,
+      "vector_candidate_hits": 480,
+      "keyword_candidate_hits": 395,
+      "fused_candidates": 240
+    },
+    {
+      "name": "rrf",
+      "strategy": "rrf",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7935185185185186,
+        "recall@5": 0.9722222222222222,
+        "recall@10": 0.9722222222222222,
+        "recall@5_hits": 25,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26
+      },
+      "query_p50_seconds": 0.0018287920102011412,
+      "query_p95_seconds": 0.004568375006783754,
+      "vector_candidate_hits": 480,
+      "keyword_candidate_hits": 395,
+      "fused_candidates": 240
+    }
+  ]
+}
