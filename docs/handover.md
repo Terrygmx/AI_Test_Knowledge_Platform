@@ -63,9 +63,9 @@ app/
 ├── retrieval/   # Embedding 抽象；Phase 3+ 增加 Vector / Keyword / Hybrid Fusion
 ├── rerank/      # 空，Phase 11
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
-└── evaluation/  # 空，Phase 13（Recall@K / MRR / NDCG）
+└── evaluation/  # Phase 6 数据集契约 + Recall@K / MRR；Phase 13 扩展 NDCG
 alembic/         # 迁移脚本（versions/0001_initial_schema.py）
-tests/           # 292 个用例（api / services / models / schemas / types / exceptions / migrations / ingestion）
+tests/           # 339 个通过用例（SQLite 默认路径）
 eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
 scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upgrade head
 ```
@@ -111,14 +111,14 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-3-llm`，Phase 0–5 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-6-chunking`，Phase 0–6 核心链路已完成，数据库实机验证已完成。**
 
 ### 已完成
 
 - Phase 0 完成：`PROJECT_SCOPE.md`（边界 / 非目标 / 指标）与 `LEARNING_QUESTIONS.md`
 - Phase 0 之前的全部基础：目录骨架、依赖（uv + Python 3.11）、配置层、数据访问层、日志
 - **Phase 1（FastAPI + PostgreSQL）全部完成，全程 TDD（先红后绿）**
-  （当前 SQLite 309 passed + 6 skipped；真实 PostgreSQL 314 passed + 1 skipped）
+  （当前 SQLite 339 passed + 6 skipped；真实 PostgreSQL 344 passed + 1 skipped）
   - ORM 四实体表（`test_cases` / `defects` / `requirements` / `documents`）+ 索引
   - Pydantic Schema（受控词表 + 入参规范化 + `to_orm_dict(mode="json")`）
   - 服务层：`EntityService` 基类（CRUD + 等值过滤 + 关键词 ILIKE + 分页）、四实体服务、
@@ -152,6 +152,11 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   KnowledgeChunk 边界与完整 Metadata 映射；详见 `docs/PHASE4_KNOWLEDGE_MODEL.md`
 - Phase 5 已完成数据接入：CSV / Excel 幂等导入、Markdown 标题树与文档 Chunk、
   普通文本 PDF；详见 `docs/PHASE5_INGESTION.md`
+- Phase 6 已完成 Chunking 对比实验：固定 256/512/800/1200、Semantic 与
+  entity / heading-section 六种策略；Gold Set 按来源和原文证据标注，
+  数据与 manifest 可复跑；详见 `docs/CHUNKING_EXPERIMENT.md`
+- Phase 6 实测结论只覆盖 3 篇模拟文档、40 条 Query：semantic 与 entity 的 MRR
+  更高，但不可回答 Query 仍全部在 Top-10 有结果，不能把 Top-K 非空当作证据充分
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
@@ -167,9 +172,9 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ### 未完成 / 待办（按优先级）
 
-1. `eval/` 评测数据集（目标约 100 条人工确认 Query，Phase 12）
-2. Phase 13 检索指标：Recall@K / Precision@K / MRR，先建立人工 Gold Set 基线
-3. Phase 6 Chunking 实验：固定长度 / 语义 / 实体级 Chunk 对比
+1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 结论
+2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
+3. Phase 7 Embedding 对比：固定当前 Chunking 基线，分别比较模型与延迟
 4. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
@@ -211,8 +216,9 @@ uv run alembic upgrade head               # 应用迁移
 
 ## 8. 给接手 agent 的第一步建议
 
-1. `uv sync && uv run pytest` 确认默认路径 309 passed + 6 skipped（以实际输出为准）
+1. `uv sync && uv run pytest` 确认默认路径 339 passed + 6 skipped（以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3 真实链路已完成；本机启动 OMLX 后运行
-   `scripts/embedding_probe.py` 与 `scripts/ask.py` 做真实链路验证
+4. Phase 2/3/6 真实链路已完成；本机启动 OMLX 后运行
+   `scripts/embedding_probe.py`、`scripts/ask.py` 与
+   `scripts/chunking_experiment.py --dry-run` 做复验

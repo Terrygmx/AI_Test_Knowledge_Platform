@@ -6,6 +6,25 @@
 
 ### Added
 
+#### Phase 6：Chunking 对比实验（2026-10-20）
+
+- **数据集契约**：新增 `eval/fixtures/phase6_simulated.json`，包含 12 条 TestCase、
+  5 条 Defect、5 条 Requirement、3 篇 Markdown 文档和 40 条 Query（34 可回答 /
+  6 不可回答）；Gold Set 以来源与原文证据标注，不绑定 Chunk ID。
+- **切分实现**：新增 `FixedChunker` 与 `SemanticChunker`；固定策略支持句子 / 段落
+  边界和 overlap 64，Semantic 在 Markdown 章节内部按相邻窗口低相似度切分，
+  保留标题作为章节锚点，不产生单独标题 Chunk。
+- **评测指标**：新增 Recall@5 / Recall@10、MRR、不可回答误召回率、top1 distance
+  统计与数据集 SHA-256 规范化。
+- **实验编排**：新增 `scripts/chunking_experiment.py`，支持 6 种策略、隔离库保护、
+  pgvector 检查、JSON manifest 输出；默认 `--dry-run`，只允许写入名称包含
+  `chunking` 的数据库。
+- **真实结果**：在 `aitkp_chunking` + OMLX `bge-m3-mlx-4bit` 上完成实验；
+  semantic Recall@5 0.975 / MRR 0.919，entity Recall@5 0.966 / MRR 0.919；
+  详见 `docs/CHUNKING_EXPERIMENT.md`。
+- **边界记录**：固定 1200 在 3 篇短文档上与 fixed-800 完全相同；不可回答 Query
+  全部在 Top-10 有结果，说明“检索非空不等于证据充分”，未据此伪造生产阈值。
+
 #### Phase 0：项目边界（2026-10-19）
 
 - 新增 `docs/PROJECT_SCOPE.md`：明确问题、用户、数据、MVP 用例、非目标、成功指标与

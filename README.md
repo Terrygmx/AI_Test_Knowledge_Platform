@@ -203,9 +203,10 @@ uv run uvicorn app.main:app --reload
 ## 当前状态
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
-pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）与 Phase 5（数据接入）
-已完成。默认 SQLite 路径 **309 passed + 6 skipped**，真实 PostgreSQL
-**314 passed + 1 skipped**，全程 TDD
+pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）
+与 Phase 6（Chunking 对比实验）已完成，Phase 6 报告见
+[`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)。默认 SQLite 路径
+**339 passed + 6 skipped**，真实 PostgreSQL **344 passed + 1 skipped**，全程 TDD
 （先红后绿）。测试数随用例增长，以本地实际输出为准。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -227,6 +228,8 @@ pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）与
 - [x] 索引入口：`uv run python scripts/index_entities.py --dry-run`
 - [x] 真实 Embedding 探针：`uv run python scripts/embedding_probe.py`（默认 OMLX）
 - [x] Phase 5 数据接入：CSV / Excel / Markdown / PDF + `scripts/ingest.py`
+- [x] Phase 6 Chunking 实验：固定窗口 / 语义 / 实体级对比 + Gold Set 指标
+  （见 `docs/CHUNKING_EXPERIMENT.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
 - [x] 本机 OMLX bge-m3 链路实验（见 `docs/EMBEDDING_EXPERIMENT.md`）
 - [ ] 人工 Gold Set 上的 Recall@K / MRR 语义质量评测
@@ -252,6 +255,8 @@ pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）与
 | Chunk 索引状态 | `GET /chunks?has_embedding=false` + `/health.metrics` | 无向量 Chunk 不会参与向量检索，必须可排查 |
 | CI 范围 | SQLite + ruff | PostgreSQL 门禁仍为手工执行 |
 | 文档导入不生成向量 | Phase 5 导入只写 Chunk，`embedding` 为空 | 批量导入不与模型服务耦合；由 `index_entities.py --only document` 增量补齐 |
+| Chunking 结论 | 当前只在 3 篇模拟文档、40 条 Query 上验证 | 语料太小，semantic / entity 的优势需在更大 Gold Set 上复验 |
+| 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
 | `/models` 健康探测 | 依赖上游实现 `GET /models` 且模型名精确匹配 | 部分 OpenAI-compatible 服务不实现该端点或返回别名，会误报不可用（探测失败会写 warning 日志） |
 | Rerank 能力位 | `capabilities.rerank` 只表示已配置 Key | Rerank 在 Phase 11 才接入，未做真实可用性探测 |
