@@ -76,8 +76,9 @@ Gold Set 上的 Recall@K / MRR。
   `reasoning_content`，相同问题也可能因推理长度不同而波动。
 - 请求预算：`RAG_REQUEST_TIMEOUT=45` 秒 / `LLM_TIMEOUT=30` 秒（配置层强制
   `LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT`）。到点返回的 503 只是**放弃等待**，
-  底层生成任务仍在跑，会继续占用一个工作线程直到 `LLM_TIMEOUT`；
-  并发超过 `RAG_MAX_CONCURRENCY` 时立即返回 503。真正的解法是异步化（Phase 14/20）。
+  底层生成任务仍在跑；后台是守护线程 + 自带会话，因此请求会话是干净的，
+  但工作线程会继续占用到 `LLM_TIMEOUT`。并发超过 `RAG_MAX_CONCURRENCY` 时
+  立即返回 429 `rag_overloaded`。真正的解法是异步化（Phase 14/20）。
 - 本次只验证链路正确性，不代表 Faithfulness / Citation Accuracy 已达到目标。
 - `citation_valid` 仍只表示引用编号合法，不表示答案内容忠实于证据。
 - `max_distance` 仍需在人工 Gold Set 上校准，不能把本次 `0.2` 当作生产阈值。

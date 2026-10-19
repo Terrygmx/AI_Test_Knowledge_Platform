@@ -6,13 +6,92 @@ import pytest
 
 from app.core.exceptions import DomainError
 from app.models import Defect, Document, Requirement, TestCase
-from app.retrieval.embedding import FakeEmbeddingClient
+from app.retrieval.embedding import EmbeddingError, FakeEmbeddingClient
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from app.services.index_service import IndexService, case_to_chunk
 from app.services.knowledge_chunk_service import KnowledgeChunkService
 
 
 class TestKnowledgeChunkCreate:
+    def test_backfill_commits_completed_batches_when_upstream_fails(self, db_session) -> None:
+        """上游中途失败时已补批次不回滚，否则大批量补向量等于全或无。"""
+        for index in range(4):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type="document",
+                    source_id="BF-1",
+                    chunk_index=index,
+                    content=f"第 {index} 段正文",
+                ),
+            )
+
+        calls: list[int] = []
+
+        class FlakyEmbeddingClient:
+            """第二批失败：前两批必须已经落库。"""
+
+            dimension = 1024
+
+            def embed_texts(self, texts):
+                calls.append(len(texts))
+                if len(calls) > 1:
+                    raise EmbeddingError("模拟第二批上游失败")
+                return [FakeEmbeddingClient(dimension=1024).embed_query(text) for text in texts]
+
+            def embed_query(self, text):
+                return FakeEmbeddingClient(dimension=1024).embed_query(text)
+
+        with pytest.raises(EmbeddingError, match="第二批"):
+            KnowledgeChunkService.backfill_embeddings(
+                db_session,
+                embedding_client=FlakyEmbeddingClient(),
+                source_types=["document"],
+                batch_size=2,
+            )
+
+        assert calls == [2, 2]
+        assert KnowledgeChunkService.count_without_embedding(db_session) == 2
+
+    def test_reembed_chunks_refreshes_existing_vectors(self, db_session) -> None:
+        """切分策略 / 模型变更后必须有显式重算入口，而不只是补空缺。"""
+        chunk = KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="document",
+                source_id="BF-2",
+                content="旧正文",
+            ),
+            embedding_client=FakeEmbeddingClient(dimension=1024),
+        )
+        original = list(chunk.embedding or [])
+
+        class SaltedFakeEmbeddingClient:
+            """同一个 Fake 但带盐：模拟「换了模型 / 换了切分后重算」。"""
+
+            dimension = 1024
+
+            def embed_texts(self, texts):
+                return [self.embed_query(text) for text in texts]
+
+            def embed_query(self, text):
+                return FakeEmbeddingClient(dimension=1024).embed_query(f"v2::{text}")
+
+        written = KnowledgeChunkService.reembed_chunks(
+            db_session,
+            embedding_client=SaltedFakeEmbeddingClient(),
+            source_types=["document"],
+        )
+
+        assert written == 1
+        assert list(chunk.embedding or []) != original
+        # 补向量入口只补空缺，重算入口才刷新已有向量
+        assert KnowledgeChunkService.backfill_embeddings(
+            db_session,
+            embedding_client=FakeEmbeddingClient(dimension=1024),
+            source_types=["document"],
+        ) == 0
+
     def test_create_without_embedding_computes_hash(self, db_session) -> None:
         chunk = KnowledgeChunkService.create(
             db_session,

@@ -5,15 +5,19 @@
     uv run python scripts/index_entities.py --dry-run
     uv run python scripts/index_entities.py
     uv run python scripts/index_entities.py --only testcase,defect
+    uv run python scripts/index_entities.py --only document            # 只补向量
+    uv run python scripts/index_entities.py --only document --rebuild  # 强制重算
 
 设计取舍：
 
 - 默认使用真实 Embedding（需要 EMBEDDING_API_KEY）；不使用 Fake，避免把测试向量写入知识库；
 - 重建时按来源删除旧 Chunk 再写入，保证重复执行不会触发唯一约束；
 - ``--dry-run`` 只统计将索引的实体数量，不调用 Embedding、不写数据库；
-- ``document`` 不重建 Chunk：正文由 Phase 5 的 ``ImportService`` / 表格导入切分，
-  本脚本只给 ``embedding IS NULL`` 的现有 document Chunk **补向量**（增量）。
-- ``--only document`` 是补向量语义；``--only testcase,defect,requirement`` 是重建语义。
+- ``document`` 默认不重建 Chunk：正文由 Phase 5 的 ``ImportService`` / 表格导入切分，
+  本脚本只给 ``embedding IS NULL`` 的现有 document Chunk **补向量**（增量）；
+- ``--rebuild`` 让 document 也走「重算全部向量」：切分策略或 Embedding 模型变更后需要
+  （Phase 6 Chunking 实验会调整切分，旧向量不会被增量补向量刷新）；
+- 向量按 ``EMBEDDING_BATCH_SIZE`` 分批提交，上游中途失败时已完成批次保留。
 """
 
 from __future__ import annotations
@@ -86,24 +90,46 @@ def _stats(items: Sequence[KnowledgeChunkCreate]) -> IndexStats:
     return stats
 
 
-def rebuild(session: Session, *, only: set[str], dry_run: bool) -> IndexStats:
+def _count_documents(session: Session, *, rebuild: bool) -> int:
+    """document 模式下的预期数量：补向量只数空缺，重算则数全部。"""
+    if rebuild:
+        chunks = list(
+            session.scalars(
+                select(KnowledgeChunk).where(KnowledgeChunk.source_type == "document")
+            ).all()
+        )
+        # 与 reembed_chunks 一致：空白正文无法生成向量，不计入
+        return len([chunk for chunk in chunks if chunk.content.strip()])
+    return KnowledgeChunkService.count_without_embedding(session, source_type="document")
+
+
+def rebuild(
+    session: Session,
+    *,
+    only: set[str],
+    dry_run: bool,
+    rebuild_all: bool = False,
+) -> IndexStats:
     rebuild_types = only & _REBUILD_TYPES
     items = _collect(session, rebuild_types)
     stats = _stats(items)
-    stats.document = (
-        KnowledgeChunkService.count_without_embedding(session, source_type="document")
-        if "document" in only
-        else 0
-    )
+    stats.document = _count_documents(session, rebuild=rebuild_all) if "document" in only else 0
     if dry_run:
         return stats
 
     if "document" in only:
-        stats.document = KnowledgeChunkService.backfill_embeddings(
-            session,
-            embedding_client=get_embedding_client(),
-            source_types=["document"],
-        )
+        if rebuild_all:
+            stats.document = KnowledgeChunkService.reembed_chunks(
+                session,
+                embedding_client=get_embedding_client(),
+                source_types=["document"],
+            )
+        else:
+            stats.document = KnowledgeChunkService.backfill_embeddings(
+                session,
+                embedding_client=get_embedding_client(),
+                source_types=["document"],
+            )
 
     if not items:
         if rebuild_types:
@@ -131,15 +157,22 @@ def main() -> None:
         "--only",
         help=(
             "只处理指定来源，逗号分隔：testcase,defect,requirement,document；"
-            "document 为补齐向量，其余为按实体重建"
+            "document 为补向量，其余为按实体重建"
         ),
+    )
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="document 也重算全部向量（默认只补 embedding 为空的 Chunk）",
     )
     parser.add_argument("--dry-run", action="store_true", help="只统计，不调用 Embedding / 写库")
     args = parser.parse_args()
 
     only = _parse_only(args.only)
     with SessionLocal() as session:
-        stats = rebuild(session, only=only, dry_run=args.dry_run)
+        stats = rebuild(
+            session, only=only, dry_run=args.dry_run, rebuild_all=args.rebuild
+        )
 
     action = "将索引" if args.dry_run else "已索引"
     print(

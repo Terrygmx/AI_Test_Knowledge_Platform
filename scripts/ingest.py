@@ -101,6 +101,12 @@ def main() -> None:
             f"导入完成：{action} document={result.document_id} "
             f"sections={result.section_count}"
         )
+        if result.section_count == 0:
+            print(
+                "注意：该文档没有解析出任何正文，已保留原有 Document 与 Chunk；"
+                "请确认源文件是否为空或格式不受支持"
+            )
+            return
         _print_embedding_tips(result.indexed_chunks_replaced)
 
 

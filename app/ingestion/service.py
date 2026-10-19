@@ -102,11 +102,12 @@ class ImportService:
                     "section_count": len(parsed.sections),
                 },
             }
+            has_content = bool(parsed.sections)
             if existing is None:
                 data = DocumentCreate.model_validate(payload)
                 DocumentService.create(session, data=data.to_orm_dict())
                 created = True
-            else:
+            elif has_content:
                 update_payload = {key: value for key, value in payload.items() if key != "doc_id"}
                 data = DocumentUpdate.model_validate(update_payload)
                 DocumentService.update(
@@ -115,18 +116,11 @@ class ImportService:
                     data=data.to_orm_dict(exclude_unset=True),
                 )
                 created = False
+            else:
+                # 空解析结果不是一次有效更新：若覆盖元数据，title/version/path 会被
+                # 清空或改回 fallback，和「保留旧 Chunk」产生互相矛盾的状态。
+                created = False
 
-            # 新 Chunk 的 embedding 为 None；旧 Chunk 若已完成向量化，替换会让文档
-            # 重新变成检索不可见。这里计数并返回，由调用方（CLI）明确提示补救入口。
-            indexed_before = (
-                KnowledgeChunkService.count_with_embedding(session, source_id=doc_id)
-            )
-            session.execute(
-                delete(KnowledgeChunk).where(
-                    KnowledgeChunk.source_type == "document",
-                    KnowledgeChunk.source_id == doc_id,
-                )
-            )
             chunks = [
                 KnowledgeChunk(
                     source_type="document",
@@ -144,14 +138,36 @@ class ImportService:
                 )
                 for index, section in enumerate(parsed.sections)
             ]
-            session.add_all(chunks)
-            session.commit()
-            if indexed_before:
+            # 空文档（0 Section）不能等价于「清空索引」：导入空文件 / 空文本 PDF 时
+            # 删掉旧 Chunk 会让文档凭空变得检索不可见，且没有任何报错。
+            # 此时 Document 元数据与 Chunk 都保持原状，并如实报告「没有发生替换」。
+            indexed_before = 0
+            if chunks:
+                # 新 Chunk 的 embedding 为 None；旧 Chunk 若已完成向量化，替换会让
+                # 文档重新变成检索不可见。这里计数并返回，由调用方（CLI）提示补救入口。
+                indexed_before = KnowledgeChunkService.count_with_embedding(
+                    session, source_id=doc_id
+                )
+                session.execute(
+                    delete(KnowledgeChunk).where(
+                        KnowledgeChunk.source_type == "document",
+                        KnowledgeChunk.source_id == doc_id,
+                    )
+                )
+                session.add_all(chunks)
+                session.commit()
+                if indexed_before:
+                    logger.warning(
+                        "重复导入替换了已向量化的 Chunk：doc_id=%s chunks=%s，"
+                        "需重新执行 scripts/index_entities.py --only document 补向量",
+                        doc_id,
+                        indexed_before,
+                    )
+            else:
+                session.commit()
                 logger.warning(
-                    "重复导入替换了已向量化的 Chunk：doc_id=%s chunks=%s，"
-                    "需重新执行 scripts/index_entities.py --only document 补向量",
+                    "文档没有可导入的正文：doc_id=%s，保留已有 Document 与 Chunk（未修改）",
                     doc_id,
-                    indexed_before,
                 )
         except DomainError:
             session.rollback()

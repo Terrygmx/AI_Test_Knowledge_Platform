@@ -18,10 +18,17 @@ class DomainError(Exception):
     code: str = "domain_error"
     http_status: int = 400
 
-    def __init__(self, message: str, *, detail: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        detail: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(message)
         self.message = message
         self.detail: dict[str, Any] = detail or {}
+        self.headers = headers or {}
 
 
 class NotFoundError(DomainError):

@@ -40,6 +40,7 @@ def _respond(
     code: str,
     message: str,
     detail: Any | None = None,
+    headers: dict[str, str] | None = None,
 ) -> JSONResponse:
     payload = ErrorResponse(
         error={
@@ -49,7 +50,11 @@ def _respond(
             "detail": detail,
         }
     )
-    return JSONResponse(status_code=status_code, content=payload.model_dump(mode="json"))
+    return JSONResponse(
+        status_code=status_code,
+        content=payload.model_dump(mode="json"),
+        headers=headers,
+    )
 
 
 def register_exception_handlers(app: FastAPI) -> None:
@@ -57,7 +62,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(DomainError)
     async def _domain_error(request: Request, exc: DomainError) -> JSONResponse:
-        return _respond(request, exc.http_status, exc.code, exc.message, exc.detail or None)
+        return _respond(
+            request,
+            exc.http_status,
+            exc.code,
+            exc.message,
+            exc.detail or None,
+            headers=exc.headers,
+        )
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:

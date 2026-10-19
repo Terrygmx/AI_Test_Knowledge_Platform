@@ -10,12 +10,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.exceptions import DomainError, DuplicateError, NotFoundError
 from app.core.logging import get_logger
 from app.models import KnowledgeChunk
@@ -192,29 +193,146 @@ class KnowledgeChunkService:
         *,
         embedding_client: EmbeddingClient,
         source_types: Sequence[str] | None = None,
+        batch_size: int | None = None,
     ) -> int:
         """给缺向量的 Chunk 补齐 Embedding（原地更新，不重建正文）。
 
         Phase 5 的文档导入刻意不调用 Embedding（避免大批量导入与模型服务耦合），
         因此 document Chunk 入库时向量为空。这里是补救入口：不重新切分正文，
         只补向量，否则这部分知识永远进不了向量检索。
+
+        按 ``batch_size``（默认 ``EMBEDDING_BATCH_SIZE``）分批提交：上游在第 N 批
+        失败时，已成功的批次仍然保留，不必重跑全部。异常照常抛出，
+        调用方据此知道「补到一半」，返回值是实际写入的条数。
         """
-        stmt = select(KnowledgeChunk).where(KnowledgeChunk.embedding.is_(None))
+        return cls._embed_in_batches(
+            session=session,
+            embedding_client=embedding_client,
+            batch_size=batch_size,
+            action="补齐向量",
+            detail={"source_types": list(source_types or [])},
+            load_batch=lambda after_id, size: cls._load_missing_embedding_batch(
+                session,
+                after_id=after_id,
+                size=size,
+                source_types=source_types,
+            ),
+        )
+
+    @classmethod
+    def reembed_chunks(
+        cls,
+        session: Session,
+        *,
+        embedding_client: EmbeddingClient,
+        source_types: Sequence[str],
+        batch_size: int | None = None,
+    ) -> int:
+        """强制重算指定来源的全部向量（含已有向量的 Chunk）。
+
+        切分策略或 Embedding 模型变更后，``backfill_embeddings`` 只补空缺，
+        旧向量不会被刷新；这个入口用于显式重建（Phase 6 Chunking 实验需要）。
+        """
+        return cls._embed_in_batches(
+            session=session,
+            embedding_client=embedding_client,
+            batch_size=batch_size,
+            action="重算向量",
+            detail={"source_types": list(source_types)},
+            load_batch=lambda after_id, size: cls._load_source_batch(
+                session,
+                after_id=after_id,
+                size=size,
+                source_types=source_types,
+            ),
+        )
+
+    @classmethod
+    def _embed_in_batches(
+        cls,
+        session: Session,
+        *,
+        embedding_client: EmbeddingClient,
+        batch_size: int | None,
+        action: str,
+        detail: dict[str, object],
+        load_batch: Callable[[int, int], Sequence[KnowledgeChunk]],
+    ) -> int:
+        """分批生成向量并逐批提交。
+
+        逐批提交是刻意的：一次性 commit 时上游在第 N 批失败会让前面已算出的
+        向量一起回滚，大批量补向量就变成「要么全成功要么全无」。
+        ``load_batch`` 同时负责分页，避免一次性把全部 Chunk 读进内存。
+        """
+        size = max(batch_size or settings.embedding_batch_size, 1)
+        written = 0
+        after_id = 0
+        while True:
+            chunks = list(load_batch(after_id, size))
+            if not chunks:
+                break
+            after_id = chunks[-1].id
+
+            # 空白正文无法生成向量（上游会拒绝），跳过而不是让整批失败
+            batch = [chunk for chunk in chunks if chunk.content.strip()]
+            if not batch:
+                continue
+
+            vectors = embedding_client.embed_texts([chunk.content for chunk in batch])
+            try:
+                for chunk, vector in zip(batch, vectors, strict=True):
+                    cls._validate_dimension(vector, cls.embedding_dimension)
+                    chunk.embedding = vector
+                cls._commit(session)
+            except Exception:
+                # 已提交的批次保留；当前失败批次的脏对象不能泄漏到调用方的后续事务
+                session.rollback()
+                raise
+
+            written += len(batch)
+            logger.info("%s进度 written=%s detail=%s", action, written, detail)
+        return written
+
+    @classmethod
+    def _load_missing_embedding_batch(
+        cls,
+        session: Session,
+        *,
+        after_id: int,
+        size: int,
+        source_types: Sequence[str] | None,
+    ) -> Sequence[KnowledgeChunk]:
+        """按主键游标读取一批缺向量 Chunk，避免 OFFSET 随进度变慢。"""
+        stmt = (
+            select(KnowledgeChunk)
+            .where(KnowledgeChunk.id > after_id, KnowledgeChunk.embedding.is_(None))
+            .order_by(KnowledgeChunk.id)
+            .limit(size)
+        )
         if source_types:
             stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
-        chunks = list(session.scalars(stmt).all())
-        # 空白正文无法生成向量（上游会拒绝），跳过而不是让整批补向量失败
-        chunks = [chunk for chunk in chunks if chunk.content.strip()]
-        if not chunks:
-            return 0
+        return session.scalars(stmt).all()
 
-        vectors = embedding_client.embed_texts([chunk.content for chunk in chunks])
-        for chunk, vector in zip(chunks, vectors, strict=True):
-            cls._validate_dimension(vector, cls.embedding_dimension)
-            chunk.embedding = vector
-        cls._commit(session)
-        logger.info("补齐向量 chunks=%s source_types=%s", len(chunks), source_types)
-        return len(chunks)
+    @classmethod
+    def _load_source_batch(
+        cls,
+        session: Session,
+        *,
+        after_id: int,
+        size: int,
+        source_types: Sequence[str],
+    ) -> Sequence[KnowledgeChunk]:
+        """按主键游标读取一批指定来源的 Chunk，用于强制重算。"""
+        stmt = (
+            select(KnowledgeChunk)
+            .where(
+                KnowledgeChunk.id > after_id,
+                KnowledgeChunk.source_type.in_(list(source_types)),
+            )
+            .order_by(KnowledgeChunk.id)
+            .limit(size)
+        )
+        return session.scalars(stmt).all()
 
     @classmethod
     def count_without_embedding(cls, session: Session, source_type: str | None = None) -> int:

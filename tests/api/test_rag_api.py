@@ -17,7 +17,11 @@ API = "/api/v1/rag/answer"
 
 class TestRAGTimeoutBoundary:
     def test_timeout_returns_before_worker_finishes(self, client, monkeypatch) -> None:
-        """超时必须真正释放请求：不能在 with 块里等工作线程跑完。"""
+        """超时必须真正释放请求：不能陪着工作线程一起等到跑完。
+
+        早期实现用 ``with ThreadPoolExecutor``，退出时 ``shutdown(wait=True)``
+        会把工作时间完整算进请求耗时，3 秒慢调用在 3.04 秒才返回。
+        """
         from app.api import rag
 
         finished = Event()
@@ -39,8 +43,38 @@ class TestRAGTimeoutBoundary:
         assert not finished.is_set(), "请求返回时工作线程不应已被等待"
         assert finished.wait(5), "工作线程仍会继续跑完（已知取舍）"
 
-    def test_full_concurrency_is_rejected_immediately(self, client, monkeypatch) -> None:
-        """并发名额耗尽时不排队，直接返回 503。"""
+    def test_worker_uses_its_own_session_not_the_request_session(
+        self, client, db_session, monkeypatch
+    ) -> None:
+        """后台任务不能持有请求级 Session：超时后请求会话会被回收 / 复用。"""
+        from app.api import rag
+
+        seen: list[object] = []
+
+        class FakeLLM:
+            def generate(self, prompt: str) -> str:
+                return "检查登录流程。[1]"
+
+        def fake_answer(session, **kwargs):
+            seen.append(session)
+            return rag.RAGService.answer_from_results(
+                question="登录失败怎么排查？",
+                results=[],
+                llm=FakeLLM(),
+            )
+
+        monkeypatch.setattr(rag.RAGService, "answer", fake_answer)
+
+        response = client.post(API, json={"question": "登录失败怎么排查？"})
+
+        assert response.status_code == 200
+        assert len(seen) == 1
+        assert seen[0] is not db_session, "后台任务必须用自己开的会话"
+
+    def test_full_concurrency_returns_429_with_distinct_code(
+        self, client, monkeypatch
+    ) -> None:
+        """满载与超时语义不同：429 + rag_overloaded，调用方可据此退避重试。"""
         from threading import BoundedSemaphore
 
         from app.api import rag
@@ -58,8 +92,12 @@ class TestRAGTimeoutBoundary:
 
         response = client.post(API, json={"question": "登录失败怎么排查？"})
 
-        assert response.status_code == 503
-        assert "并发" in response.json()["error"]["message"]
+        assert response.status_code == 429
+        body = response.json()
+        assert body["error"]["code"] == "rag_overloaded"
+        assert "并发" in body["error"]["message"]
+        assert body["error"]["detail"]["retry_after_seconds"] == 1
+        assert response.headers["Retry-After"] == "1"
 
 
 class TestSettingsTimeouts:
@@ -141,19 +179,3 @@ class TestRAGAPI:
         assert body["citations"][0]["source_id"] == "LOGIN-API-1"
         assert body["citations"][0]["rank"] == 1
         assert "distance" in body["citations"][0]
-
-    def test_rag_timeout_returns_llm_error(self, client, monkeypatch) -> None:
-        from app.api import rag
-
-        def slow_answer(*args, **kwargs):
-            time.sleep(0.2)
-
-        monkeypatch.setattr(rag.RAGService, "answer", slow_answer)
-        monkeypatch.setattr(rag.settings, "rag_request_timeout", 0.01)
-
-        response = client.post(API, json={"question": "登录失败怎么排查？"})
-
-        assert response.status_code == 503
-        body = response.json()
-        assert body["error"]["code"] == "llm_error"
-        assert "超时" in body["error"]["message"]

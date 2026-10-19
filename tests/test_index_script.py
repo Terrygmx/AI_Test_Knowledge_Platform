@@ -74,3 +74,38 @@ class TestIndexScript:
 
         db_session.rollback()
         assert db_session.query(KnowledgeChunk).count() == 1
+
+
+class TestDocumentIndexModes:
+    def _seed_document_chunk(self, db_session, *, content: str = "文档正文") -> None:
+        KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="document",
+                source_id="IDX-DOC-1",
+                content=content,
+            ),
+        )
+
+    def test_document_dry_run_counts_only_missing_embeddings(self, db_session) -> None:
+        self._seed_document_chunk(db_session)
+
+        stats = rebuild(db_session, only={"document"}, dry_run=True)
+
+        assert stats.document == 1
+
+    def test_document_rebuild_dry_run_counts_existing_chunks(self, db_session) -> None:
+        """显式 --rebuild 时连已向量化的 Chunk 也要重算。"""
+        self._seed_document_chunk(db_session)
+        KnowledgeChunkService.backfill_embeddings(
+            db_session,
+            embedding_client=FakeEmbeddingClient(dimension=1024),
+            source_types=["document"],
+        )
+
+        stats = rebuild(
+            db_session, only={"document"}, dry_run=True, rebuild_all=True
+        )
+        assert stats.document == 1
+        # 默认模式（只补空缺）下同一个库没有待补 Chunk
+        assert rebuild(db_session, only={"document"}, dry_run=True).document == 0

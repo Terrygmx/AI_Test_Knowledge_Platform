@@ -12,7 +12,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
@@ -67,7 +67,7 @@ def db_session(session_factory: sessionmaker[Session]) -> Iterator[Session]:
 
 
 @pytest.fixture()
-def app(db_session: Session):
+def app(db_session: Session, session_factory: sessionmaker[Session]):
     """构建应用并把数据库会话依赖指向测试库。
 
     延迟导入 ``create_app``：纯单元测试（模型 / Schema）不需要启动整个应用。
@@ -80,6 +80,15 @@ def app(db_session: Session):
         yield db_session
 
     application.dependency_overrides[get_session] = override_get_session
+
+    # RAG 的后台任务自己开会话（不使用请求级 Session），否则超时路径下
+    # 请求会话可能已被回收。这里把工厂指向测试库，避免测试连到开发库。
+    from app.api import rag
+
+    def override_session_factory() -> Callable[[], Session]:
+        return session_factory
+
+    application.dependency_overrides[rag._session_factory_dep] = override_session_factory
     return application
 
 

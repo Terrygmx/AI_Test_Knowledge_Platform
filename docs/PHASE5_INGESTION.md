@@ -84,8 +84,13 @@ Markdown
 - **首个标题之前的“前言”**：保留为标题 `前言` 的独立 Section，不再被丢弃；
 - 空标题（`## ` 之类）：正文并入上一个 Section（首个标题就为空时落到文档标题下），
   不再连带正文一起丢弃；
+- 首个标题就为空且没有正文可并入时，Section 落到文档标题（`fallback_title`）下：
+  正文优先于锚点，文档标题此时仍取自首个**非空**标题，两者不一致是刻意的；
 - 空正文 Section（``# A`` 紧接 ``## B``）：正文用标题路径兜底（如 `A / B`），
   标题本身是有效检索锚点，且不会产生空向量（上游拒绝空白输入）。
+- **空文档（0 Section）不清索引**：`ImportService` 保留该 `doc_id` 的旧 Document
+  元数据与 Chunk 并记 warning，CLI 打印「没有解析出任何正文」。否则导入一个空文件
+  就等于静默清空索引。
 
 当前不做固定长度切分、Semantic Chunking；这些在 Phase 6 对比实验。
 
@@ -105,6 +110,10 @@ Markdown
 - 导入后的 document Chunk 通过 `scripts/index_entities.py --only document` **补向量**
   （增量：只处理 `embedding IS NULL` 的 Chunk，不重建正文）；
   `--only testcase,defect,requirement` 仍是「按实体重建」语义，两者不要混淆；
+- 补向量 / 重算按 `EMBEDDING_BATCH_SIZE` 用主键游标分批读取与提交，
+  上游中途失败时已完成批次保留，失败批次回滚；
+- **`--only document --rebuild`**：强制重算 document 的全部向量（含已有向量的 Chunk）。
+  切分策略（Phase 6）或 Embedding 模型变更后必须走这个开关，增量补向量不会刷新旧向量；
 - 重复导入文档会清掉已有向量（新 Chunk 的 `embedding` 为空），
   `MarkdownImportResult.indexed_chunks_replaced` 会带回被清掉的条数，CLI 会打印提示；
 - Metadata Filter、Hybrid Search、Rerank 仍属于 Phase 8–11。
@@ -114,5 +123,7 @@ Markdown
 - `tests/test_ingestion.py`：CSV / Excel / Markdown / PDF / 事务回滚 / 重复导入；
 - 无标题文档与无标题 PDF 各产出 1 个 Chunk；前言保留；重复导入返回
   `indexed_chunks_replaced`；document Chunk 可通过 `backfill_embeddings` 补向量；
-- `tests/test_ingest_script.py`：CLI 参数与错误退出；
+- 空文档保留已有 Chunk（`indexed_chunks_replaced=0`）；
+- `tests/test_ingest_script.py`：CLI 参数、错误退出与提示分支
+  （`document_chunks` / 已向量化替换 / 空文档不清索引）；
 - `tests/services/test_knowledge_chunk_service.py`：实体到 Chunk 映射。

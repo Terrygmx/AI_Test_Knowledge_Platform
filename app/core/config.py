@@ -63,7 +63,7 @@ class Settings(BaseSettings):
     llm_timeout: int = 30
     #: RAG 请求的端到端预算（含 Embedding + 检索 + LLM）；超时返回 503
     rag_request_timeout: float = 45.0
-    #: 同时执行的 RAG 推理任务上限；超出的请求直接返回 503，避免线程与连接被拖垮
+    #: 同时执行的 RAG 推理任务上限；超出的请求直接返回 429，避免线程与连接被拖垮
     rag_max_concurrency: int = 4
 
     # ---------------- 检索参数（Phase 9/11 起被 Hybrid / Rerank 消费）----------------

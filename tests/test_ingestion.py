@@ -16,6 +16,8 @@ from app.ingestion import (
 )
 from app.models import Document, KnowledgeChunk, Requirement, TestCase
 from app.retrieval.embedding import FakeEmbeddingClient
+from app.schemas.document import DocumentUpdate
+from app.services.document_service import DocumentService
 from app.services.knowledge_chunk_service import KnowledgeChunkService
 
 
@@ -237,6 +239,29 @@ retry = true
         assert db_session.query(Document).one().content_hash != (
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         )
+
+    def test_empty_document_does_not_wipe_existing_chunks(self, db_session) -> None:
+        """导入空文件不能等价于清空索引：旧 Chunk 与元数据都必须保留。"""
+        ImportService.import_markdown(db_session, doc_id="DOC-EMPTY", source="# 标题\n正文\n")
+        assert db_session.query(KnowledgeChunk).count() == 1
+        document = DocumentService.get_by_unique(db_session, "DOC-EMPTY")
+        assert document is not None
+        DocumentService.update(
+            db_session,
+            document,
+            data=DocumentUpdate(title="标题", version="v1").to_orm_dict(
+                exclude_unset=True
+            ),
+        )
+
+        result = ImportService.import_markdown(db_session, doc_id="DOC-EMPTY", source="")
+
+        assert result.section_count == 0
+        assert result.indexed_chunks_replaced == 0
+        assert db_session.query(KnowledgeChunk).count() == 1
+        document = DocumentService.get_by_unique(db_session, "DOC-EMPTY")
+        assert document is not None
+        assert document.version == "v1"
 
     def test_preamble_before_first_heading_is_kept(self) -> None:
         """首个标题之前的“前言”正文不能被丢弃。"""

@@ -82,7 +82,7 @@
 - **CLI**：新增 `scripts/ingest.py table|markdown|pdf`。
 - **文档**：新增 `docs/PHASE5_INGESTION.md`，说明表头、清洗、幂等与边界。
 
-#### Review 修复：Phase 3–5（2026-10-20）
+#### Review 修复：Phase 3 / Phase 5（2026-10-20 02:00）
 
 - **无标题文档不再丢正文**：`MarkdownParser` 在无标题时整篇回退为单个 Section，
   首个标题之前的“前言”也保留为 `前言` Section。修复前纯文本 PDF（无标题）会
@@ -107,6 +107,29 @@
   文档标注该探测依赖上游实现 `GET /models` 且模型名精确匹配。
 - **`--pairs` 参数删除**：`scripts/embedding_probe.py` 只保留内置测试对这一种模式，
   未知参数显式提示被忽略。
+
+#### Review 修复：RAG 并发 / 补向量分批 / 空文档（2026-10-20 03:00）
+
+- **满载与超时语义分离**：并发超过 `RAG_MAX_CONCURRENCY` 返回 429 +
+  `rag_overloaded`（带 `Retry-After: 1`），不再与超时共用 503 + `llm_error`。
+  修复前调用方要区分两者只能匹配中文文案；满载应当退避重试，而不是当上游故障处理。
+- **后台任务自带会话**：RAG 推理改在守护线程里执行，并通过可注入的会话工厂自己
+  开 / 关 Session。修复前把请求级 Session 交给后台任务，超时后（真实连接池下）
+  会话会被回收复用，属于「现在没炸、换配置就炸」。
+- **进程退出不再被推理拖住**：工作线程改为 daemon，删掉模块级线程池。修复前
+  非守护线程池会让 `uvicorn --reload` / 退出等待任务跑完（最长 `LLM_TIMEOUT`）。
+- **补向量分批提交**：`backfill_embeddings` / `reembed_chunks` 按
+  `EMBEDDING_BATCH_SIZE` 用主键游标分批读取、生成并逐批 commit。修复前一次性读入
+  全部 Chunk 且一次 commit 覆盖全部，上游在第 N 批失败时已算出的向量一起回滚，
+  大批量补向量等于「要么全成功要么全无」。
+- **document 显式重算入口**：新增 `KnowledgeChunkService.reembed_chunks()` 与
+  `scripts/index_entities.py --only document --rebuild`。切分策略（Phase 6）或
+  Embedding 模型变更后，增量补向量不会刷新旧向量，之前只能手工清表重导。
+- **空文档不清索引**：解析出 0 个 Section 时保留该 `doc_id` 的旧 Document 元数据
+  与 Chunk 并记 warning，CLI 打印提示。修复前导入一个空文件等于静默清空已有索引，
+  还会把标题 / version / path 覆盖成空解析结果。
+- **测试整理**：移除与 `test_timeout_returns_before_worker_finishes` 重复的旧超时用例；
+  补齐「后台任务不用请求级 Session」「批次失败不回滚」「CLI 提示分支」三处测试。
 
 #### Phase 1：FastAPI + PostgreSQL（2026-10-16，TDD：先写失败测试再实现）
 
