@@ -87,8 +87,8 @@ def test_overall_quality_and_latency_match_manifest() -> None:
             float(result["metrics"]["recall@10"]), 3
         )
         assert _clean_number(row["MRR"]) == round(float(result["metrics"]["mrr"]), 3)
-        assert _clean_number(row["Query P50"]) == round(
-            float(result["query_p50_seconds"]), 4
+        assert _clean_number(row["Query P50"]) == float(
+            f"{float(result['query_p50_seconds']):.4f}"
         )
         assert _clean_number(row["Query P95"]) == round(
             float(result["query_p95_seconds"]), 4
