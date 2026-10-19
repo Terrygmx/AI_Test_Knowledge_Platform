@@ -9,6 +9,7 @@ import pytest
 from app.core.exceptions import DomainError
 from app.models import Defect, Document, KnowledgeChunk, Requirement, TestCase
 from app.retrieval.embedding import EmbeddingError, FakeEmbeddingClient, content_sha256
+from app.retrieval.hybrid import FusedHit
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from app.services.index_service import IndexService, case_to_chunk
 from app.services.knowledge_chunk_service import KnowledgeChunkService
@@ -136,6 +137,74 @@ class TestKnowledgeChunkCreate:
 
         assert len(results) == 5
         assert elapsed < 20.0
+
+    def test_hybrid_search_is_available_on_postgresql(self, engine, db_session) -> None:
+        """Phase 9 的 Chunk Hybrid 接缝：Vector + BM25 融合，身份保留 chunk_index。"""
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        embedding = FakeEmbeddingClient(dimension=1024)
+        for chunk_index, content in enumerate(
+            [
+                "P0 BUG-1234 login-api v1.3 登录接口超时",
+                "登录接口验证码校验",
+            ]
+        ):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type="defect",
+                    source_id="BUG-1234",
+                    chunk_index=chunk_index,
+                    content=content,
+                ),
+                embedding_client=embedding,
+            )
+
+        results = KnowledgeChunkService.hybrid_search(
+            db_session,
+            query="P0 BUG-1234 login-api v1.3",
+            query_embedding=embedding.embed_query("登录接口超时"),
+            candidate_k=2,
+            limit=2,
+        )
+
+        assert len(results) == 2
+        assert all(isinstance(item, FusedHit) for item in results)
+        assert {item.chunk_index for item in results} == {0, 1}
+        assert results[0].vector_rank is not None
+        assert results[0].keyword_rank is not None
+
+    def test_hybrid_search_rejects_sqlite_without_faking_scores(self, engine, db_session) -> None:
+        if engine.dialect.name == "postgresql":
+            pytest.skip("SQLite-only check")
+        with pytest.raises(DomainError, match="PostgreSQL"):
+            KnowledgeChunkService.hybrid_search(
+                db_session,
+                query="登录",
+                query_embedding=[0.0] * 1024,
+            )
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"candidate_k": 0}, "candidate_k"),
+            ({"limit": 0}, "limit"),
+            ({"rrf_k": 0}, "rrf_k"),
+            ({"candidate_k": 2, "limit": 3}, "不能小于"),
+            ({"query": "   "}, "query"),
+        ],
+    )
+    def test_hybrid_search_rejects_invalid_configuration_before_query(
+        self, db_session, kwargs, message
+    ) -> None:
+        arguments = {
+            "query": "登录",
+            "query_embedding": [0.0] * 1024,
+            **kwargs,
+        }
+        with pytest.raises((DomainError, ValueError), match=message):
+            KnowledgeChunkService.hybrid_search(db_session, **arguments)
 
     def test_backfill_commits_completed_batches_when_upstream_fails(self, db_session) -> None:
         """上游中途失败时已补批次不回滚，否则大批量补向量等于全或无。"""

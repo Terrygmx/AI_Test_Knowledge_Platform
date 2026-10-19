@@ -37,6 +37,20 @@ def test_phase8_dataset_covers_identifier_and_semantic_queries() -> None:
     assert sum(not query.answerable for query in dataset.queries) > 0
 
 
+def test_offline_chunks_keep_real_chunk_indices_for_hybrid_identity() -> None:
+    chunks = retrieve_chunks(load_dataset(DATASET))
+    document_indices = [
+        (item.source_id, item.chunk_index)
+        for item in chunks
+        if item.source_type == "document"
+    ]
+
+    assert len(chunks) == 47
+    assert document_indices
+    assert len(set(document_indices)) == len(document_indices)
+    assert any(index > 0 for _, index in document_indices)
+
+
 def test_evaluation_reports_per_category_and_negative_queries() -> None:
     dataset = load_dataset(DATASET)
     documents = [

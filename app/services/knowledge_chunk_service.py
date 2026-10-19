@@ -22,6 +22,7 @@ from app.core.logging import get_logger
 from app.models import KnowledgeChunk
 from app.models.types import POSTGRES
 from app.retrieval.embedding import EmbeddingClient, content_sha256
+from app.retrieval.hybrid import ChannelHit, FusedHit, fuse
 from app.retrieval.lexical import BM25Index, LexicalDocument
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 
@@ -232,6 +233,106 @@ class KnowledgeChunkService:
             [terms for _, _, terms in results],
         )
         return results
+
+    @classmethod
+    def hybrid_search(
+        cls,
+        session: Session,
+        *,
+        query: str,
+        query_embedding: Sequence[float],
+        candidate_k: int | None = None,
+        limit: int | None = None,
+        source_types: Sequence[str] | None = None,
+        strategy: str | None = None,
+        vector_weight: float = 1.0,
+        keyword_weight: float = 1.0,
+        rrf_k: int | None = None,
+    ) -> list[FusedHit]:
+        """融合 Vector 与 BM25 候选，返回保留 Chunk 身份的可追溯结果。
+
+        这是 Phase 9 的 Chunk 检索接缝，不改变统一 ``/search`` 的 HTTP 契约。
+        Vector 候选由 pgvector 生成，Keyword 候选复用 Phase 8 的 BM25 索引。
+        两者都按 ``(source_type, source_id, chunk_index)`` 去重，避免同一来源的
+        不同证据片段被合并。
+
+        默认候选深度、最终 Top-K、融合策略和 RRF ``k`` 来自检索配置。当前实现
+        仍会在每次 BM25 查询时读取并建立内存索引，适用于小规模知识库；接入更大
+        数据量前必须先解决候选预过滤与倒排表持久化。
+        """
+        if not query.strip():
+            raise ValueError("query 不能为空")
+
+        # ``or`` 会把显式 0 变成默认值；先从调用方校验非法值，再应用默认配置。
+        if candidate_k is not None and candidate_k < 1:
+            raise ValueError("candidate_k 必须大于 0")
+        if limit is not None and limit < 1:
+            raise ValueError("limit 必须大于 0")
+        if rrf_k is not None and rrf_k < 1:
+            raise ValueError("rrf_k 必须大于 0")
+        candidate_depth = (
+            candidate_k
+            if candidate_k is not None
+            else max(
+                settings.retrieval_vector_top_k,
+                settings.retrieval_keyword_top_k,
+            )
+        )
+        final_limit = limit if limit is not None else settings.retrieval_final_top_k
+        selected_strategy = strategy or settings.retrieval_fusion
+        selected_rrf_k = rrf_k if rrf_k is not None else settings.retrieval_rrf_k
+        if candidate_depth < final_limit:
+            raise ValueError("candidate_k 不能小于 limit")
+        if session.bind is None or session.bind.dialect.name != POSTGRES:
+            raise DomainError(
+                "混合检索仅支持 PostgreSQL + pgvector",
+                detail={"dialect": session.bind.dialect.name if session.bind else None},
+            )
+
+        vector_results = cls.search(
+            session,
+            query_embedding=query_embedding,
+            limit=candidate_depth,
+            source_types=source_types,
+        )
+        keyword_results = cls.lexical_search(
+            session,
+            query=query,
+            limit=candidate_depth,
+            source_types=source_types,
+        )
+        vector_hits = [
+            ChannelHit(
+                source_type=chunk.source_type,
+                source_id=chunk.source_id,
+                chunk_index=chunk.chunk_index,
+                score=distance,
+                content=chunk.content,
+                higher_is_better=False,
+            )
+            for chunk, distance in vector_results
+        ]
+        keyword_hits = [
+            ChannelHit(
+                source_type=chunk.source_type,
+                source_id=chunk.source_id,
+                chunk_index=chunk.chunk_index,
+                score=score,
+                content=chunk.content,
+                higher_is_better=True,
+                matched_terms=tuple(matched_terms),
+            )
+            for chunk, score, matched_terms in keyword_results
+        ]
+        return fuse(
+            vector_hits,
+            keyword_hits,
+            strategy=selected_strategy,
+            vector_weight=vector_weight,
+            keyword_weight=keyword_weight,
+            rrf_k=selected_rrf_k,
+            limit=final_limit,
+        )
 
     @classmethod
     def backfill_embeddings(

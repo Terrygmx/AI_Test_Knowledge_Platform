@@ -29,11 +29,12 @@ from app.services.index_service import (
 
 @dataclass(frozen=True)
 class RetrievedChunk:
-    """评测只需要来源与正文，不绑定 ORM 或实验表。"""
+    """评测只需要来源、Chunk 身份与正文，不绑定 ORM 或实验表。"""
 
     source_type: str
     source_id: str
     content: str
+    chunk_index: int = 0
 
 
 @dataclass(frozen=True)
@@ -88,6 +89,7 @@ class BM25Searcher:
 
     def __init__(self, documents: Sequence[RetrievedChunk], *, k1: float = 1.2, b: float = 0.75):
         started = time.perf_counter()
+        self.documents = list(documents)
         self.index = BM25Index(
             [
                 LexicalDocument(
@@ -108,6 +110,7 @@ class BM25Searcher:
                 source_type=hit.document.source_type,
                 source_id=hit.document.source_id,
                 content=hit.document.content,
+                chunk_index=self.documents[hit.document_index].chunk_index,
             )
             for hit in self.index.search(query, limit=limit)
         ]
@@ -232,6 +235,11 @@ class _IndexedBM25Searcher:
                 source_type=hit.document.source_type,
                 source_id=hit.document.source_id,
                 content=hit.document.content,
+                chunk_index=getattr(
+                    self.index.documents[hit.document_index],
+                    "chunk_index",
+                    0,
+                ),
             )
             for hit in self.index.search(query, limit=limit)
         ]
@@ -267,6 +275,7 @@ def retrieval_documents(chunks: Sequence[object]) -> list[RetrievedChunk]:
             source_type=str(chunk.source_type),  # type: ignore[attr-defined]
             source_id=str(chunk.source_id),  # type: ignore[attr-defined]
             content=str(chunk.content),  # type: ignore[attr-defined]
+            chunk_index=int(getattr(chunk, "chunk_index", 0)),
         )
         for chunk in chunks
     ]
@@ -287,6 +296,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_type=chunk.source_type,
                 source_id=chunk.source_id,
                 content=chunk.content,
+                chunk_index=chunk.chunk_index,
             )
         )
     for seed in dataset.defects:
@@ -296,6 +306,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_type=chunk.source_type,
                 source_id=chunk.source_id,
                 content=chunk.content,
+                chunk_index=chunk.chunk_index,
             )
         )
     for seed in dataset.requirements:
@@ -305,6 +316,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_type=chunk.source_type,
                 source_id=chunk.source_id,
                 content=chunk.content,
+                chunk_index=chunk.chunk_index,
             )
         )
     for document in dataset.documents:
@@ -314,8 +326,9 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_type="document",
                 source_id=document.doc_id,
                 content=section.content,
+                chunk_index=index,
             )
-            for section in parsed.sections
+            for index, section in enumerate(parsed.sections)
         )
     return chunks
 
