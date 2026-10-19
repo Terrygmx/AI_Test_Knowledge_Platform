@@ -22,11 +22,18 @@ _SENTENCE_END = re.compile(r"(?<=[。！？!?；;])\s*|\n+")
 
 @dataclass(frozen=True)
 class ChunkDraft:
-    """一个待落库的文档片段；``start/end`` 是原文字符偏移，便于引用与调试。"""
+    """一个待落库的文档片段。
+
+    ``start/end`` 指向该 Chunk 主体在原文中的范围（不含 overlap 前缀或标题路径）；
+    ``overlap_prefix`` / ``heading_path`` 是附加检索上下文，单独保存，避免让
+    ``content[start:end]`` 与正文错位。
+    """
 
     content: str
     start: int
     end: int
+    overlap_prefix: str = ""
+    heading_path: tuple[str, ...] = ()
 
 
 class DocumentChunker(Protocol):
@@ -134,7 +141,13 @@ def _pack_units(
         content = f"{tail}\n{chunk.content}" if tail else chunk.content
         if len(content) <= max_chars:
             overlapped.append(
-                ChunkDraft(content=content, start=chunk.start, end=chunk.end)
+                ChunkDraft(
+                    content=content,
+                    start=chunk.start,
+                    end=chunk.end,
+                    overlap_prefix=tail,
+                    heading_path=chunk.heading_path,
+                )
             )
         else:
             overlapped.append(chunk)
@@ -169,7 +182,7 @@ class FixedChunker:
 class SemanticChunker:
     """在低相似度处切分的语义 Chunker。
 
-    先按段落 / 句子形成小单元，再用 Embedding 比较相邻窗口的 cosine 相似度。
+    先按段落 / 句子形成小单元，再用 Embedding 比较相邻句子的 cosine 相似度。
     Markdown 标题本身是结构边界：章节之间先切开，章节内部再在低于阈值处切开。
     如果直接对整篇文档统一算相似度，标题的向量往往比正文更“通用”，阈值低时
     完全不会触发，阈值高时又会把标题孤立成无信息 Chunk；按章节内判断可以避免
@@ -183,7 +196,7 @@ class SemanticChunker:
     max_chars: int = 800
     overlap_chars: int = 0
     threshold: float = 0.55
-    window: int = 2
+    min_chars: int = 40
     name: str = "semantic"
 
     def split(self, text: str) -> list[ChunkDraft]:
@@ -195,60 +208,77 @@ class SemanticChunker:
                 max_chars=self.max_chars, overlap_chars=self.overlap_chars
             ).split(text)
 
-        sections: list[list[tuple[str, int, int]]] = []
+        sections: list[tuple[list[tuple[str, int, int]], tuple[str, ...]]] = []
         current_section: list[tuple[str, int, int]] = []
+        current_section_path: tuple[str, ...] = ()
+        heading_stack: list[tuple[int, str]] = []
         for unit in units:
-            is_heading = unit[0].lstrip().startswith("#")
-            if is_heading and current_section:
-                sections.append(current_section)
+            heading = re.match(r"^\s*(#{1,6})\s+(.*?)\s*$", unit[0])
+            if heading:
+                level = len(heading.group(1))
+                while heading_stack and heading_stack[-1][0] >= level:
+                    heading_stack.pop()
+                heading_stack.append((level, heading.group(2).strip()))
+            if heading and current_section:
+                if len(current_section) == 1:
+                    # 父标题没有直属正文（``# 文档`` 紧跟 ``## 章节``）：
+                    # 把标题锚点交给下一节，避免单独生成只有标题的 Chunk。
+                    current_section.append(unit)
+                    current_section_path = tuple(item[1] for item in heading_stack)
+                    continue
+                sections.append((current_section, current_section_path))
                 current_section = []
+            if heading:
+                current_section_path = tuple(item[1] for item in heading_stack)
             current_section.append(unit)
         if current_section:
-            sections.append(current_section)
+            sections.append((current_section, current_section_path))
 
         groups: list[list[tuple[str, int, int]]] = []
-        for section in sections:
-            # 标题作为章节锚点，与本节正文一起参与检索；不单独发 Embedding。
+        heading_paths: list[tuple[str, ...]] = []
+        for section, section_heading_path in sections:
+            # 标题 + 直属正文。空正文章节仍保留标题锚点，但不能丢掉章节路径。
             if len(section) <= 1:
                 groups.append(section)
+                heading_paths.append(section_heading_path)
                 continue
             body = section[1:]
-            windows = [
-                " ".join(item[0] for item in body[index : index + self.window])
-                for index in range(len(body))
-            ]
-            vectors = self.embedding_client.embed_texts(windows)
+            # 比较相邻句子的 Embedding，而不是 ``body[i:i+2]`` 与
+            # ``body[i+1:i+3]`` 这种重叠窗口。后者共享一半文本，cosine 会天然偏高，
+            # 边界含义也不清晰。
+            vectors = self.embedding_client.embed_texts([item[0] for item in body])
             boundaries: set[int] = set()
             for index in range(1, len(body)):
                 if _cosine(vectors[index - 1], vectors[index]) < self.threshold:
                     boundaries.add(index + 1)
 
             current = [section[0]]
+            current_chars = len(section[0][0])
             for index, unit in enumerate(body, start=1):
-                if index in boundaries and current:
+                # 标题不是正文，不参与 min_chars；否则短标题会把第一句提前切走。
+                if index in boundaries and current and current_chars >= self.min_chars:
                     groups.append(current)
+                    heading_paths.append(section_heading_path)
                     current = []
+                    current_chars = 0
                 current.append(unit)
+                if not unit[0].lstrip().startswith("#"):
+                    current_chars += len(unit[0])
             if current:
                 groups.append(current)
+                heading_paths.append(section_heading_path)
 
-        # 顶层标题后直接跟子标题时（``# 文档`` → ``## 章节``），父标题没有
-        # 直属正文。把它并入下一组，避免产生只有标题、几乎没有检索价值的 Chunk。
-        merged: list[list[tuple[str, int, int]]] = []
-        pending_heading: tuple[str, int, int] | None = None
-        for group in groups:
-            if len(group) == 1 and group[0][0].lstrip().startswith("#"):
-                pending_heading = group[0]
-                continue
-            if pending_heading is not None:
-                group = [pending_heading, *group]
-                pending_heading = None
-            merged.append(group)
-        if pending_heading is not None:
-            merged.append([pending_heading])
+        # 低相似度边界之外，仍要防止「一句一 Chunk」：短组向后合并，直到达到
+        # min_chars 或会超过字符上限。最后一个组若过短，向前并入上一组。
+        merged, merged_paths = _merge_short_groups(
+            groups,
+            heading_paths,
+            min_chars=self.min_chars,
+            max_chars=self.max_chars,
+        )
 
         drafts: list[ChunkDraft] = []
-        for group in merged:
+        for group, heading_path in zip(merged, merged_paths, strict=True):
             group_text = "\n".join(item[0] for item in group)
             if len(group_text) <= self.max_chars:
                 drafts.append(
@@ -256,17 +286,70 @@ class SemanticChunker:
                         content=group_text.strip(),
                         start=group[0][1],
                         end=group[-1][2],
+                        heading_path=heading_path,
                     )
                 )
             else:
-                drafts.extend(
-                    _pack_units(
-                        group,
-                        max_chars=self.max_chars,
-                        overlap_chars=self.overlap_chars,
+                for draft in _pack_units(
+                    group,
+                    max_chars=self.max_chars,
+                    overlap_chars=self.overlap_chars,
+                ):
+                    drafts.append(
+                        ChunkDraft(
+                            content=draft.content,
+                            start=draft.start,
+                            end=draft.end,
+                            overlap_prefix=draft.overlap_prefix,
+                            heading_path=heading_path,
+                        )
                     )
-                )
         return drafts
+
+
+def _merge_short_groups(
+    groups: Sequence[list[tuple[str, int, int]]],
+    heading_paths: Sequence[tuple[str, ...]],
+    *,
+    min_chars: int,
+    max_chars: int,
+) -> tuple[list[list[tuple[str, int, int]]], list[tuple[str, ...]]]:
+    """把同一章节内过短的语义组并回相邻组，避免标题与单句产生碎片 Chunk。
+
+    章节边界优先于 ``min_chars``：跨标题合并会把两个独立主题重新粘在一起，
+    也会让 ``heading_path`` 失真。
+    """
+    merged: list[list[tuple[str, int, int]]] = []
+    paths: list[tuple[str, ...]] = []
+    for group, heading_path in zip(groups, heading_paths, strict=True):
+        group_chars = len("\n".join(item[0] for item in group))
+        if (
+            merged
+            and group_chars < min_chars
+            and heading_path == paths[-1]
+            and len(
+                "\n".join(item[0] for item in [*merged[-1], *group])
+            ) <= max_chars
+        ):
+            merged[-1] = [*merged[-1], *group]
+        else:
+            merged.append(group)
+            paths.append(heading_path)
+
+    if len(merged) >= 2:
+        tail = merged[-1]
+        tail_chars = len("\n".join(item[0] for item in tail))
+        if (
+            tail_chars < min_chars
+            and paths[-2] == paths[-1]
+            and len(
+                "\n".join(item[0] for item in [*merged[-2], *tail])
+            ) <= max_chars
+        ):
+            merged[-2] = [*merged[-2], *tail]
+            merged.pop()
+            paths.pop()
+    return merged, paths
 
 
 def _cosine(left: Sequence[float], right: Sequence[float]) -> float:

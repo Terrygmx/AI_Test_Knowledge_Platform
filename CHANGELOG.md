@@ -12,18 +12,31 @@
   5 条 Defect、5 条 Requirement、3 篇 Markdown 文档和 40 条 Query（34 可回答 /
   6 不可回答）；Gold Set 以来源与原文证据标注，不绑定 Chunk ID。
 - **切分实现**：新增 `FixedChunker` 与 `SemanticChunker`；固定策略支持句子 / 段落
-  边界和 overlap 64，Semantic 在 Markdown 章节内部按相邻窗口低相似度切分，
-  保留标题作为章节锚点，不产生单独标题 Chunk。
+  边界和 overlap 64，Semantic 在 Markdown 章节内部按相邻句子低相似度切分，
+  `min_chars=40` 合并碎片组，保留标题作为章节锚点，不产生单独标题 Chunk。
 - **评测指标**：新增 Recall@5 / Recall@10、MRR、不可回答误召回率、top1 distance
   统计与数据集 SHA-256 规范化。
 - **实验编排**：新增 `scripts/chunking_experiment.py`，支持 6 种策略、隔离库保护、
   pgvector 检查、JSON manifest 输出；默认 `--dry-run`，只允许写入名称包含
   `chunking` 的数据库。
 - **真实结果**：在 `aitkp_chunking` + OMLX `bge-m3-mlx-4bit` 上完成实验；
-  semantic Recall@5 0.975 / MRR 0.919，entity Recall@5 0.966 / MRR 0.919；
+  semantic Recall@5 0.975 / MRR 0.919，entity+heading Recall@5 0.966 / MRR 0.936；
   详见 `docs/CHUNKING_EXPERIMENT.md`。
 - **边界记录**：固定 1200 在 3 篇短文档上与 fixed-800 完全相同；不可回答 Query
   全部在 Top-10 有结果，说明“检索非空不等于证据充分”，未据此伪造生产阈值。
+
+#### Review 修复：Phase 6 Chunking
+
+- Semantic 改为直接比较相邻句子，修复重叠窗口造成的过切与不可复现问题；增加
+  `min_chars=40`、同章节短组归并和章节边界保护，父标题不再孤立成块。
+- 文档 Chunk 的 `span_start` / `span_end` 只指向非重叠正文，overlap 与标题路径
+  分别写入 `overlap_prefix` / `heading_path` metadata，避免引用高亮错位。
+- 实验 manifest 新增 `started_at` / `finished_at`、`git_commit` / `git_dirty`、
+  脱敏命令、Embedding 地址、实际策略配置和切分 / 索引分段耗时；Semantic 的
+  切分阶段 Embedding 调用次数与文本条数单独记录。
+- 策略 `entity` 更名为 `entity+heading`；Semantic 阈值与最短长度支持 CLI 覆盖。
+- 重新运行真实实验：Semantic 43 Chunks 与 manifest 一致，entity+heading MRR
+  0.936，Semantic MRR 0.919；数据集来源声明明确“仅参考字段组织，未使用正文”。
 
 #### Phase 0：项目边界（2026-10-19）
 

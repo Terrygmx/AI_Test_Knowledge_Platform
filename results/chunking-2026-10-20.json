@@ -1,15 +1,28 @@
 {
   "phase": 6,
-  "generated_at": "2026-10-19T19:39:15.425445+00:00",
+  "started_at": "2026-10-19T19:57:13.174377+00:00",
+  "finished_at": "2026-10-19T19:58:27.043861+00:00",
+  "generated_at": "2026-10-19T19:58:27.043861+00:00",
+  "git_commit": "18ca697fa1dda5a77110b24849e006958bd27d37",
+  "git_dirty": true,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/chunking_experiment.py",
+    "--database-url",
+    "postgresql+psycopg://postgres:***@127.0.0.1:5432/aitkp_chunking",
+    "--output",
+    "results/chunking-2026-10-20.json"
+  ],
   "dataset": {
     "path": "eval/fixtures/phase6_simulated.json",
-    "sha256": "117b9e154f29b1363ed6e7e14b224903180780b4c8b49e2ca6db47eb5ba62262",
+    "sha256": "63f0f6a4974daa6b6c904119d21b3bc3ce0f2cb5cffed3a54ed1291336c1999c",
     "queries": 40,
     "answerable": 34,
     "unanswerable": 6
   },
   "environment": {
     "database_name": "aitkp_chunking",
+    "embedding_base_url": "http://127.0.0.1:28080/v1",
     "embedding_model": "bge-m3-mlx-4bit",
     "embedding_dim": 1024
   },
@@ -19,42 +32,48 @@
       "kind": "fixed",
       "max_chars": 256,
       "overlap_chars": 64,
-      "threshold": null
+      "threshold": null,
+      "min_chars": null
     },
     {
       "name": "fixed-512",
       "kind": "fixed",
       "max_chars": 512,
       "overlap_chars": 64,
-      "threshold": null
+      "threshold": null,
+      "min_chars": null
     },
     {
       "name": "fixed-800",
       "kind": "fixed",
       "max_chars": 800,
       "overlap_chars": 64,
-      "threshold": null
+      "threshold": null,
+      "min_chars": null
     },
     {
       "name": "fixed-1200",
       "kind": "fixed",
       "max_chars": 1200,
       "overlap_chars": 64,
-      "threshold": null
+      "threshold": null,
+      "min_chars": null
     },
     {
       "name": "semantic",
       "kind": "semantic",
       "max_chars": 800,
       "overlap_chars": 0,
-      "threshold": 0.55
+      "threshold": 0.55,
+      "min_chars": 40
     },
     {
-      "name": "entity",
+      "name": "entity+heading",
       "kind": "entity",
       "max_chars": null,
       "overlap_chars": 0,
-      "threshold": null
+      "threshold": null,
+      "min_chars": null
     }
   ],
   "strategies": [
@@ -64,8 +83,14 @@
       "average_chars": 175.53333333333333,
       "median_chars": 173.0,
       "max_chars": 255,
-      "index_seconds": 2.5343322919943603,
-      "query_p95_seconds": 0.07548412498726975,
+      "chunking_seconds": 0.00459241600765381,
+      "index_seconds": 3.024062042008154,
+      "total_setup_seconds": 3.028654458015808,
+      "query_p95_seconds": 0.17506808300095145,
+      "embedding_calls_during_chunking": 0,
+      "embedding_texts_during_chunking": 0,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 30,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -87,8 +112,14 @@
       "average_chars": 195.14814814814815,
       "median_chars": 165,
       "max_chars": 492,
-      "index_seconds": 5.051612583003589,
-      "query_p95_seconds": 0.07826279099390376,
+      "chunking_seconds": 0.009124291987973265,
+      "index_seconds": 6.979452040992328,
+      "total_setup_seconds": 6.988576332980301,
+      "query_p95_seconds": 0.1687101249990519,
+      "embedding_calls_during_chunking": 0,
+      "embedding_texts_during_chunking": 0,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 27,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -110,8 +141,14 @@
       "average_chars": 205.64,
       "median_chars": 165,
       "max_chars": 651,
-      "index_seconds": 6.332456332995207,
-      "query_p95_seconds": 0.0717995000013616,
+      "chunking_seconds": 0.008300292000058107,
+      "index_seconds": 9.580191166998702,
+      "total_setup_seconds": 9.58849145899876,
+      "query_p95_seconds": 0.174559417006094,
+      "embedding_calls_during_chunking": 0,
+      "embedding_texts_during_chunking": 0,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 25,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -133,8 +170,14 @@
       "average_chars": 205.64,
       "median_chars": 165,
       "max_chars": 651,
-      "index_seconds": 5.984539917000802,
-      "query_p95_seconds": 0.077858542004833,
+      "chunking_seconds": 0.00762241700431332,
+      "index_seconds": 10.589338582998607,
+      "total_setup_seconds": 10.59696100000292,
+      "query_p95_seconds": 0.17427262499404605,
+      "embedding_calls_during_chunking": 0,
+      "embedding_texts_during_chunking": 0,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 25,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -156,8 +199,14 @@
       "average_chars": 119.13953488372093,
       "median_chars": 100,
       "max_chars": 196,
-      "index_seconds": 2.527047958006733,
-      "query_p95_seconds": 0.08231441599491518,
+      "chunking_seconds": 4.360614125005668,
+      "index_seconds": 3.5094122500013327,
+      "total_setup_seconds": 7.870026375007001,
+      "query_p95_seconds": 0.14971945800061803,
+      "embedding_calls_during_chunking": 21,
+      "embedding_texts_during_chunking": 59,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 43,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
@@ -174,21 +223,27 @@
       }
     },
     {
-      "strategy": "entity",
+      "strategy": "entity+heading",
       "chunk_count": 46,
-      "average_chars": 115.6304347826087,
-      "median_chars": 101.5,
+      "average_chars": 106.6304347826087,
+      "median_chars": 86.5,
       "max_chars": 196,
-      "index_seconds": 2.6573774999997113,
-      "query_p95_seconds": 0.07388195800012909,
+      "chunking_seconds": 0.011201082990737632,
+      "index_seconds": 3.2978876669949386,
+      "total_setup_seconds": 3.3090887499856763,
+      "query_p95_seconds": 0.16954741699737497,
+      "embedding_calls_during_chunking": 0,
+      "embedding_texts_during_chunking": 0,
+      "embedding_calls_during_index": 1,
+      "embedding_texts_during_index": 46,
       "metrics": {
         "answerable_queries": 34,
         "unanswerable_queries": 6,
         "unanswerable_false_positive_rate": 1.0,
-        "unanswerable_top1_distance_min": 0.3341632286212892,
-        "unanswerable_top1_distance_median": 0.4083793868566248,
-        "mrr": 0.9191176470588235,
-        "recall@5": 0.9656862745098038,
+        "unanswerable_top1_distance_min": 0.2801689720103422,
+        "unanswerable_top1_distance_median": 0.3841240589581686,
+        "mrr": 0.9362745098039216,
+        "recall@5": 0.965686274509804,
         "recall@10": 0.9852941176470589,
         "recall@5_hits": 56,
         "recall@10_hits": 58,

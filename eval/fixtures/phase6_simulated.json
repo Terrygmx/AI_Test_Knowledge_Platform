@@ -5,12 +5,12 @@
     {
       "name": "ShopSphere QA manual testing portfolio",
       "url": "https://github.com/mohbasem25/qa-manual-testing",
-      "usage": "参考 checkout / payment / defect report 的公开演示结构"
+      "usage": "仅参考 checkout / payment / defect report 的字段组织，未使用正文"
     },
     {
       "name": "DemoShop QA testing portfolio",
       "url": "https://github.com/PetrosChatz/qa-testing-portfolio",
-      "usage": "参考 login / catalogue / cart 的公开演示结构"
+      "usage": "仅参考 login / catalogue / cart 的字段组织，未使用正文"
     }
   ],
   "testcases": [

@@ -86,7 +86,7 @@ class TestSemanticChunker:
             embedding_client=KeywordEmbedding(),
             max_chars=200,
             threshold=0.5,
-            window=1,
+            min_chars=0,
         ).split(text)
 
         assert len(chunks) == 2
@@ -100,7 +100,7 @@ class TestSemanticChunker:
             embedding_client=KeywordEmbedding(),
             max_chars=40,
             threshold=0.1,
-            window=1,
+            min_chars=0,
         ).split(text)
 
         assert chunks
@@ -128,7 +128,7 @@ class TestSemanticChunker:
             embedding_client=KeywordEmbedding(),
             max_chars=200,
             threshold=0.5,
-            window=1,
+            min_chars=0,
         ).split(text)
 
         assert len(chunks) >= 2
@@ -141,6 +141,51 @@ class TestSemanticChunker:
             "## 登录" in chunk.content and "校验密码" in chunk.content
             for chunk in chunks
         )
+
+    def test_short_semantic_groups_are_merged(self) -> None:
+        text = "支付说明。登录说明。配送说明。"
+
+        chunks = SemanticChunker(
+            embedding_client=KeywordEmbedding(),
+            max_chars=200,
+            threshold=0.9,
+            min_chars=100,
+        ).split(text)
+
+        assert len(chunks) == 1
+        assert all(word in chunks[0].content for word in ("支付", "登录", "配送"))
+
+    def test_heading_is_attached_to_next_section_without_orphan(self) -> None:
+        text = "# 文档\n\n## 支付\n\n支付失败后查询网关。"
+
+        chunks = SemanticChunker(
+            embedding_client=KeywordEmbedding(),
+            max_chars=200,
+            min_chars=0,
+        ).split(text)
+
+        assert len(chunks) == 1
+        assert chunks[0].content.startswith("# 文档")
+        assert "## 支付" in chunks[0].content
+        assert chunks[0].heading_path == ("文档", "支付")
+
+    def test_sibling_sections_keep_their_own_heading_paths(self) -> None:
+        text = (
+            "# 文档\n\n"
+            "## 支付\n\n支付失败后查询网关。\n\n"
+            "## 登录\n\n登录账户需要校验密码。"
+        )
+
+        chunks = SemanticChunker(
+            embedding_client=KeywordEmbedding(),
+            max_chars=200,
+            min_chars=0,
+        ).split(text)
+
+        assert [chunk.heading_path for chunk in chunks] == [
+            ("文档", "支付"),
+            ("文档", "登录"),
+        ]
 
     def test_blank_text_has_no_chunks(self) -> None:
         chunks = SemanticChunker(embedding_client=FakeEmbeddingClient()).split("")
