@@ -459,6 +459,12 @@ type
 
 个人 80%。
 
+> 当前状态：已完成受控 Metadata Filter DSL、SQLite / PostgreSQL 跨方言实现、
+> Vector / BM25 / Hybrid 的 `LIMIT` 前过滤，以及 `none / pre / post / during`
+> 小样本实验。报告见 `docs/METADATA_FILTER.md`，manifest 见
+> `results/metadata-filter-phase10.json`。实验表未建 HNSW，`during` 当前复用
+> `pre`，因此本轮不声称验证了 ANN 过滤 / iterative scan。
+
 ------------------------------------------------------------------------
 
 # Phase 11：Reranker

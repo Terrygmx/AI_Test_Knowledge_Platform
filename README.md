@@ -225,11 +225,13 @@ uv run uvicorn app.main:app --reload
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）、
 Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（BM25 词法检索）
-与 Phase 9（Hybrid Search 实验）已完成。Phase 6–9 报告分别见
+、Phase 9（Hybrid Search 实验）与 Phase 10（Metadata Filter）已完成。
+Phase 6–10 报告分别见
 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
 [`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)、
 [`docs/LEXICAL_SEARCH_EXPERIMENT.md`](docs/LEXICAL_SEARCH_EXPERIMENT.md)、
-[`docs/HYBRID_SEARCH_EXPERIMENT.md`](docs/HYBRID_SEARCH_EXPERIMENT.md)。
+[`docs/HYBRID_SEARCH_EXPERIMENT.md`](docs/HYBRID_SEARCH_EXPERIMENT.md)、
+[`docs/METADATA_FILTER.md`](docs/METADATA_FILTER.md)。
 默认 SQLite 路径与真实 PostgreSQL 均以本地实际输出为准，全程 TDD（先红后绿）。
 
 - [x] 目录骨架（对齐方案 §14）
@@ -261,6 +263,9 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（B
 - [x] Phase 9 Hybrid Search：Vector + BM25 的 Weighted / RRF 融合、
   Chunk 级 `hybrid_search()` 接缝与参数敏感性实验
   （见 `docs/HYBRID_SEARCH_EXPERIMENT.md`）
+- [x] Phase 10 Metadata Filter：受控字段、跨 SQLite / PostgreSQL 的
+  pre-filter、候选饥饿实验与 Chunk 级过滤接缝
+  （见 `docs/METADATA_FILTER.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
 - [ ] 将 Gold Set 扩大到约 100 条人工确认 Query 后复验 Recall@K / MRR
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
@@ -296,11 +301,14 @@ Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（B
 | 混合检索候选深度 | Vector / BM25 分别读取 `retrieval_*_top_k` | `candidate_k` 仅作兼容覆盖；最终 Top-K 不得超过两通道深度 |
 | 混合检索排序 | 向量距离后追加来源类型 / 编号 / Chunk 序号 / id | 相同 embedding / distance 时 RRF 名次仍可复现 |
 | 融合器分数方向 | 按 `ChannelHit.higher_is_better` 归一化 | 同通道方向不一致或分数非有限时 fail fast |
+| 元数据过滤 | 受控标量精确匹配 + 数组 contains-any，不同字段 AND | 在 Vector / BM25 `LIMIT` 前执行；未知 / 空条件 fail fast，避免静默失效 |
+| 元数据过滤实验 | 22 条 Query / 47 Chunk，`during` 复用 `pre` | 小样本验证语义与候选饥饿；实验表无 HNSW，不冒充 ANN 过滤结论 |
+| 元数据过滤延迟 | 只测候选排序 / 融合，不含 Query Embedding | 47 行精确扫描，不是数据库或 API P95 |
 | 中文分词 | 中文 unigram + bigram，Unicode 字母数字标识符整串保留 | 无分词依赖、可跨方言复现；不理解词性 / 同义词 / 错别字 |
 | 不可回答 Query | 四个通道在 6 条负样本上全部有结果 | 融合不解决拒答；非空结果不等于证据充分 |
 | 不可回答阈值 | 实验记录 top1 distance，但未设置统一 `max_distance` | 6 条负样本不足以校准生产阈值，避免用单点数字制造确定性 |
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
 | `/models` 健康探测 | 依赖上游实现 `GET /models` 且模型名精确匹配 | 部分 OpenAI-compatible 服务不实现该端点或返回别名，会误报不可用（探测失败会写 warning 日志） |
 | Rerank 能力位 | `capabilities.rerank` 只表示已配置 Key | Rerank 在 Phase 11 才接入，未做真实可用性探测 |
-| 数组过滤 | `tags` / `related_cases` 暂不支持查询过滤 | PG 的 `text[] @>` 与 SQLite 不可兼得；Phase 10 元数据过滤时补 |
+| 数组过滤 | `tags` / `related_cases` 支持 contains-any | PG 用逐值 JSONB `@>` + OR，SQLite 用 `json_each`，语义一致 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

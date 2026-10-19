@@ -72,6 +72,33 @@ class TestKnowledgeChunkCreate:
         assert len(results) == 1
         assert results[0][0].source_type in {"testcase", "document"}
 
+    def test_lexical_search_applies_metadata_filters_before_limit(self, db_session) -> None:
+        for index, (source_id, meta) in enumerate(
+            [
+                ("DISTRACTOR", {"module": "payment"}),
+                ("TARGET", {"module": "login"}),
+            ]
+        ):
+            KnowledgeChunkService.create(
+                db_session,
+                data=KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id=source_id,
+                    chunk_index=index,
+                    content="登录接口超时",
+                    metadata=meta,
+                ),
+            )
+
+        results = KnowledgeChunkService.lexical_search(
+            db_session,
+            query="登录接口超时",
+            metadata_filters={"module": "login"},
+            limit=1,
+        )
+
+        assert [chunk.source_id for chunk, _, _ in results] == ["TARGET"]
+
     def test_lexical_search_rejects_non_positive_limit(self, db_session) -> None:
         with pytest.raises(ValueError, match="limit"):
             KnowledgeChunkService.lexical_search(db_session, query="登录", limit=0)
@@ -183,11 +210,27 @@ class TestKnowledgeChunkCreate:
 
         captured: dict[str, int] = {}
 
-        def fake_search(cls, session, *, query_embedding, limit=10, source_types=None):
+        def fake_search(
+            cls,
+            session,
+            *,
+            query_embedding,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
             captured["vector"] = limit
             return []
 
-        def fake_lexical(cls, session, *, query, limit=10, source_types=None):
+        def fake_lexical(
+            cls,
+            session,
+            *,
+            query,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
             captured["keyword"] = limit
             return []
 
@@ -217,11 +260,27 @@ class TestKnowledgeChunkCreate:
 
         captured: dict[str, int] = {}
 
-        def fake_search(cls, session, *, query_embedding, limit=10, source_types=None):
+        def fake_search(
+            cls,
+            session,
+            *,
+            query_embedding,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
             captured["vector"] = limit
             return []
 
-        def fake_lexical(cls, session, *, query, limit=10, source_types=None):
+        def fake_lexical(
+            cls,
+            session,
+            *,
+            query,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
             captured["keyword"] = limit
             return []
 
@@ -241,6 +300,60 @@ class TestKnowledgeChunkCreate:
         )
 
         assert captured == {"vector": 9, "keyword": 9}
+
+    def test_hybrid_search_forwards_the_same_filters_to_both_channels(
+        self, engine, db_session, monkeypatch
+    ) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        captured: dict[str, object] = {}
+
+        def fake_search(
+            cls,
+            session,
+            *,
+            query_embedding,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
+            captured["vector"] = (source_types, metadata_filters)
+            return []
+
+        def fake_lexical(
+            cls,
+            session,
+            *,
+            query,
+            limit=10,
+            source_types=None,
+            metadata_filters=None,
+        ):
+            captured["keyword"] = (source_types, metadata_filters)
+            return []
+
+        monkeypatch.setattr(KnowledgeChunkService, "search", classmethod(fake_search))
+        monkeypatch.setattr(
+            KnowledgeChunkService,
+            "lexical_search",
+            classmethod(fake_lexical),
+        )
+        filters = {"module": "login", "tags": ["smoke"]}
+
+        KnowledgeChunkService.hybrid_search(
+            db_session,
+            query="登录",
+            query_embedding=[0.0] * 1024,
+            metadata_filters=filters,
+            candidate_k=3,
+            limit=2,
+        )
+
+        assert captured == {
+            "vector": (None, filters),
+            "keyword": (None, filters),
+        }
 
     def test_hybrid_search_rejects_sqlite_without_faking_scores(self, engine, db_session) -> None:
         if engine.dialect.name == "postgresql":

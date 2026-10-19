@@ -23,6 +23,7 @@ from app.core.logging import get_logger
 from app.models import KnowledgeChunk
 from app.models.types import POSTGRES
 from app.retrieval.embedding import EmbeddingClient, content_sha256
+from app.retrieval.filters import apply_metadata_filters
 from app.retrieval.hybrid import ChannelHit, FusedHit, fuse
 from app.retrieval.lexical import BM25Index, LexicalDocument
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
@@ -160,6 +161,7 @@ class KnowledgeChunkService:
         query_embedding: Sequence[float],
         limit: int = 10,
         source_types: Sequence[str] | None = None,
+        metadata_filters: dict[str, object] | None = None,
     ) -> list[tuple[KnowledgeChunk, float]]:
         """按 cosine distance 返回 ``(chunk, distance)``。
 
@@ -180,6 +182,11 @@ class KnowledgeChunkService:
         stmt = stmt.where(KnowledgeChunk.embedding.is_not(None))
         if source_types:
             stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
+        stmt = apply_metadata_filters(
+            stmt,
+            metadata_filters,
+            dialect_name=session.bind.dialect.name,
+        )
         stmt = stmt.order_by(
             distance,
             KnowledgeChunk.source_type,
@@ -203,6 +210,7 @@ class KnowledgeChunkService:
         query: str,
         limit: int = 10,
         source_types: Sequence[str] | None = None,
+        metadata_filters: dict[str, object] | None = None,
     ) -> list[tuple[KnowledgeChunk, float, list[str]]]:
         """按 BM25 返回 ``(chunk, score, matched_terms)``。
 
@@ -216,6 +224,13 @@ class KnowledgeChunkService:
         stmt = select(KnowledgeChunk)
         if source_types:
             stmt = stmt.where(KnowledgeChunk.source_type.in_(list(source_types)))
+        # 过滤必须在读取候选前完成。先取 limit 再过滤会发生候选饥饿：
+        # 目标 Chunk 可能排在第 N 位，而前 N-1 位全被过滤掉。
+        stmt = apply_metadata_filters(
+            stmt,
+            metadata_filters,
+            dialect_name=session.bind.dialect.name,
+        )
         chunks = list(session.scalars(stmt.order_by(KnowledgeChunk.id)).all())
         if not chunks:
             return []
@@ -253,6 +268,7 @@ class KnowledgeChunkService:
         keyword_candidate_k: int | None = None,
         limit: int | None = None,
         source_types: Sequence[str] | None = None,
+        metadata_filters: dict[str, object] | None = None,
         strategy: str | None = None,
         vector_weight: float = 1.0,
         keyword_weight: float = 1.0,
@@ -317,12 +333,14 @@ class KnowledgeChunkService:
             query_embedding=query_embedding,
             limit=vector_depth,
             source_types=source_types,
+            metadata_filters=metadata_filters,
         )
         keyword_results = cls.lexical_search(
             session,
             query=query,
             limit=keyword_depth,
             source_types=source_types,
+            metadata_filters=metadata_filters,
         )
         vector_hits = [
             ChannelHit(

@@ -111,7 +111,7 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-9-hybrid`，Phase 0–9 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-10-metadata-filter`，Phase 0–10 核心链路已完成，数据库实机验证已完成。**
 
 ### 已完成
 
@@ -205,6 +205,21 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
   manifest 的 `selection` / `evaluated_variants` 与 `default_fusion` 分开记录。
   `git_commit` 是生成提交，不一定是产物入库提交；当前结果在 `a73d963` 生成、
   随 `2c179e0` 入库
+- Phase 10 已完成 Metadata Filter：新增受控过滤 DSL、SQLite / PostgreSQL
+  跨方言谓词，以及 `search()` / `lexical_search()` / `hybrid_search()` 的
+  `metadata_filters` 接缝。过滤在 `LIMIT` 前执行；不同字段 AND，数组字段
+  contains-any；未知字段、空数组、空白值与非对象输入 fail fast
+- Phase 10 使用独立数据集 `eval/fixtures/phase10_simulated.json`
+  （22 条 Query / 47 Chunk，18 可回答 / 4 不可回答，26 条证据标注），
+  每条 Query 都有 `expected_filters`。Phase 8 原数据集仍保留 24 条口径，
+  历史 Phase 8/9 manifest 可继续追溯
+- Phase 10 实验比较 `none / pre / post / during`：`pre` 先 SQL 过滤再排序，
+  `post` 先取 Top-K 再过滤且不补候选，用于复现候选饥饿；`during` 当前与 `pre`
+  相同，**不是**独立的 HNSW ANN 过滤实验。正式结果见
+  `results/metadata-filter-phase10.json`，报告见 `docs/METADATA_FILTER.md`
+- Phase 10 实验表未建 HNSW，延迟只含候选排序 / 融合，不含 Query Embedding；
+  22 条 Query / 47 个 Chunk 只能验证语义与失败模式，不能作为生产阈值、ANN 或
+  API P95 结论。统一 `/search` 与 RAG 尚未接入 Metadata Filter
 - **Phase 5 的两个使用前提（新接手者最容易踩）**：
   1. 导入**不生成向量**：document Chunk 的 `embedding` 为空，必须补跑
      `uv run python scripts/index_entities.py --only document`（增量，不重建正文）
@@ -222,14 +237,16 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 / 8 结论
 2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
-3. Phase 10：Metadata Filter，重点验证过滤发生在向量检索前 / 中 / 后对 Recall 与延迟的影响
-4. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
+3. Phase 11：Reranker，比较 Hybrid 与 Hybrid + Rerank 的 Recall@5 / MRR / 延迟
+4. 在带 HNSW 的隔离表上补真正的 ANN filtering / iterative scan 实验
+5. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
 
 - 统一 `/search` 关键词仍走 `ILIKE`；BM25 与 Hybrid 已具备独立 Chunk 接缝，
   但尚未替换统一 API
-- `tags` / `related_cases` 数组暂不支持查询过滤（PG `text[] @>` 与 SQLite 不可兼得，Phase 10 补）
+- `tags` / `related_cases` 已支持 contains-any；PG 使用逐值 JSONB `@>` + OR，
+  SQLite 使用 `json_each`。过滤语义跨方言一致，但大库仍需评估 GIN 与查询计划
 - 统一 `/search` 暂无 `score` 字段；Chunk BM25 / Hybrid 在内部返回可解释分数，
   公开响应契约仍未确定
 - BM25 每次查询读取候选 Chunk 并建内存索引，只适用于当前小规模验证；大库需
@@ -271,9 +288,10 @@ uv run alembic upgrade head               # 应用迁移
 1. `uv sync && uv run pytest` 确认默认路径测试通过（数量以实际输出为准）
 2. 通读 `app/services/search_service.py` 和 `app/api/search.py` —— Phase 2/3 的接入点
 3. 若 Docker 可用，跑 `TEST_DATABASE_URL=... uv run pytest` 复验真实 PostgreSQL
-4. Phase 2/3/6/7/8/9 已完成；本机启动 OMLX 后运行
+4. Phase 2/3/6/7/8/9/10 已完成；本机启动 OMLX 后运行
    `scripts/embedding_probe.py`、`scripts/ask.py` 与
    `scripts/chunking_experiment.py --dry-run`、
    `scripts/embedding_experiment.py --dry-run`、
    `scripts/lexical_experiment.py --dry-run`、
-   `scripts/hybrid_experiment.py --dry-run` 做复验
+   `scripts/hybrid_experiment.py --dry-run`、
+   `scripts/metadata_filter_experiment.py --dry-run` 做复验

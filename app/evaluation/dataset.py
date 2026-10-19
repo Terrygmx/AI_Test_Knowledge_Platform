@@ -30,6 +30,7 @@ class EvaluationQuery(BaseSchema):
     relevant: list[EvidenceLabel] = Field(default_factory=list)
     answerable: bool = True
     category: str = ""
+    expected_filters: dict[str, str | list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_answerability(self) -> EvaluationQuery:
@@ -37,6 +38,17 @@ class EvaluationQuery(BaseSchema):
             raise ValueError("可回答问题必须至少标注一条相关证据")
         if not self.answerable and self.relevant:
             raise ValueError("不可回答问题不应标注相关证据")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_expected_filters(self) -> EvaluationQuery:
+        from app.retrieval.filters import MetadataFilterError, normalize_metadata_filters
+
+        try:
+            normalized = normalize_metadata_filters(self.expected_filters)
+        except MetadataFilterError as exc:
+            raise ValueError(f"expected_filters 不合法：{exc}") from exc
+        self.expected_filters = normalized
         return self
 
 

@@ -160,6 +160,110 @@ class TestVectorSearch:
         )
         assert [chunk.source_id for chunk, _ in results] == ["B-1"]
 
+    def test_metadata_filter_is_applied_before_vector_limit(self, engine, db_session) -> None:
+        """目标 Chunk 与查询更远时，预过滤仍应把它放进 Top-K。"""
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        client = FakeEmbeddingClient(dimension=1024)
+        KnowledgeChunkService.create_many(
+            db_session,
+            items=[
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="DISTRACTOR",
+                    content="登录成功",
+                    metadata={"module": "payment", "tags": ["smoke"]},
+                ),
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="TARGET",
+                    content="支付失败",
+                    metadata={"module": "login", "tags": ["security"]},
+                ),
+            ],
+            embedding_client=client,
+        )
+
+        results = KnowledgeChunkService.search(
+            db_session,
+            query_embedding=client.embed_query("登录成功"),
+            metadata_filters={"module": "login"},
+            limit=1,
+        )
+
+        assert [chunk.source_id for chunk, _ in results] == ["TARGET"]
+
+    def test_array_metadata_filter_works_on_jsonb(self, engine, db_session) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        client = FakeEmbeddingClient(dimension=1024)
+        KnowledgeChunkService.create_many(
+            db_session,
+            items=[
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="SMOKE",
+                    content="登录",
+                    metadata={"tags": ["login", "smoke"]},
+                ),
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="SECURITY",
+                    content="登录",
+                    metadata={"tags": ["security"]},
+                ),
+            ],
+            embedding_client=client,
+        )
+
+        results = KnowledgeChunkService.search(
+            db_session,
+            query_embedding=client.embed_query("登录"),
+            metadata_filters={"tags": ["smoke"]},
+            limit=2,
+        )
+
+        assert [chunk.source_id for chunk, _ in results] == ["SMOKE"]
+
+    def test_hybrid_metadata_filter_does_not_leak_from_other_modules(
+        self, engine, db_session
+    ) -> None:
+        if engine.dialect.name != "postgresql":
+            pytest.skip("PostgreSQL + pgvector only")
+
+        client = FakeEmbeddingClient(dimension=1024)
+        KnowledgeChunkService.create_many(
+            db_session,
+            items=[
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="LOGIN-TARGET",
+                    content="登录接口超时",
+                    metadata={"module": "login", "tags": ["smoke"]},
+                ),
+                KnowledgeChunkCreate(
+                    source_type="testcase",
+                    source_id="PAYMENT-DISTRACTOR",
+                    content="登录接口超时",
+                    metadata={"module": "payment", "tags": ["smoke"]},
+                ),
+            ],
+            embedding_client=client,
+        )
+
+        results = KnowledgeChunkService.hybrid_search(
+            db_session,
+            query="登录接口超时",
+            query_embedding=client.embed_query("登录接口超时"),
+            metadata_filters={"module": "login"},
+            candidate_k=2,
+            limit=2,
+        )
+
+        assert [hit.source_id for hit in results] == ["LOGIN-TARGET"]
+
     def test_sqlite_rejects_vector_search(self, engine, db_session) -> None:
         if engine.dialect.name == "postgresql":
             pytest.skip("SQLite-only check")

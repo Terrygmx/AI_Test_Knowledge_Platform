@@ -6,6 +6,31 @@
 
 ### Added
 
+#### Phase 10：Metadata Filter（2026-10-20）
+
+- **过滤实现**：新增 `app/retrieval/filters.py`，支持 `module` / `sub_module` /
+  `priority` / `version` / `status` / `severity` / `case_type` / `doc_type`
+  标量精确匹配，以及 `tags` / `related_cases` 数组 contains-any；不同字段 AND。
+  未知字段、空数组、空白值、非对象输入直接报错，缺失 / `null` / 类型错误不匹配。
+- **跨方言 SQL**：SQLite 使用 `json_each` + `json_type`，PostgreSQL 对每个数组值
+  构造单元素 JSONB `@>` 后 OR；过滤谓词在 Vector / BM25 的 `LIMIT` 前应用，
+  Hybrid 两个通道共用同一条件。
+- **Chunk 接缝**：`KnowledgeChunkService.search()` / `lexical_search()` /
+  `hybrid_search()` 新增 `metadata_filters`；统一 `/search` 与 RAG 的公开契约不变。
+- **独立数据集**：新增 `eval/fixtures/phase10_simulated.json`，22 条 Query /
+  47 个 Chunk，每条 Query 都显式标注 `expected_filters`；保留 Phase 8 原数据集
+  与历史 manifest 的 24 条口径。
+- **实验与结果**：新增 `app/evaluation/metadata_filter_experiment.py` 与
+  `scripts/metadata_filter_experiment.py`，比较 `none / pre / post / during`。
+  正式 manifest 为 `results/metadata-filter-phase10.json`，报告见
+  `docs/METADATA_FILTER.md`。`post` 故意不复取候选，用于复现候选饥饿。
+- **审计边界**：manifest 记录数据集 / 候选哈希、`git_commit` / `git_dirty`、
+  脱敏命令与过滤语义；实验表未建 HNSW，`during` 复用 `pre`，延迟只含候选排序 /
+  融合，不冒充 ANN、数据库 P95 或 API P95 结论。
+- **Review 收口**：Phase 10 使用独立 fixture，避免改写 Phase 8/9 历史数据集；
+  非 Mapping 的过滤输入 fail fast；报告一致性测试直接校验 manifest 指标、样本数
+  与 ANN 边界。
+
 #### Phase 9：Hybrid Search（2026-10-20）
 
 - **融合实现**：新增 `app/retrieval/hybrid.py`，支持 Weighted 与 RRF；候选以
@@ -285,7 +310,8 @@
 - **检索结果暂无 score 字段**：没有打分依据时不编数字（Evidence First）；融合分数目前只在 Chunk 接缝暴露。
 - **`.env` 中 `EMBEDDING_API_KEY` / `RERANK_API_KEY` 为空**：`/health` 的 `capabilities` 会显示 false，
   涉及 Embedding / Rerank 的代码路径暂不可运行；LLM 能力也改为实际探测，而不是恒为 true。
-- **`tags` / `related_cases` 暂不支持查询过滤**：PG 的 `text[] @>` 与 SQLite 不可兼得，Phase 10 元数据过滤时补。
+- **`tags` / `related_cases` 已支持查询过滤**：Phase 10 使用 JSONB / `json_each`
+  实现跨方言 contains-any，过滤在候选截断前执行。
 
 ### 历史（Phase 0 之前）
 

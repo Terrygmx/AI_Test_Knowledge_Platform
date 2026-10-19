@@ -20,6 +20,7 @@ from app.retrieval.lexical import BM25Index, LexicalDocument
 from scripts.lexical_experiment import _manifest
 
 DATASET = "eval/fixtures/phase8_simulated.json"
+PHASE10_DATASET = "eval/fixtures/phase10_simulated.json"
 
 
 def test_phase8_dataset_covers_identifier_and_semantic_queries() -> None:
@@ -49,6 +50,16 @@ def test_offline_chunks_keep_real_chunk_indices_for_hybrid_identity() -> None:
     assert document_indices
     assert len(set(document_indices)) == len(document_indices)
     assert any(index > 0 for _, index in document_indices)
+
+
+def test_phase10_fixture_has_expected_filters_for_every_query() -> None:
+    """Phase 10 的过滤条件必须显式标注，不能从 Query 文本猜测。"""
+    dataset = load_dataset(PHASE10_DATASET)
+
+    assert len(dataset.queries) == 22
+    assert all("expected_filters" in query.model_fields_set for query in dataset.queries)
+    assert any(query.expected_filters for query in dataset.queries)
+    assert all(query.expected_filters for query in dataset.queries)
 
 
 def test_evaluation_reports_per_category_and_negative_queries() -> None:

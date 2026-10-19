@@ -35,6 +35,7 @@ class RetrievedChunk:
     source_id: str
     content: str
     chunk_index: int = 0
+    meta: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -297,6 +298,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_id=chunk.source_id,
                 content=chunk.content,
                 chunk_index=chunk.chunk_index,
+                meta=dict(chunk.metadata),
             )
         )
     for seed in dataset.defects:
@@ -307,6 +309,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_id=chunk.source_id,
                 content=chunk.content,
                 chunk_index=chunk.chunk_index,
+                meta=dict(chunk.metadata),
             )
         )
     for seed in dataset.requirements:
@@ -317,6 +320,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_id=chunk.source_id,
                 content=chunk.content,
                 chunk_index=chunk.chunk_index,
+                meta=dict(chunk.metadata),
             )
         )
     for document in dataset.documents:
@@ -327,6 +331,7 @@ def retrieve_chunks(dataset: ChunkingDataset) -> list[RetrievedChunk]:
                 source_id=document.doc_id,
                 content=section.content,
                 chunk_index=index,
+                meta={"doc_type": document.doc_type, "version": document.version},
             )
             for index, section in enumerate(parsed.sections)
         )
