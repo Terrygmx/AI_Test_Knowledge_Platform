@@ -55,13 +55,14 @@
       "during": "same filtered set as pre; not an independent HNSW ANN run"
     },
     "ann_index": null,
-    "latency_scope": "candidate ranking and fusion only; excludes query embedding",
+    "latency_scope": "prefilter (when enabled) + candidate fetch + ranking/fusion; excludes query embedding and index building",
     "filter_semantics": {
       "scalar": "exact",
       "arrays": "contains-any",
       "combine": "and",
       "missing": "no-match"
-    }
+    },
+    "candidate_k_semantics": "RRF per-channel depth only; vector/keyword single channels use top_k; post filters an unfiltered top_k result"
   },
   "results": [
     {
@@ -152,7 +153,8 @@
         5
       ],
       "empty_result_queries": 0,
-      "gold_filtered_out_queries": 0
+      "gold_filtered_out_queries": 0,
+      "below_top_k_queries": 0
     },
     {
       "name": "pre",
@@ -242,7 +244,8 @@
         5
       ],
       "empty_result_queries": 0,
-      "gold_filtered_out_queries": 0
+      "gold_filtered_out_queries": 0,
+      "below_top_k_queries": 15
     },
     {
       "name": "post",
@@ -332,7 +335,8 @@
         0
       ],
       "empty_result_queries": 1,
-      "gold_filtered_out_queries": 0
+      "gold_filtered_out_queries": 0,
+      "below_top_k_queries": 21
     },
     {
       "name": "during",
@@ -422,7 +426,8 @@
         5
       ],
       "empty_result_queries": 0,
-      "gold_filtered_out_queries": 0
+      "gold_filtered_out_queries": 0,
+      "below_top_k_queries": 15
     }
   ],
   "index_seconds": 1.1194024169963086,

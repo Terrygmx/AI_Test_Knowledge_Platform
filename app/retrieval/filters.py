@@ -11,6 +11,8 @@
 
 SQLite 使用 ``json_each`` 展开数组，PostgreSQL 使用 JSONB ``@>``。
 两种实现都在 SQL 的 ``WHERE`` 中执行，调用方必须在 ``LIMIT`` 之前应用。
+SQL 层同时检查 JSON 类型：标量必须是 string，数组元素必须是 string；
+不能依赖 ``1 == "1"`` 这类文本化比较。
 """
 
 from __future__ import annotations
@@ -104,37 +106,82 @@ def _json_path(field: str) -> str:
     return f"$.{field}"
 
 
-def _scalar_predicate(field: str, value: str):
+def _scalar_predicate(field: str, value: str, dialect_name: str):
     # ``as_string`` 在 PG 编译为 ->>，在 SQLite 编译为 JSON_EXTRACT + CAST。
-    return KnowledgeChunk.meta[field].as_string() == value
+    # 文本化比较会把数字 1 当成 "1"，所以必须先用 JSON 类型守卫。
+    return _string_scalar_predicate(
+        KnowledgeChunk.meta,
+        field,
+        value,
+        dialect_name=dialect_name,
+    )
 
 
-def _array_predicate(field: str, values: list[str], dialect_name: str):
+def _string_scalar_predicate(
+    metadata_column: Any,
+    field: str,
+    value: str,
+    *,
+    dialect_name: str | None,
+):
     if dialect_name == POSTGRES:
-        # JSONB 数组的 ``@>`` 是“包含全部”，而本接口约定是“包含任一值”。
-        # 不能把多个值塞进一个数组后直接 @>；否则 tags=[smoke,security]
-        # 会要求两个标签同时存在。这里对每个值构造单元素数组包含，再用 OR。
-        return or_(
+        type_guard = func.jsonb_typeof(metadata_column[field]) == "string"
+    else:
+        type_guard = func.json_type(metadata_column, _json_path(field)) == "text"
+    if dialect_name == POSTGRES:
+        return type_guard & (metadata_column[field].as_string() == value)
+    return type_guard & (func.json_quote(metadata_column[field]) == literal(_json_value(value)))
+
+
+def _string_array_predicate(
+    metadata_column: Any,
+    field: str,
+    values: list[str],
+    *,
+    dialect_name: str,
+):
+    if dialect_name == POSTGRES:
+        type_guard = func.jsonb_typeof(metadata_column[field]) == "array"
+        # JSONB containment 对 JSON 类型敏感，因此 ["1"] 不会匹配 [1]；
+        # 外层数组类型守卫仍使行为显式，而不是依赖实现细节。
+        return type_guard & or_(
             *(
-                KnowledgeChunk.meta[field].op("@>")(cast(literal(_json_array([value])), JSONB))
+                metadata_column[field].op("@>")(cast(literal(_json_array([value])), JSONB))
                 for value in values
             )
         )
 
-    # SQLite：json_each 在 SQL 层展开数组。缺失 / 标量 / null 都不会产生
-    # 匹配的 value；空数组已在 normalize 阶段拒绝。
-    elements = func.json_each(KnowledgeChunk.meta, _json_path(field)).table_valued(
+    elements = func.json_each(metadata_column, _json_path(field)).table_valued(
         "key",
         "value",
     )
+    # json_each 的 value 对 JSON string 是 text、number 是 integer；
+    # SQLite 的 typeof 能在 SQL 层区分这两种类型。
     return exists(
         select(literal(1))
         .select_from(elements)
         .where(
-            func.json_type(KnowledgeChunk.meta, _json_path(field)) == "array",
-            elements.c.value.in_(values),
+            func.json_type(metadata_column, _json_path(field)) == "array",
+            func.json_quote(elements.c.value).in_([_json_value(v) for v in values]),
         )
     )
+
+
+def _array_predicate(field: str, values: list[str], dialect_name: str):
+    # ``@>`` 是“包含全部”，而本接口约定是“包含任一值”。不能把多个值塞进
+    # 一个数组后直接 @>；否则 tags=[smoke,security] 会要求两个标签同时存在。
+    return _string_array_predicate(
+        KnowledgeChunk.meta,
+        field,
+        values,
+        dialect_name=dialect_name,
+    )
+
+
+def _json_value(value: str) -> str:
+    import json
+
+    return json.dumps(value, ensure_ascii=False)
 
 
 def _json_array(values: list[str]) -> str:
@@ -154,7 +201,7 @@ def metadata_filter_predicates(
     for field, value in normalized.items():
         if field in SCALAR_FILTER_FIELDS:
             assert isinstance(value, str)
-            predicates.append(_scalar_predicate(field, value))
+            predicates.append(_scalar_predicate(field, value, dialect_name))
         else:
             assert isinstance(value, list)
             predicates.append(_array_predicate(field, value, dialect_name))
@@ -175,30 +222,27 @@ def apply_metadata_filters_to_table(
     for field_name, expected in normalized.items():
         if field_name in SCALAR_FILTER_FIELDS:
             assert isinstance(expected, str)
-            predicate = metadata_column[field_name].as_string() == expected
+            predicate = _string_scalar_predicate(
+                metadata_column,
+                field_name,
+                expected,
+                dialect_name=dialect_name,
+            )
         elif dialect_name == POSTGRES:
             assert isinstance(expected, list)
-            predicate = or_(
-                *(
-                    metadata_column[field_name].op("@>")(
-                        cast(literal(_json_array([value])), JSONB)
-                    )
-                    for value in expected
-                )
+            predicate = _string_array_predicate(
+                metadata_column,
+                field_name,
+                expected,
+                dialect_name=dialect_name,
             )
         else:
             assert isinstance(expected, list)
-            elements = func.json_each(
+            predicate = _string_array_predicate(
                 metadata_column,
-                _json_path(field_name),
-            ).table_valued("key", "value")
-            predicate = exists(
-                select(literal(1))
-                .select_from(elements)
-                .where(
-                    func.json_type(metadata_column, _json_path(field_name)) == "array",
-                    elements.c.value.in_(expected),
-                )
+                field_name,
+                expected,
+                dialect_name=dialect_name,
             )
         stmt = stmt.where(predicate)
     return stmt

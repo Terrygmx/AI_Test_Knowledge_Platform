@@ -56,7 +56,7 @@ class TestMetadataFilterSemantics:
 
 
 class TestManifestDirtyState:
-    def test_untracked_files_do_not_make_generation_dirty(self, monkeypatch) -> None:
+    def test_ignored_untracked_files_do_not_make_generation_dirty(self, monkeypatch) -> None:
         calls: list[list[str]] = []
 
         def fake_check_output(arguments, **kwargs):
@@ -70,7 +70,19 @@ class TestManifestDirtyState:
 
         assert _worktree_dirty() is False
         assert calls[0][:2] == ["git", "status"]
-        assert calls[0][3] == "--untracked-files=no"
+        assert ":(exclude)review/**" in calls[0]
+        assert ":(exclude)results/**" in calls[0]
+
+    def test_untracked_implementation_is_not_hidden_from_dirty_check(self, monkeypatch) -> None:
+        def fake_check_output(arguments, **kwargs):
+            return "?? app/retrieval/filters.py\n"
+
+        monkeypatch.setattr(
+            "scripts.metadata_filter_experiment.subprocess.check_output",
+            fake_check_output,
+        )
+
+        assert _worktree_dirty() is True
 
     def test_tracked_changes_make_manifest_dirty(self, monkeypatch) -> None:
         def fake_check_output(arguments, **kwargs):
@@ -135,9 +147,7 @@ class TestMetadataFilterExperiment:
             ],
             expected_filters={"module": "login"},
         )
-        dataset = load_dataset(DATASET).model_copy(
-            update={"queries": [query]}
-        )
+        dataset = load_dataset(DATASET).model_copy(update={"queries": [query]})
         candidates = [
             _candidate("D1", module="payment", tags=["smoke"], embedding=(1.0, 0.0)),
             _candidate("D2", module="payment", tags=["smoke"], embedding=(0.99, 0.01)),
@@ -206,9 +216,7 @@ class TestMetadataFilterExperiment:
             ],
             expected_filters={"module": "payment"},
         )
-        dataset = load_dataset(DATASET).model_copy(
-            update={"queries": [query]}
-        )
+        dataset = load_dataset(DATASET).model_copy(update={"queries": [query]})
         candidates = [
             _candidate("TARGET", module="login", tags=["smoke"]),
             _candidate("OTHER", module="payment", tags=["smoke"]),

@@ -88,22 +88,26 @@ def _redact_command(command: list[str]) -> list[str]:
 
 
 def _worktree_dirty() -> bool:
-    """只把已跟踪文件改动视为脏。
+    """忽略报告、结果和占位文件，但检查关键路径的未跟踪变化。
 
-    仓库里可能长期存在未跟踪的评审记录或占位文件；它们不改变代码、数据集或
-    候选，因此不能让正式实验的 ``git_dirty`` 永远为 true。正式产物自身也是
-    未跟踪文件，写入后同样不能把 manifest 标记为脏。
+    这样既避免长期评审产物污染 ``git_dirty``，也不会把未跟踪的实现、
+    fixture 或配置错误地包装成干净工作区。
     """
-    try:
-        return bool(
-            subprocess.check_output(
-            ["git", "status", "--porcelain", "--untracked-files=no"],
-            text=True,
-            stderr=subprocess.DEVNULL,
-            ).strip()
-        )
-    except (OSError, subprocess.CalledProcessError):
-        return True
+    critical_output = subprocess.check_output(
+        [
+            "git",
+            "status",
+            "--porcelain",
+            "--",
+            ":/",
+            ":(exclude)review/**",
+            ":(exclude)results/**",
+            ":(exclude)eval/fixtures/.gitkeep",
+        ],
+        text=True,
+        stderr=subprocess.DEVNULL,
+    )
+    return bool(critical_output)
 
 
 def _candidate_digest(documents: list[Any]) -> str:
@@ -252,7 +256,14 @@ def _manifest(
                 "during": "same filtered set as pre; not an independent HNSW ANN run",
             },
             "ann_index": None,
-            "latency_scope": "candidate ranking and fusion only; excludes query embedding",
+            "latency_scope": (
+                "prefilter (when enabled) + candidate fetch + ranking/fusion; "
+                "excludes query embedding and index building"
+            ),
+            "candidate_k_semantics": (
+                "RRF per-channel depth only; vector/keyword single channels "
+                "use top_k; post filters an unfiltered top_k result"
+            ),
             "filter_semantics": {
                 "scalar": "exact",
                 "arrays": "contains-any",
@@ -270,6 +281,7 @@ def _manifest(
                 "candidate_counts_after": variant.candidate_counts_after,
                 "result_counts": variant.result_counts,
                 "empty_result_queries": variant.empty_result_queries,
+                "below_top_k_queries": sum(count < top_k for count in variant.result_counts),
                 "gold_filtered_out_queries": variant.gold_filtered_out_queries,
             }
             for variant in result.variants

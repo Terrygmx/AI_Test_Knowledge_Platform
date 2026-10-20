@@ -58,7 +58,9 @@ class TestMetadataFilterNormalization:
         ],
     )
     def test_supported_fields_are_public(self, field: str) -> None:
-        assert normalize_metadata_filters({field: "x" if field not in {"tags", "related_cases"} else ["x"]})
+        assert normalize_metadata_filters(
+            {field: "x" if field not in {"tags", "related_cases"} else ["x"]}
+        )
 
     def test_unknown_field_fails_fast(self) -> None:
         with pytest.raises(MetadataFilterError, match="未知"):
@@ -101,9 +103,10 @@ class TestMetadataFilterNormalization:
         assert source == {"tags": ["smoke"]}
 
     def test_scalar_and_array_filters_are_combined_with_and(self) -> None:
-        assert normalize_metadata_filters(
-            {"module": "login", "tags": ["smoke", "security"]}
-        ) == {"module": "login", "tags": ["smoke", "security"]}
+        assert normalize_metadata_filters({"module": "login", "tags": ["smoke", "security"]}) == {
+            "module": "login",
+            "tags": ["smoke", "security"],
+        }
 
     def test_dataset_filters_are_validated_and_normalized(self) -> None:
         query = EvaluationQuery(
@@ -288,6 +291,102 @@ class TestMetadataFilterSQL:
             dialect_name=db_session.bind.dialect.name,
         )
         assert [chunk.source_id for chunk in db_session.scalars(stmt)] == ["BUG-2"]
+
+
+class TestMetadataFilterJsonTypes:
+    """数字 / 字符串 / 布尔在两种方言下都不能静默互配。"""
+
+    def test_scalar_number_does_not_match_string_filter(self, db_session) -> None:
+        db_session.add_all(
+            [
+                _chunk("NUMBER", meta={"priority": 1}),
+                _chunk("BOOLEAN", meta={"priority": True}),
+                _chunk("STRING", meta={"priority": "1"}),
+                _chunk("FLOAT", meta={"priority": 1.0}),
+            ]
+        )
+        db_session.commit()
+
+        stmt = apply_metadata_filters(
+            select(KnowledgeChunk),
+            {"priority": "1"},
+            dialect_name=db_session.bind.dialect.name,
+        )
+
+        assert [chunk.source_id for chunk in db_session.scalars(stmt)] == ["STRING"]
+
+    def test_array_number_does_not_match_string_filter(self, db_session) -> None:
+        db_session.add_all(
+            [
+                _chunk("NUMBER", meta={"tags": [1]}),
+                _chunk("BOOLEAN", meta={"tags": [True]}),
+                _chunk("STRING", meta={"tags": ["1"]}),
+            ]
+        )
+        db_session.commit()
+
+        stmt = apply_metadata_filters(
+            select(KnowledgeChunk),
+            {"tags": ["1", "security"]},
+            dialect_name=db_session.bind.dialect.name,
+        )
+
+        assert [chunk.source_id for chunk in db_session.scalars(stmt)] == ["STRING"]
+
+    def test_array_string_with_json_metacharacters_matches_exactly(self, db_session) -> None:
+        db_session.add_all(
+            [
+                _chunk("UNICODE", meta={"tags": ['登录" 安全']}),
+                _chunk("WRONG", meta={"tags": ["wrong"]}),
+            ]
+        )
+        db_session.commit()
+
+        stmt = apply_metadata_filters(
+            select(KnowledgeChunk),
+            {"tags": ['登录" 安全']},
+            dialect_name=db_session.bind.dialect.name,
+        )
+
+        assert [chunk.source_id for chunk in db_session.scalars(stmt)] == ["UNICODE"]
+
+    def test_non_array_container_does_not_match_array_filter(self, db_session) -> None:
+        db_session.add_all(
+            [
+                _chunk("OBJECT", meta={"tags": {"smoke": True}}),
+                _chunk("STRING", meta={"tags": "smoke"}),
+                _chunk("ARRAY", meta={"tags": ["smoke"]}),
+            ]
+        )
+        db_session.commit()
+
+        stmt = apply_metadata_filters(
+            select(KnowledgeChunk),
+            {"tags": ["smoke"]},
+            dialect_name=db_session.bind.dialect.name,
+        )
+
+        assert [chunk.source_id for chunk in db_session.scalars(stmt)] == ["ARRAY"]
+
+
+def test_sqlite_scalar_predicate_has_json_type_guard() -> None:
+    from sqlalchemy.dialects import sqlite
+
+    stmt = apply_metadata_filters(
+        select(KnowledgeChunk),
+        {"priority": "1"},
+        dialect_name="sqlite",
+    )
+    compiled = str(
+        stmt.compile(
+            dialect=sqlite.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "json_type" in compiled
+    assert "text" in compiled
+    assert "'$.priority'" in compiled
 
 
 def test_filter_is_applied_before_limit(db_session) -> None:

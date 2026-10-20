@@ -85,6 +85,10 @@ Hybrid 的两个通道使用完全相同的条件。
   “包含全部”而不是“包含任一”。
 - SQLite：使用 `json_each` 展开数组，并要求 `json_type(...)= 'array'`；
   缺失字段、标量或 `null` 不会产生匹配。
+  SQLite 通过 `json_quote(value) IN ('"expected"')` 锁定 JSON 字符串；数字
+  `1` 会产生 `'1'`，不会与字符串 `"1"` 的 `'"1"'` 匹配。
+  PostgreSQL 通过 `jsonb_typeof(...)= 'string'` / `'array'` 和 JSONB containment
+  保持同样的类型边界；标量数字、布尔和混合类型数组不会静默命中字符串过滤。
 
 同一组语义有跨方言测试守护，包含标量精确匹配、数组 contains-any、多字段 AND、
 缺失 / 错误类型、过滤先于 `LIMIT` 以及 PG 的 JSONB 编译结果。
@@ -94,16 +98,27 @@ Hybrid 的两个通道使用完全相同的条件。
 正式结果由干净提交生成，原始数字以 `results/metadata-filter-phase10.json` 为准。
 运行配置：`candidate_k=20`、`top_k=5`、RRF `1:1, k=60`。
 
-| 变体 | Recall@5 | MRR | 空结果 Query | Gold 被过滤 Query |
-|---|---:|---:|---:|---:|
-| `none` | 0.972 | 0.794 | 0 | 0 |
-| `pre` | 1.000 | 0.931 | 0 | 0 |
-| `post` | 0.972 | 0.903 | 1 | 0 |
-| `during` | 1.000 | 0.931 | 0 | 0 |
+| 变体 | Recall@5 | MRR | 空结果 Query | Under-K Query | 不可回答 FPR | Gold 被过滤 Query |
+|---|---:|---:|---:|---:|---:|---:|
+| `none` | 0.972 | 0.794 | 0 | 0 | 1.000 | 0 |
+| `pre` | 1.000 | 0.931 | 0 | 15 | 1.000 | 0 |
+| `post` | 0.972 | 0.903 | 1 | 21 | 0.750 | 0 |
+| `during` | 1.000 | 0.931 | 0 | 15 | 1.000 | 0 |
 
 过滤后的候选数从 1034 降到 188（按 Query 累计候选数），说明过滤确实缩小了
 检索空间；它没有误杀任何人工标注的 Gold 证据。`post` 出现 1 条空结果，直接
 展示了候选饥饿的风险。
+
+4 条不可回答 Query 在 `none` / `pre` / `during` 全部返回了 top-1 近邻
+（FPR=1.000），`post` 的 FPR 是 0.750。这个数字只说明小样本下向量检索倾向
+返回相似但不相关的候选，不能外推成整体误召回率。Metadata Filter 只约束
+候选空间，不负责“无证据拒答”；后续 Rerank 或 RAG 评估需要单独跟踪拒答、
+相关性和负例指标。
+
+`candidate_k=20` 只控制 RRF 中向量与 BM25 两条通道的候选深度；`vector` /
+`keyword` 单通道直接使用 `top_k`，`post` 先取未过滤 `top_k` 再过滤，不补取
+候选。Under-K Query 表示最终结果少于 `top_k=5` 的 Query 数，用来与空结果
+一起暴露候选饥饿的范围。
 
 这些数字只覆盖 22 条 Query / 47 个 Chunk 的模拟数据。`none` 与 `post` 的
 Recall 相同不代表后过滤安全：`post` 已经出现空结果，且候选饥饿在更大的数据上
@@ -111,9 +126,11 @@ Recall 相同不代表后过滤安全：`post` 已经出现空结果，且候选
 
 ## 6. 延迟边界
 
-`query_p50_seconds` / `query_p95_seconds` 只包含候选排序与融合，不包含 Query
-Embedding，也不包含建表 / Chunk Embedding。实验表没有 HNSW，47 行使用精确扫描，
-因此这些数字不能作为 ANN、数据库 P95 或 API P95 结论。
+`query_p50_seconds` / `query_p95_seconds` 包含启用时的 SQL 预过滤、候选取回、
+排序与融合，不包含 Query Embedding 和建表 / Chunk Embedding。因此跨变体延迟
+比较的工作负载不同：`none` / `post` 不做 SQL 预过滤，`pre` / `during` 会执行
+SQL 过滤并取回结果。实验表没有 HNSW，47 行使用精确扫描，因此这些数字不能作为
+ANN、数据库 P95 或 API P95 结论。
 
 SQL 预过滤本身会把过滤后的候选从数据库读回实验进程，再在内存中做向量 / BM25
 排序。这是为了在固定 47 个候选上比较过滤变体，不是生产查询路径的性能基准。
@@ -132,10 +149,15 @@ uv run python scripts/metadata_filter_experiment.py \
 运行后检查 manifest：
 
 - `git_dirty` 必须为 `false`；
+- `git_dirty` 覆盖关键路径的 tracked 与 untracked 变化；`review/`、`results/`
+  和 `eval/fixtures/.gitkeep` 是允许的非关键产物例外；
 - `dataset.sha256` 必须与本文一致；
 - `chunks.count` 必须为 47；
 - `retrieval.ann_index` 必须为 `null`；
 - `retrieval.variant_execution.during` 必须说明它不是独立 ANN 实验。
+- `retrieval.latency_scope` 必须与第 6 节口径一致；
+- `retrieval.candidate_k_semantics` 必须说明该参数只作用于 RRF 通道深度；
+- 每个 result 必须包含 `below_top_k_queries`。
 
 离线演练不会调用模型或数据库，只验证过滤语义与候选饥饿：
 
