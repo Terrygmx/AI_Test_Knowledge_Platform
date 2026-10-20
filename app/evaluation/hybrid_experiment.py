@@ -23,6 +23,8 @@ from app.evaluation.dataset import ChunkingDataset
 from app.evaluation.lexical_experiment import k_values_for
 from app.evaluation.metrics import RetrievalEvaluation, percentile
 from app.models.types import POSTGRES
+from app.rerank.hybrid import rerank_fused_hits
+from app.rerank.service import RerankClient
 from app.retrieval.hybrid import ChannelHit, FusedHit, fuse
 from app.retrieval.lexical import BM25Index, LexicalDocument
 
@@ -64,6 +66,7 @@ class HybridExperimentResult:
     chunk_count: int
     index_seconds: float = 0.0
     query_embedding_seconds: float = 0.0
+    rerank_seconds: float = 0.0
 
 
 def _cosine_distance(left: Sequence[float], right: Sequence[float]) -> float:
@@ -201,6 +204,8 @@ def evaluate_hybrid(
     rrf_k: int = 60,
     engine: Engine | None = None,
     vector_table: Table | None = None,
+    reranker: RerankClient | None = None,
+    rerank_candidates: int | None = None,
     index_seconds: float = 0.0,
     query_embedding_seconds: float = 0.0,
     variants: Sequence[tuple[str, str]] | None = None,
@@ -234,6 +239,10 @@ def evaluate_hybrid(
     }
     if fusion not in variants_by_fusion:
         raise ValueError("fusion 必须是 all、vector、keyword、weighted 或 rrf")
+    if (reranker is None) != (rerank_candidates is None):
+        raise ValueError("reranker 与 rerank_candidates 必须同时提供")
+    if rerank_candidates is not None and rerank_candidates < top_k:
+        raise ValueError("rerank_candidates 不能小于 top_k")
     if variants is not None:
         raise ValueError("variants 已由 fusion 选择替代，不能同时传入")
     variants = variants_by_fusion[fusion]
@@ -246,6 +255,7 @@ def evaluate_hybrid(
         vector_count = 0
         keyword_count = 0
         fused_count = 0
+        rerank_elapsed = 0.0
         for query, query_embedding in zip(dataset.queries, query_embeddings, strict=True):
             started = time.perf_counter()
             vector_hits: list[ChannelHit] = []
@@ -266,7 +276,26 @@ def evaluate_hybrid(
                 keyword_count += len(keyword_hits)
 
             if strategy == "vector":
-                chosen = vector_hits[:top_k]
+                if reranker is not None and rerank_candidates is not None:
+                    rerank_input = fuse(
+                        vector_hits,
+                        keyword_hits,
+                        strategy=strategy,
+                        vector_weight=vector_weight,
+                        keyword_weight=keyword_weight,
+                        rrf_k=rrf_k,
+                        limit=rerank_candidates,
+                    )
+                    rerank_started = time.perf_counter()
+                    chosen = rerank_fused_hits(
+                        rerank_input,
+                        query.query,
+                        reranker,
+                        top_n=top_k,
+                    )
+                    rerank_elapsed += time.perf_counter() - rerank_started
+                else:
+                    chosen = vector_hits[:top_k]
                 metric_hits = [_metric_chunk(hit) for hit in chosen]
             elif strategy == "keyword":
                 chosen = keyword_hits[:top_k]
@@ -281,17 +310,22 @@ def evaluate_hybrid(
                     rrf_k=rrf_k,
                     limit=top_k,
                 )
+                if reranker is not None and rerank_candidates is not None:
+                    rerank_started = time.perf_counter()
+                    chosen = rerank_fused_hits(
+                        chosen,
+                        query.query,
+                        reranker,
+                        top_n=top_k,
+                    )
+                    rerank_elapsed += time.perf_counter() - rerank_started
                 metric_hits = [_metric_chunk(hit) for hit in chosen]
             latencies.append(time.perf_counter() - started)
             fused_count += len(chosen)
             evaluator.add(
                 query,
                 metric_hits,
-                distances=[
-                    item.score for item in chosen
-                ]
-                if strategy == "vector"
-                else None,
+                distances=[item.score for item in chosen] if strategy == "vector" else None,
             )
 
         results.append(
@@ -313,6 +347,7 @@ def evaluate_hybrid(
         chunk_count=len(candidates),
         index_seconds=index_seconds,
         query_embedding_seconds=query_embedding_seconds,
+        rerank_seconds=rerank_elapsed,
     )
 
 

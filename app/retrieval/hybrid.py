@@ -52,6 +52,9 @@ class FusedHit:
     def key(self) -> tuple[str, str, int]:
         return (self.source_type, self.source_id, self.chunk_index)
 
+    def key_str(self) -> str:
+        return f"{self.source_type}:{self.source_id}:{self.chunk_index}"
+
 
 def _key(hit: ChannelHit) -> tuple[str, str, int]:
     return (hit.source_type, hit.source_id, hit.chunk_index)

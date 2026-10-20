@@ -6,6 +6,21 @@
 
 ### Added
 
+#### Phase 11：Rerank（进行中）
+
+- **精排抽象**：新增 `app/rerank/service.py`，提供可替换
+  `RerankClient` 协议与 OpenAI-compatible `/v1/rerank` 客户端；客户端
+  fail-fast 校验空白 query / 文档、重复身份、返回数量、候选下标与有限分数。
+- **Hybrid 接缝**：新增 `app/rerank/hybrid.py`，Reranker 只接收 Fusion
+  候选并按原始身份还原 `FusedHit`，不能新增、删除或改写证据来源。
+- **实验逻辑**：`evaluate_hybrid()` 新增可选 `reranker` /
+  `rerank_candidates`，比较 Hybrid 与 Hybrid + Rerank，并单独记录
+  `rerank_seconds`。
+- **实验资产**：新增 `eval/fixtures/phase11_simulated.json`（8 条排序精度
+  Query，复用 Phase 8 的 47 个 Chunk）与 `scripts/rerank_experiment.py`。
+- **配置**：新增 `RERANK_TIMEOUT` / `RERANK_MAX_RETRIES`，默认指向本机
+  OMLX 与 `Qwen3.5-9B-DFlash`；`.env.example` 同步更新。
+
 #### Phase 10：Metadata Filter（2026-10-20）
 
 - **过滤实现**：新增 `app/retrieval/filters.py`，支持 `module` / `sub_module` /

@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     rerank_api_key: str = ""
     rerank_model: str = "BAAI/bge-reranker-v2-m3"
     rerank_top_n: int = 5
+    rerank_timeout: float = 60.0
+    rerank_max_retries: int = 2
 
     # ---------------- LLM（双通道可切换）----------------
     llm_provider: Literal["ollama", "openai_compatible"] = "openai_compatible"
@@ -112,6 +114,12 @@ class Settings(BaseSettings):
             raise ValueError("RETRIEVAL_FINAL_TOP_K 必须 >= 1")
         if self.retrieval_rrf_k < 1:
             raise ValueError("RETRIEVAL_RRF_K 必须 >= 1")
+        if self.rerank_top_n < 1:
+            raise ValueError("RERANK_TOP_N 必须 >= 1")
+        if self.rerank_timeout <= 0:
+            raise ValueError("RERANK_TIMEOUT 必须 > 0")
+        if self.rerank_max_retries < 0:
+            raise ValueError("RERANK_MAX_RETRIES 必须 >= 0")
         if self.retrieval_final_top_k > min(
             self.retrieval_vector_top_k,
             self.retrieval_keyword_top_k,

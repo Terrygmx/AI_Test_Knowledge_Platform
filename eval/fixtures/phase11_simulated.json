@@ -1,0 +1,464 @@
+{
+  "version": "2026-10-20",
+  "description": "Phase 11 Rerank 实验：复用 Phase 8 的 47 个实体与文档 Chunk，新增 8 条语义相近但 Gold 证据不同的 Query，用于比较 Hybrid 与 Hybrid + Rerank。",
+  "sources": [
+    {
+      "name": "Phase 8 simulated corpus",
+      "url": "local://eval/fixtures/phase8_simulated.json",
+      "usage": "固定语料，只替换用于检验排序精度的 Query"
+    }
+  ],
+  "testcases": [
+    {
+      "case_id": "SHOP-LOGIN-001",
+      "title": "已注册用户使用正确密码登录",
+      "module": "login",
+      "version": "v2.4",
+      "priority": "P0",
+      "case_type": "smoke",
+      "precondition": "账户 alice@example.test 已激活，密码为 TestOnly#2026。",
+      "steps": "1. 打开登录页。\n2. 输入邮箱与密码。\n3. 点击登录。",
+      "expected_result": "进入账户首页，页面右上角显示 alice@example.test，服务端创建新的会话。",
+      "tags": [
+        "login",
+        "smoke",
+        "session"
+      ]
+    },
+    {
+      "case_id": "SHOP-LOGIN-002",
+      "title": "连续输入错误密码触发账户锁定",
+      "module": "login",
+      "version": "v2.4",
+      "priority": "P1",
+      "case_type": "security",
+      "precondition": "目标账户处于未锁定状态。",
+      "steps": "1. 使用正确邮箱和错误密码登录五次。\n2. 第六次改用正确密码。",
+      "expected_result": "第五次失败后账户锁定三十分钟；锁定期间即使密码正确也拒绝登录，并提示联系客服。",
+      "tags": [
+        "login",
+        "lockout",
+        "security"
+      ]
+    },
+    {
+      "case_id": "SHOP-LOGIN-003",
+      "title": "登录后跳转地址携带明文令牌",
+      "module": "login",
+      "version": "v2.3",
+      "priority": "P1",
+      "case_type": "security",
+      "precondition": "测试账户可正常登录。",
+      "steps": "1. 完成登录。\n2. 检查浏览器地址栏与网络请求。\n3. 复制地址到无痕窗口打开。",
+      "expected_result": "地址栏不出现访问令牌或其他凭据；会话标识仅存在于安全 Cookie 中。",
+      "tags": [
+        "login",
+        "token",
+        "privacy"
+      ]
+    },
+    {
+      "case_id": "SHOP-CATALOG-001",
+      "title": "按商品名称搜索并分页浏览结果",
+      "module": "catalog",
+      "version": "v2.4",
+      "priority": "P1",
+      "case_type": "functional",
+      "precondition": "商品库至少存在三十件名称含“旅行”的商品。",
+      "steps": "1. 在搜索框输入“旅行”。\n2. 提交搜索。\n3. 翻到第二页。",
+      "expected_result": "前两页合计展示相关商品，不重复也不遗漏；分页控件保留当前关键词。",
+      "tags": [
+        "catalog",
+        "search",
+        "pagination"
+      ]
+    },
+    {
+      "case_id": "SHOP-CATALOG-002",
+      "title": "商品筛选条件叠加后仍保持正确",
+      "module": "catalog",
+      "version": "v2.4",
+      "priority": "P2",
+      "case_type": "functional",
+      "precondition": "存在不同颜色和尺寸的旅行背包。",
+      "steps": "1. 选择颜色“蓝色”。\n2. 叠加尺寸“中号”。\n3. 刷新页面。",
+      "expected_result": "只显示同时满足两个条件的商品；刷新后两个筛选条件仍被保留。",
+      "tags": [
+        "catalog",
+        "filter",
+        "state"
+      ]
+    },
+    {
+      "case_id": "SHOP-CART-001",
+      "title": "购物车数量超过库存时阻止结算",
+      "module": "cart",
+      "version": "v2.4",
+      "priority": "P1",
+      "case_type": "functional",
+      "precondition": "商品 SKU-TRAVEL-01 的可用库存为两件。",
+      "steps": "1. 将同一商品加入购物车。\n2. 把数量改为三。\n3. 点击结算。",
+      "expected_result": "页面提示库存不足，数量自动回到两件或要求用户修正，不能进入支付页。",
+      "tags": [
+        "cart",
+        "inventory",
+        "boundary"
+      ]
+    },
+    {
+      "case_id": "SHOP-CHECKOUT-001",
+      "title": "满额订单免除标准运费",
+      "module": "checkout",
+      "version": "v2.4",
+      "priority": "P0",
+      "case_type": "functional",
+      "precondition": "标准运费规则为满三百元免运费。",
+      "steps": "1. 加入合计三百元的商品。\n2. 选择标准配送。\n3. 查看订单总价。",
+      "expected_result": "运费显示为零，应付金额等于商品小计，不出现隐藏服务费。",
+      "tags": [
+        "checkout",
+        "shipping",
+        "boundary"
+      ]
+    },
+    {
+      "case_id": "SHOP-CHECKOUT-002",
+      "title": "返回按钮不得生成重复订单",
+      "module": "checkout",
+      "version": "v2.4",
+      "priority": "P0",
+      "case_type": "regression",
+      "precondition": "用户已进入订单确认页且尚未支付。",
+      "steps": "1. 点击浏览器返回。\n2. 再次进入确认页。\n3. 提交订单。\n4. 查看账户订单列表。",
+      "expected_result": "本次操作只产生一个待支付订单；重复提交必须被幂等键拦截。",
+      "tags": [
+        "checkout",
+        "idempotency",
+        "regression"
+      ]
+    },
+    {
+      "case_id": "SHOP-PAYMENT-001",
+      "title": "信用卡支付成功后订单状态更新",
+      "module": "payment",
+      "version": "v2.4",
+      "priority": "P0",
+      "case_type": "smoke",
+      "precondition": "支付沙箱提供一张始终成功的测试卡。",
+      "steps": "1. 选择信用卡支付。\n2. 输入沙箱测试卡。\n3. 确认支付。",
+      "expected_result": "支付返回成功；订单由待支付变为已支付，并记录可追溯的交易号。",
+      "tags": [
+        "payment",
+        "card",
+        "smoke"
+      ]
+    },
+    {
+      "case_id": "SHOP-PAYMENT-002",
+      "title": "支付网关超时后不得重复扣款",
+      "module": "payment",
+      "version": "v2.4",
+      "priority": "P0",
+      "case_type": "regression",
+      "precondition": "沙箱可将首次授权响应延迟到超时。",
+      "steps": "1. 提交支付并等待页面超时。\n2. 使用同一订单再次支付。\n3. 查询网关流水。",
+      "expected_result": "同一幂等键只对应一笔成功扣款；客户看到明确处理中或失败状态，不出现双扣。",
+      "tags": [
+        "payment",
+        "timeout",
+        "idempotency"
+      ]
+    },
+    {
+      "case_id": "SHOP-PAYMENT-003",
+      "title": "优惠码不可重复叠加",
+      "module": "payment",
+      "version": "v2.4",
+      "priority": "P1",
+      "case_type": "regression",
+      "precondition": "优惠码 SAVE10 与 WELCOME20 均只能使用一次。",
+      "steps": "1. 在结算页应用 SAVE10。\n2. 再应用 WELCOME20。\n3. 快速重复点击应用按钮。",
+      "expected_result": "只接受一个符合规则的优惠码；并发重复提交不会让折扣累计两次。",
+      "tags": [
+        "payment",
+        "promotion",
+        "concurrency"
+      ]
+    },
+    {
+      "case_id": "SHOP-REFUND-001",
+      "title": "部分退款后订单与账务金额一致",
+      "module": "refund",
+      "version": "v2.4",
+      "priority": "P1",
+      "case_type": "functional",
+      "precondition": "订单已支付一百二十元，商品尚未发货。",
+      "steps": "1. 对其中一件二十元商品发起退款。\n2. 查看订单详情。\n3. 查看账务流水。",
+      "expected_result": "订单显示已退款二十元、剩余一百元；账务流水与订单金额完全一致。",
+      "tags": [
+        "refund",
+        "ledger",
+        "consistency"
+      ]
+    }
+  ],
+  "defects": [
+    {
+      "bug_id": "BUG-1234",
+      "title": "登录接口超时后出现重复会话",
+      "module": "login-api",
+      "version": "v1.3",
+      "severity": "critical",
+      "priority": "P0",
+      "status": "open",
+      "reproduce_steps": "在 login-api v1.3 连续提交两次超时请求，检查会话记录。",
+      "root_cause": "重试请求未复用稳定会话标识。",
+      "resolution": "按用户与设备生成稳定会话键，并对重复请求返回同一结果。",
+      "related_cases": [
+        "SHOP-LOGIN-001"
+      ]
+    },
+    {
+      "bug_id": "SHOP-BUG-001",
+      "title": "支付超时重试造成同一订单重复扣款",
+      "module": "payment",
+      "version": "v2.4",
+      "severity": "critical",
+      "priority": "P0",
+      "status": "fixed",
+      "reproduce_steps": "在支付沙箱把首次授权延迟为超时，返回结算页后再次支付同一订单，查询网关流水。",
+      "root_cause": "客户端每次提交都生成新幂等键，网关把两次请求当成不同交易，服务端也未按订单号加锁。",
+      "resolution": "以订单号生成稳定幂等键，并在支付记录表增加唯一约束；超时后查询原交易状态而不是盲目重试。",
+      "related_cases": [
+        "SHOP-PAYMENT-002"
+      ]
+    },
+    {
+      "bug_id": "SHOP-BUG-002",
+      "title": "返回并重新进入确认页生成两个待支付订单",
+      "module": "checkout",
+      "version": "v2.4",
+      "severity": "major",
+      "priority": "P1",
+      "status": "verified",
+      "reproduce_steps": "进入订单确认页，点击浏览器返回，再次前进并提交，随后查看账户订单列表。",
+      "root_cause": "确认页把每次渲染都当作新草稿，缺少客户端订单草稿标识。",
+      "resolution": "结算开始时创建草稿订单，确认页按草稿标识复用；提交接口增加幂等校验。",
+      "related_cases": [
+        "SHOP-CHECKOUT-002"
+      ]
+    },
+    {
+      "bug_id": "SHOP-BUG-003",
+      "title": "优惠码连点后折扣被累计两次",
+      "module": "payment",
+      "version": "v2.4",
+      "severity": "major",
+      "priority": "P1",
+      "status": "in_progress",
+      "reproduce_steps": "应用 SAVE10 后快速双击 WELCOME20，观察应付金额和优惠明细。",
+      "root_cause": "优惠计算接口在读取当前折扣与写入新折扣之间没有事务锁，两个请求都基于旧状态计算。",
+      "resolution": "对订单折扣行使用行锁并在同一事务内校验已用优惠码，前端同时做按钮防抖。",
+      "related_cases": [
+        "SHOP-PAYMENT-003"
+      ]
+    },
+    {
+      "bug_id": "SHOP-BUG-004",
+      "title": "账户锁定提示泄露邮箱是否已注册",
+      "module": "login",
+      "version": "v2.3",
+      "severity": "minor",
+      "priority": "P2",
+      "status": "open",
+      "reproduce_steps": "分别用已注册邮箱和随机未注册邮箱连续登录五次，比较错误提示。",
+      "root_cause": "登录失败分支直接拼接账户查询结果，未使用统一的安全提示文案。",
+      "resolution": "所有认证失败统一返回通用提示；真实锁定原因只记录在服务端安全日志。",
+      "related_cases": [
+        "SHOP-LOGIN-002"
+      ]
+    },
+    {
+      "bug_id": "SHOP-BUG-005",
+      "title": "部分退款后订单总额未扣除退款金额",
+      "module": "refund",
+      "version": "v2.4",
+      "severity": "critical",
+      "priority": "P0",
+      "status": "reopened",
+      "reproduce_steps": "对已支付一百二十元的订单退款二十元，刷新订单详情并核对账务流水。",
+      "root_cause": "退款服务只写入退款记录，没有更新订单的净额投影，读模型仍展示原始支付金额。",
+      "resolution": "退款事务内发布净额变更事件，读模型按事件重算；增加订单与账务对账校验任务。",
+      "related_cases": [
+        "SHOP-REFUND-001"
+      ]
+    }
+  ],
+  "requirements": [
+    {
+      "req_id": "SHOP-REQ-001",
+      "title": "账户认证与锁定策略",
+      "module": "login",
+      "version": "v2.4",
+      "priority": "P0",
+      "status": "approved",
+      "content": "系统必须支持邮箱和密码认证。连续五次失败后锁定账户三十分钟，锁定期内所有认证请求均被拒绝。无论账户是否存在，对外提示必须保持一致，避免泄露注册信息。成功登录后不得在 URL 中暴露访问令牌。"
+    },
+    {
+      "req_id": "SHOP-REQ-002",
+      "title": "购物车库存约束",
+      "module": "cart",
+      "version": "v2.4",
+      "priority": "P0",
+      "status": "approved",
+      "content": "购物车中的商品数量不得超过当前可用库存。库存变化时必须在进入结算前重新校验。若库存不足，应明确提示用户并阻止创建订单，不允许先下单后人工取消。"
+    },
+    {
+      "req_id": "SHOP-REQ-003",
+      "title": "支付幂等与超时处理",
+      "module": "payment",
+      "version": "v2.4",
+      "priority": "P0",
+      "status": "approved",
+      "content": "同一订单的支付请求必须使用稳定幂等键。网关超时后不得立即生成新的扣款请求，应先查询原交易状态。订单、支付与账务三方必须能够通过交易号追溯，任何重试都不能造成重复扣款。"
+    },
+    {
+      "req_id": "SHOP-REQ-004",
+      "title": "优惠码使用规则",
+      "module": "payment",
+      "version": "v2.4",
+      "priority": "P1",
+      "status": "approved",
+      "content": "一个订单最多使用一个优惠码。优惠计算必须在单个事务内完成，重复请求或并发点击不得重复累计折扣。优惠码失效、达到使用上限或与商品范围不匹配时，应返回可理解的拒绝原因。"
+    },
+    {
+      "req_id": "SHOP-REQ-005",
+      "title": "退款与账务一致性",
+      "module": "refund",
+      "version": "v2.4",
+      "priority": "P0",
+      "status": "reviewing",
+      "content": "支持全额和部分退款。退款成功后，订单净额、退款记录与支付网关流水必须一致。部分退款不得把订单状态误改为全部退款，已发货订单还需记录退货物流状态。"
+    }
+  ],
+  "documents": [
+    {
+      "doc_id": "SHOP-DOC-001",
+      "title": "Checkout 测试规范",
+      "doc_type": "markdown",
+      "version": "v2.4",
+      "path": "eval/fixtures/shopsphere_checkout.md",
+      "content": "# Checkout 测试规范\n\n## 范围\n\n本文覆盖购物车到支付确认之间的流程，包括地址、配送方式、优惠码、订单确认和支付回调。商品详情页与售后工单不在本次范围内。\n\n## 前置条件\n\n测试环境必须使用独立沙箱账户。支付卡只能使用网关提供的测试卡，不得使用真实卡号。每个用例开始前应清理草稿订单，保证库存与优惠码可用次数回到基线。\n\n## 运费规则\n\n标准配送在商品小计达到三百元时免运费，低于三百元收取十二元。加急配送始终收取二十五元，不参与满额免运。运费必须在订单确认页和支付回调后的最终账单中保持一致。\n\n## 优惠码\n\n结算页一次只允许应用一个优惠码。验证内容包括无效码、过期码、最低消费不满足、商品范围不匹配和并发重复提交。优惠金额应在服务端重新计算，不能信任前端展示值。\n\n## 订单幂等\n\n点击提交订单后，客户端应携带草稿订单标识。服务端据此返回同一个待支付订单，而不是每次创建新订单。浏览器返回、刷新和网络重试都属于幂等场景。\n\n## 支付回调\n\n支付网关可能重复发送成功回调，也可能先超时后成功。回调处理必须按交易号去重，并在同一事务内更新订单、支付记录和账务流水。若网关暂时不可查询，订单保持处理中，不能直接标记失败。\n\n## 可观测性\n\n所有订单状态变化都要记录订单号、草稿标识、幂等键、交易号和请求追踪 ID。日志中不得记录完整卡号、CVV 或访问令牌。\n\n## 退出条件\n\n主流程用例全部通过，支付超时、重复回调和返回重提三类幂等场景通过，订单与账务对账无差异，才可进入发布评审。"
+    },
+    {
+      "doc_id": "SHOP-DOC-002",
+      "title": "支付失败排查手册",
+      "doc_type": "markdown",
+      "version": "v2.4",
+      "path": "eval/fixtures/shopsphere_payment.md",
+      "content": "# 支付失败排查手册\n\n## 先确认订单状态\n\n支付页面报错不等于扣款失败。先按订单号查询订单状态、支付记录和网关交易。若订单为处理中，不要引导用户重新支付，应先等待或主动查询网关结果。\n\n## 区分错误来源\n\n前端校验失败通常没有网关交易号，用户可修正输入后重试。网关拒绝会有明确的拒绝码，例如余额不足、卡片过期或风控拦截。服务端超时则可能已经授权成功，只是响应没有及时返回。\n\n## 网关超时\n\n超时后使用原幂等键查询交易状态。确认成功则补写本地支付记录并推进订单；确认失败才允许使用同一幂等键重试。禁止生成新幂等键，否则会把一次支付变成两笔交易。\n\n## 重复回调\n\n回调接口必须按网关交易号去重。重复成功回调返回成功响应但不得重复记账。若同一交易出现成功与失败两种回调，以网关最终状态接口为准，并记录冲突供人工核查。\n\n## 优惠与金额不一致\n\n支付金额必须由服务端订单快照计算。前端显示金额与支付金额不一致时，停止支付并刷新订单快照。优惠码并发使用失败时，不应静默改为原价支付，必须让用户确认新金额。\n\n## 账务对账\n\n每日对账比较订单净额、支付流水和网关结算文件。差异记录包含订单号、交易号、金额、币种和发现时间。未解决的差异不得通过手工修改数据库掩盖。\n\n## 升级路径\n\n同一订单出现两笔成功交易、账务金额与订单不一致或回调持续失败时，立即升级到支付值班人员，并冻结相关订单的自动重试。"
+    },
+    {
+      "doc_id": "SHOP-DOC-003",
+      "title": "登录安全验收清单",
+      "doc_type": "markdown",
+      "version": "v2.4",
+      "path": "eval/fixtures/shopsphere_login.md",
+      "content": "# 登录安全验收清单\n\n## 凭据输入\n\n邮箱与密码字段不得在页面源码、分析事件或错误日志中记录明文。密码输入框默认遮蔽，粘贴与自动填充行为不能绕过服务端校验。\n\n## 失败提示\n\n已注册与未注册账户的失败提示应一致。锁定状态可以提示联系客服，但不能直接确认该邮箱存在。所有失败响应使用相近的延迟，降低枚举风险。\n\n## 锁定与解锁\n\n连续五次失败触发三十分钟锁定。成功登录是否清零失败计数必须有明确规则。客服解锁需要审计记录，不能通过修改前端状态绕过。\n\n## 会话安全\n\n登录成功后创建新会话并轮换会话标识，防止固定会话攻击。访问令牌不得出现在 URL、Referer 或前端日志。退出登录后服务端会话立即失效，而不只是删除本地 Cookie。\n\n## 多设备\n\n允许同一账户在多台设备登录时，应展示最近会话并支持远程退出。敏感操作可要求重新认证。会话列表不得暴露完整 IP 地址。\n\n## 验收证据\n\n每个检查项需要保留请求与响应摘要、浏览器截图或日志片段，并对邮箱、令牌和 IP 做脱敏。仅有口头确认不能作为通过证据。"
+    }
+  ],
+  "queries": [
+    {
+      "query_id": "R11-001",
+      "query": "登录成功后为什么会话仍指向旧令牌？",
+      "relevant": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-LOGIN-003",
+          "evidence": "地址栏不出现访问令牌或其他凭据"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-002",
+      "query": "支付网关返回处理中时如何避免用户再次扣款？",
+      "relevant": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-PAYMENT-002",
+          "evidence": "同一幂等键只对应一笔成功扣款"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-003",
+      "query": "部分退款提交后账务余额应如何核对？",
+      "relevant": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-REFUND-001",
+          "evidence": "账务流水与订单金额完全一致"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-004",
+      "query": "满额订单确认页是否还会出现配送费？",
+      "relevant": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-CHECKOUT-001",
+          "evidence": "运费显示为零"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-005",
+      "query": "购物车数量调整到库存上限以上时应该怎样处理？",
+      "relevant": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-CART-001",
+          "evidence": "页面提示库存不足"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-006",
+      "query": "登录接口连续超时后会话记录为什么会重复？",
+      "relevant": [
+        {
+          "source_type": "defect",
+          "source_id": "BUG-1234",
+          "evidence": "重试请求未复用稳定会话标识"
+        }
+      ],
+      "answerable": true,
+      "category": "rerank_near_duplicate"
+    },
+    {
+      "query_id": "R11-007",
+      "query": "文档检索 API 支持哪些过滤参数和响应字段？",
+      "relevant": [],
+      "answerable": false,
+      "category": "rerank_unanswerable"
+    },
+    {
+      "query_id": "R11-008",
+      "query": "平台如何生成跨项目的自动化测试脚本？",
+      "relevant": [],
+      "answerable": false,
+      "category": "rerank_unanswerable"
+    }
+  ]
+}
