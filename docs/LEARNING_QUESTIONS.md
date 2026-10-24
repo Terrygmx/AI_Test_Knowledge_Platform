@@ -118,6 +118,8 @@ Query 理解错误、引用粒度过粗，以及系统允许模型生成不存�
   Recall@5 0.966 / MRR 0.936；仍需更大 Gold Set 复验。
 - 用例“一实体一 Chunk”与长文档标题切分的 Recall 差异。Phase 6 中
   `entity+heading` 的 MRR 0.936，高于 `semantic` 的 0.919。
+- Phase 12 的 100 条 Query 目前只是 AI 候选，全部为 `pending`。在人工确认
+  Gold 来源、证据片段与答案要点前，不能用它证明检索质量或替代历史实验结论。
 - cosine distance 下 HNSW 参数对召回率和延迟的影响。
 - Metadata Filter 放在向量检索前、中、后的效果差异。
 - 首版 Evaluation Dataset 的 Gold Evidence 粒度。

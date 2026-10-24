@@ -9,6 +9,8 @@
 
 详细方案见 [`docs/AI_Test_Knowledge_Platform_V2.md`](docs/AI_Test_Knowledge_Platform_V2.md)，
 开发计划见 [`docs/AI_Test_Knowledge_Platform_Implementation_Plan.md`](docs/AI_Test_Knowledge_Platform_Implementation_Plan.md)；
+各 Phase 的统一完成度、工程缺口与人工缺口见
+[`docs/PHASE_PROGRESS.md`](docs/PHASE_PROGRESS.md)；
 项目边界与学习问题见 [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md)、
 [`docs/LEARNING_QUESTIONS.md`](docs/LEARNING_QUESTIONS.md)。
 
@@ -25,9 +27,9 @@
 | ORM / 迁移 | SQLAlchemy 2.0 + Alembic |
 | 检索 | Vector(HNSW) + 全文检索 + RRF/Weighted 融合 + Metadata Filter |
 | Embedding | bge-m3（OpenAI-compatible API，1024 维） |
-| Reranker | bge-reranker-v2-m3（OpenAI-compatible API） |
+| Reranker | OpenAI-compatible `/v1/rerank`（本地模板 `Qwen3.5-9B-DFlash`） |
 | LLM | OpenAI-compatible：本机 OMLX / Ollama / 云 API，`.env` 一键切换 |
-| 评测 | 自研指标（Recall@K / Precision@K / MRR / NDCG）+ 后续接 Ragas |
+| 评测 | 自研检索指标（Recall@K / Precision@K / MRR / NDCG）+ 可解释生成评测 + 可选 Ragas |
 | 工程 | uv + pytest + ruff |
 
 **V1 不引入 Milvus。** 测试数据具有强结构化特征，PostgreSQL 单库即可同时承担关系数据、
@@ -48,8 +50,9 @@ AI_Test_Knowledge_Platform/
 │   ├── ingestion/      # 数据接入：Parser → Normalizer → Knowledge Model → Chunker（Phase 5）
 │   ├── retrieval/      # 检索：Embedding / Vector / Keyword / Hybrid Fusion / Metadata Filter
 │   ├── rerank/         # 重排（Phase 11）
+│   ├── query/          # Query Understanding / Rewrite（Phase 15/16）
 │   ├── generation/     # 上下文组装 + LLM + Citation（Phase 17）
-│   └── evaluation/     # 离线评测指标与运行器（Phase 13）
+│   └── evaluation/     # 评测数据集契约、离线指标与实验运行器
 ├── alembic/            # 迁移脚本（env.py + versions/）
 ├── docs/               # 项目方案、开发计划、各阶段实验报告
 ├── eval/               # 评测数据集（约 100 条人工确认 Query）
@@ -160,6 +163,22 @@ uv run python scripts/embedding_experiment.py --dry-run
 uv run python scripts/lexical_experiment.py --dry-run
 uv run python scripts/lexical_experiment.py --output results/lexical-phase8.json
 
+# Phase 13 检索评测（完全离线）
+uv run python scripts/retrieval_evaluation.py --dry-run
+uv run python scripts/retrieval_evaluation.py
+
+# Phase 14 生成评测（离线模拟响应，只验证指标 / Badcase 归因）
+uv run python scripts/generation_evaluation.py --dry-run
+uv run python scripts/generation_evaluation.py
+
+# Phase 15 Query Understanding 候选覆盖率（Phase 12 pending 数据）
+uv run python scripts/query_understanding_experiment.py --dry-run
+uv run python scripts/query_understanding_experiment.py
+
+# Phase 16 Query Rewrite 候选对比（noop / deterministic）
+uv run python scripts/query_rewrite_experiment.py --dry-run
+uv run python scripts/query_rewrite_experiment.py
+
 # Phase 9 Hybrid Search（只写隔离库；先 dry-run 校验数据与参数）
 uv run python scripts/hybrid_experiment.py --dry-run
 uv run python scripts/hybrid_experiment.py \
@@ -224,8 +243,17 @@ uv run uvicorn app.main:app --reload
 
 Phase 0（项目边界）、Phase 1（FastAPI + PostgreSQL）、Phase 2（Chunk + Embedding +
 pgvector）、Phase 3（手写最小 RAG）、Phase 4（知识模型收口）、Phase 5（数据接入）、
-Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（BM25 词法检索）
-、Phase 9（Hybrid Search 实验）与 Phase 10（Metadata Filter）已完成。
+Phase 6（Chunking 对比实验）、Phase 7（Embedding 对比）、Phase 8（BM25 词法检索）、
+Phase 9（Hybrid Search 实验）、Phase 10（Metadata Filter）、Phase 11（Rerank 接缝）、
+Phase 12（评测集候选）、Phase 13（检索评测）、Phase 14（生成评测工具链）、
+Phase 15（Query Understanding）、Phase 16（Query Rewrite 工具链）以及
+Phase 17–28 的契约层实现（Citation 增强、完整 RAG Pipeline、Badcase 闭环、
+性能统计、增量索引、版本管理、检索层权限、Dashboard 聚合、Agentic RAG、
+回归计划 Agent、实验矩阵与架构文档）已完成；
+Phase 12 人工确认与 Phase 11 正式报告仍待完成。所有评测数字当前都是
+candidate 模式，不能作为正式结论。整体架构见
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)，进度总览见
+[`docs/PHASE_PROGRESS.md`](docs/PHASE_PROGRESS.md)。
 Phase 6–10 报告分别见
 [`docs/CHUNKING_EXPERIMENT.md`](docs/CHUNKING_EXPERIMENT.md)、
 [`docs/EMBEDDING_EXPERIMENT.md`](docs/EMBEDDING_EXPERIMENT.md)、
@@ -267,7 +295,20 @@ Phase 6–10 报告分别见
   pre-filter、候选饥饿实验与 Chunk 级过滤接缝
   （见 `docs/METADATA_FILTER.md`）
 - [x] document Chunk 补向量入口：`scripts/index_entities.py --only document`
-- [ ] 将 Gold Set 扩大到约 100 条人工确认 Query 后复验 Recall@K / MRR
+- [x] Phase 12 Evaluation Dataset：100 条分类候选 Query、严格证据校验与
+  人工确认门槛（见 `docs/EVALUATION_DATASET.md`）
+- [x] Phase 13 Retrieval Evaluation：独立 Recall/Precision/MRR/NDCG、
+  Badcase 初筛与可复现 manifest（见 `docs/RETRIEVAL_EVALUATION.md`）
+- [x] Phase 14 Generation Evaluation：确定性 Faithfulness / Context 指标、
+  Citation Accuracy、拒答一致性与检索 / 生成 Badcase 归因
+  （见 `docs/GENERATION_EVALUATION.md`；当前为模拟响应候选回归）
+- [x] Phase 15 Query Understanding：Pydantic Schema、确定性规则、LLM JSON
+  校验 / 重试 / 降级与 Phase 12 候选投影报告
+  （见 `docs/QUERY_UNDERSTANDING_REWRITE.md`）
+- [x] Phase 16 Query Rewrite：noop / deterministic / LLM / composite 策略与
+  Phase 8 候选检索对比
+  （见 `docs/QUERY_UNDERSTANDING_REWRITE.md`；当前 deterministic 未改写任何 Query）
+- [ ] 将 Phase 12 候选集完成人工确认后，复验 Recall@K / MRR
 - [x] Phase 3：手写最小 RAG（Vector Search → Context → LLM → Answer + Citation）
   - `POST /api/v1/rag/answer` 与 `scripts/ask.py`
   - 无证据时明确拒答，不调用 LLM；回答只能引用本次检索编号
@@ -300,6 +341,9 @@ Phase 6–10 报告分别见
 | 混合检索延迟 | 只含 pgvector + BM25 + 融合，未含 Query Embedding | 47 行精确扫描且未建实验索引，不是 ANN 或 API P95 结论 |
 | 混合检索候选深度 | Vector / BM25 分别读取 `retrieval_*_top_k` | `candidate_k` 仅作兼容覆盖；最终 Top-K 不得超过两通道深度 |
 | 混合检索排序 | 向量距离后追加来源类型 / 编号 / Chunk 序号 / id | 相同 embedding / distance 时 RRF 名次仍可复现 |
+| Rerank 候选深度 | 先融合 `rerank_candidates`，再精排到 `top_k` | 允许 Reranker 把 Top-20 中的证据提升到 Top-5；baseline 仍只看 Top-5 |
+| Rerank 返回数量 | 接受 provider 返回少于 `top_n` 的有序子集 | OpenAI-compatible API 不保证精确返回数量；非空候选至少返回一条 |
+| Rerank 可用性 | 正式实验在建库 / embedding 前预检 `/rerank` | 默认模型不可用时快速失败，避免浪费索引成本 |
 | 融合器分数方向 | 按 `ChannelHit.higher_is_better` 归一化 | 同通道方向不一致或分数非有限时 fail fast |
 | 元数据过滤 | 受控标量精确匹配 + 数组 contains-any，不同字段 AND | 在 Vector / BM25 `LIMIT` 前执行；未知 / 空条件 fail fast，避免静默失效 |
 | 元数据过滤实验 | 22 条 Query / 47 Chunk，`during` 复用 `pre` | 小样本验证语义与候选饥饿；实验表无 HNSW，不冒充 ANN 过滤结论 |
@@ -310,5 +354,13 @@ Phase 6–10 报告分别见
 | RAG 超时语义 | 到点返回 503，但底层 LLM 调用无法中断 | 守护线程任务不能被安全 kill；`LLM_TIMEOUT <= RAG_REQUEST_TIMEOUT` 约束占用上限，Phase 14/20 做异步化 |
 | `/models` 健康探测 | 依赖上游实现 `GET /models` 且模型名精确匹配 | 部分 OpenAI-compatible 服务不实现该端点或返回别名，会误报不可用（探测失败会写 warning 日志） |
 | Rerank 能力位 | `capabilities.rerank` 只表示已配置 Key | Rerank 在 Phase 11 才接入，未做真实可用性探测 |
+| Rerank 阶段状态 | 接缝与实验逻辑已修复，正式报告待生成 | 需要 PostgreSQL 与可用 reranker 模型；dry-run 不能替代真实指标 |
+| Phase 12 数据集状态 | 100 条 AI 候选已生成，全部 `pending` | Gold Set 必须人工确认；formal 模式会拒绝 pending 数据 |
+| Phase 13 指标状态 | 指标与 Badcase 初筛已实现，当前报告为候选模式 | Phase 8 小样本结果只验证实现；正式结论仍需 Phase 12 人工确认数据 |
+| Phase 13 NDCG | 使用二值相关性 gain=1 | 尚未引入业务分级权重，不能解释为收益加权排序 |
+| Phase 14 生成评测 | 确定性指标 + 模拟响应，候选模式 | 用于回归与 Badcase 归因；Ragas 参数未固定，不冒充 LLM-as-a-judge |
+| Phase 14 指标边界 | Context Precision 需要来源元数据；Faithfulness 为字符 / 原文支撑检查 | 缺少来源时返回 null；语义改写、否定与多跳推理仍可能误判 |
+| Phase 15 意图准确率 | 暂不计算；Phase 12 `expected_intent` 是业务描述而非受控枚举 | 只报告结构化覆盖与过滤条件覆盖，避免伪造准确率 |
+| Phase 16 改写收益 | 仅完成 noop / deterministic 候选对比，deterministic 当前未改动 Query | 不代表 Rewrite 无效；formal 入口尚未接入 Phase 12，正式结论需人工 Gold Set + 固定 LLM 参数 |
 | 数组过滤 | `tags` / `related_cases` 支持 contains-any | PG 用逐值 JSONB `@>` + OR，SQLite 用 `json_each`，语义一致 |
 | 业务编号 | API 不可修改（PATCH 传了会 422） | Case ID / Bug ID 是引用出处（Citation）的锚点 |

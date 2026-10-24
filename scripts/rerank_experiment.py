@@ -142,6 +142,10 @@ def _manifest(
             "rerank_boundary": (
                 "Reranker may reorder but never add, remove, or rewrite candidates"
             ),
+            "rerank_contract": (
+                "OpenAI-compatible results may return fewer than top_n; "
+                "at least one result is required for non-empty input"
+            ),
         },
         "index_seconds": result.index_seconds,
         "query_embedding_seconds": result.query_embedding_seconds,
@@ -156,6 +160,11 @@ def _manifest(
                 "vector_candidate_hits": channel.vector_candidate_hits,
                 "keyword_candidate_hits": channel.keyword_candidate_hits,
                 "fused_candidates": channel.fused_candidates,
+                "reranked": channel.reranked,
+                "rerank_input_candidates": channel.rerank_input_candidates,
+                "rerank_returned_candidates": channel.rerank_returned_candidates,
+                "rerank_seconds": channel.rerank_seconds,
+                "rerank_empty_responses": channel.rerank_empty_responses,
             }
             for channel in result.channels
         ],
@@ -176,11 +185,12 @@ def main() -> None:
     parser.add_argument("--rrf-k", type=int, default=60)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
-
     if args.top_k < 1 or args.candidate_k < args.top_k:
         parser.error("必须满足 --candidate-k >= --top-k >= 1")
     if args.rerank_candidates < args.top_k:
         parser.error("必须满足 --rerank-candidates >= --top-k >= 1")
+    if args.rerank_candidates > args.candidate_k:
+        parser.error("必须满足 --candidate-k >= --rerank-candidates")
     if args.rrf_k < 1:
         parser.error("--rrf-k 必须 >= 1")
 
@@ -194,6 +204,10 @@ def main() -> None:
             f"top_k={args.top_k} rerank_model={settings.rerank_model}"
         )
         return
+
+    # 预检必须先于建库和批量 embedding；否则模型不可用时仍会付出完整索引成本。
+    reranker = get_rerank_client()
+    reranker.verify_available()
 
     started_at = datetime.now(UTC)
     engine = build_engine(args.database_url)
@@ -234,7 +248,6 @@ def main() -> None:
     query_started = time.perf_counter()
     query_embeddings = [embedding.embed_query(query.query) for query in dataset.queries]
     query_embedding_seconds = time.perf_counter() - query_started
-    reranker = get_rerank_client()
     result = evaluate_hybrid(
         dataset,
         candidates,

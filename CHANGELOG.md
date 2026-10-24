@@ -6,18 +6,124 @@
 
 ### Added
 
+#### Phase Progress Ledger（2026-10-23）
+
+- **统一进度台账**：新增 `docs/PHASE_PROGRESS.md`，按 Phase 0–30 记录已完成工作、
+  工程缺口、人工缺口、当前可安全宣称的结论与下一步顺序。
+- **维护入口**：README 与 handover 指向该台账；后续每个 Phase 完成、review 收口
+  或正式实验重跑后同步更新，避免把候选、模拟或小样本结果误写成正式完成。
+
+#### Phase 17–30：循环开发与 Review 收口（2026-10-24）
+
+- **Phase 12 规则固化**：审阅人锁定 `Terry`；`confirmed` / `rejected`
+  必须写 `review_notes`，`pending` 禁带审阅备注。
+- **Phase 17 Citation**：`Citation` 增加 `chunk_id` / `score`，
+  `RAGResponse.source_lines()` 提供去重来源清单。
+- **Phase 18 Pipeline**：新增 `app/generation/pipeline.py`，组合
+  Understanding → Rewrite → Hybrid → 可选 Rerank → LLM，`RAGResponse.trace`
+  记录逐阶段候选与耗时；SQLite 离线路径不伪装 pgvector。
+- **Phase 19 Badcase**：新增九阶段分类与 `open → fixing → fixed → verified`
+  闭环状态机；verified 必须附带评测结果。
+- **Phase 20 性能**：新增 nearest-rank 分位数与分阶段延迟记录契约。
+- **Phase 21 增量索引**：新增 hash 对比计划器（CREATE / UPDATE / DELETE），
+  与执行解耦。
+- **Phase 22 版本**：新增数值化版本解析、包含式区间与对比请求契约。
+- **Phase 23 权限**：新增 team / project / role 契约与检索前候选过滤。
+- **Phase 24 Dashboard**：新增跨 manifest 聚合投影，保留 formal / candidate 溯源。
+- **Phase 25 Agentic RAG**：新增工具白名单、Planner 协议与 `max_steps` 受控循环。
+- **Phase 26 回归 Agent**：新增四类证据 → 确定性计划草稿 →
+  Terry 人工批准硬门槛。
+- **Phase 27 矩阵**：新增跨实验 manifest 聚合，缺失实验显式标记。
+- **Phase 28 文档**：新增 `docs/ARCHITECTURE.md` 单篇架构总览。
+- **验证**：SQLite 685 passed；PostgreSQL 700 passed；
+  `ruff` / `git diff --check` / `alembic check` 通过。
+  每个 Phase 的独立 review 见 `review/` 目录（Phase 17–30 共 13 份）。
+
+#### Phase 15 / 16：Query Understanding 与 Query Rewrite（2026-10-23）
+
+- **Query Understanding**：新增 `app/query/understanding.py`，提供受控
+  `QueryUnderstanding` Schema、确定性意图 / 模块 / 优先级 / 版本 / 关键词解析，
+  以及 LLM JSON 严格校验、重试和确定性降级；非法字段不会被静默吞掉。
+- **Query Rewrite**：新增 `app/query/rewrite.py`，提供 noop、deterministic、
+  LLM 与 composite 策略；LLM 多行 / 空输出 / 异常时显式降级并记录原因。
+- **候选评测**：新增 `app/evaluation/query_rewrite_evaluation.py`、
+  `scripts/query_rewrite_experiment.py` 与
+  `scripts/query_understanding_experiment.py`；Phase 12 候选通过独立投影评测，
+  不混用 Phase 6 的 `ChunkingDataset`。
+- **结果与边界**：新增 `results/query-rewrite-phase16.json` 和
+  `results/query-understanding-phase12.json`。Phase 12 的 100 条数据全部
+  `pending`；当前 deterministic rewrite 未改变任何 Query，因此没有收益或
+  无效结论，只验证工具链与降级路径。Phase 16 CLI 当前拒绝 `--mode formal`，
+  避免把无审阅状态的 Phase 8 数据伪装成正式 Gold Set。
+- **报告**：新增 `docs/QUERY_UNDERSTANDING_REWRITE.md`，明确 candidate
+  覆盖、expected filters 匹配口径与正式 Gold Set 前置条件。
+
+#### Phase 14：Generation Evaluation（2026-10-22）
+
+- **可解释生成评测**：新增 `app/evaluation/generation_evaluation.py`，
+  实现 Context Recall / Precision、Faithfulness、Answer Relevancy、
+  Citation Accuracy 与拒答一致性；逐样本输出可复现 Badcase。
+- **引用校验**：解析 Answer 中的 `[1]` / `[1,2]`，按“合法编号次数 / 全部编号次数”
+  计算准确率；越界、缺失 Citation、重复引用与事实回答无引用均有明确测试。
+- **归因边界**：区分 `retrieval_error`、`generation_error_refusal`、
+  `generation_error_false_answer`、`generation_error_missing_answer_point`、
+  `generation_error_citation` 与 `generation_error_unsupported_claim`。
+- **候选 / 正式门槛**：`candidate` 允许 pending；`formal` 要求全部样本为
+  `confirmed`，且确认样本必须带审阅人与带时区审阅时间；拒绝 rejected 样本。
+- **离线运行器与夹具**：新增 `scripts/generation_evaluation.py`、
+  `eval/fixtures/phase14_simulated_responses.json` 和
+  `results/generation-phase14.json`。模拟响应只验证工具链，不冒充真实 LLM 质量。
+- **文档与一致性测试**：新增 `docs/GENERATION_EVALUATION.md`，报告数字直接校验
+  manifest；Ragas 仅保留可选适配层，未安装、未固定参数时不伪造分数。
+- **Review 修复**：收紧纯拒答识别、逐要点处理 `reference_answer`、增加 Gold
+  正文证据校验、formal 样本数门槛与答案相关度启发式命名；补充对应回归测试。
+
+#### Phase 13：Retrieval Evaluation（2026-10-22）
+
+- **独立指标函数**：新增 `recall_at_k()`、`precision_at_k()`、
+  `reciprocal_rank()`、`mrr()` 与二值相关性 `ndcg_at_k()`；覆盖空 Gold、
+  重复 Gold、实际返回不足 K 条和非法 K 等边界。
+- **聚合指标扩展**：`RetrievalEvaluation` 保留原有 Recall/MRR 口径，
+  新增 Precision@K、NDCG@K、逐 Query 细节和检索层 Badcase 初筛。
+- **评测运行器**：新增 `app/evaluation/retrieval_evaluation.py` 与
+  `scripts/retrieval_evaluation.py`，支持 ILIKE / BM25、Phase 12 候选集投影、
+  `candidate` / `formal` 模式与稳定 `result_sha256`。
+- **实验产物**：新增 `results/retrieval-phase13.json` 和
+  `docs/RETRIEVAL_EVALUATION.md`；当前 manifest 明确标记 `mode=candidate`、
+  `formal_gold_set=false`，不把 pending 候选包装成正式 Gold Set。
+- **Badcase 边界**：区分 `empty_results`、`wrong_source`、`no_gold_hit`、
+  `ranked_below_k` 与 `unexpected_results`；只做检索层归因，不冒充生成错误。
+
+#### Phase 12：Evaluation Dataset（候选完成，待人工确认）
+
+- **独立数据契约**：新增 `app/evaluation/phase12_dataset.py`，不改动
+  Phase 6–11 的 `ChunkingDataset`；覆盖六类配额、意图、过滤条件、
+  `gold_documents` / `gold_chunks`、答案要点和审阅来源。
+- **100 条候选 Query**：新增 `eval/fixtures/phase12_candidates.json` 与
+  `scripts/phase12_candidates.py`，严格按 30 / 20 / 20 / 10 / 10 / 10
+  生成；全部标记为 `pending`，不冒充人工 Gold Set。
+- **人工确认门槛**：`candidate` 模式允许 pending，`formal` 模式要求每条
+  Query 都是 `confirmed` 且带审阅人、带时区的审阅时间；未确认数据直接拒绝。
+- **证据校验**：验证来源存在、文档证据是来源正文子串、Chunk 序号可定位、
+  Chunk 证据是该 Chunk 正文子串，以及 `expected_filters` 不会过滤掉 Gold。
+- **文档**：新增 `docs/EVALUATION_DATASET.md`，记录 Schema、审阅流程、
+  当前限制与正式评测前的检查命令。
+
 #### Phase 11：Rerank（进行中）
 
 - **精排抽象**：新增 `app/rerank/service.py`，提供可替换
   `RerankClient` 协议与 OpenAI-compatible `/v1/rerank` 客户端；客户端
-  fail-fast 校验空白 query / 文档、重复身份、返回数量、候选下标与有限分数。
+  fail-fast 校验空白 query / 文档、重复身份、候选下标与有限分数；成功响应
+  允许 provider 返回少于 `top_n` 的有序子集，但非空候选至少要返回一条。
 - **Hybrid 接缝**：新增 `app/rerank/hybrid.py`，Reranker 只接收 Fusion
   候选并按原始身份还原 `FusedHit`，不能新增、删除或改写证据来源。
 - **实验逻辑**：`evaluate_hybrid()` 新增可选 `reranker` /
-  `rerank_candidates`，比较 Hybrid 与 Hybrid + Rerank，并单独记录
-  `rerank_seconds`。
+  `rerank_candidates`；RRF 模式在同一次运行中返回 `rrf` 与 `rrf_rerank`
+  两个通道。Rerank 先融合 `rerank_candidates` 个候选，再精排到 `top_k`，
+  并记录实际输入 / 返回数量、通道耗时与空响应数。
 - **实验资产**：新增 `eval/fixtures/phase11_simulated.json`（8 条排序精度
-  Query，复用 Phase 8 的 47 个 Chunk）与 `scripts/rerank_experiment.py`。
+  Query，复用 Phase 8 的 47 个 Chunk）与 `scripts/rerank_experiment.py`；
+  真实运行在建库 / embedding 前先执行 reranker 预检。
 - **配置**：新增 `RERANK_TIMEOUT` / `RERANK_MAX_RETRIES`，默认指向本机
   OMLX 与 `Qwen3.5-9B-DFlash`；`.env.example` 同步更新。
 

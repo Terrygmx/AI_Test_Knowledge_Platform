@@ -57,6 +57,11 @@ class HybridChannelResult:
     vector_candidate_hits: int = 0
     keyword_candidate_hits: int = 0
     fused_candidates: int = 0
+    reranked: bool = False
+    rerank_input_candidates: int = 0
+    rerank_returned_candidates: int = 0
+    rerank_seconds: float = 0.0
+    rerank_empty_responses: int = 0
 
 
 @dataclass
@@ -213,7 +218,8 @@ def evaluate_hybrid(
     """在同一批候选上按 ``fusion`` 选择评测通道。
 
     ``fusion="all"`` 比较 Vector / Keyword / Weighted / RRF；单通道名或
-    ``weighted`` / ``rrf`` 只评测所选通道。生产默认融合策略由调用方另行记录。
+    ``weighted`` / ``rrf`` 只评测所选通道。提供 reranker 时，``rrf`` 模式
+    额外返回 ``rrf_rerank``，两者共享候选、embedding 与检索结果。
     """
     if len(query_embeddings) != len(dataset.queries):
         raise ValueError("query_embeddings 数量必须与 Query 数一致")
@@ -235,7 +241,11 @@ def evaluate_hybrid(
         "vector": [("vector", "vector")],
         "keyword": [("keyword", "keyword")],
         "weighted": [("weighted", "weighted")],
-        "rrf": [("rrf", "rrf")],
+        "rrf": (
+            [("rrf", "rrf"), ("rrf_rerank", "rrf")]
+            if reranker is not None
+            else [("rrf", "rrf")]
+        ),
     }
     if fusion not in variants_by_fusion:
         raise ValueError("fusion 必须是 all、vector、keyword、weighted 或 rrf")
@@ -243,6 +253,8 @@ def evaluate_hybrid(
         raise ValueError("reranker 与 rerank_candidates 必须同时提供")
     if rerank_candidates is not None and rerank_candidates < top_k:
         raise ValueError("rerank_candidates 不能小于 top_k")
+    if rerank_candidates is not None and rerank_candidates > candidate_k:
+        raise ValueError("rerank_candidates 不能大于 candidate_k")
     if variants is not None:
         raise ValueError("variants 已由 fusion 选择替代，不能同时传入")
     variants = variants_by_fusion[fusion]
@@ -250,12 +262,16 @@ def evaluate_hybrid(
     k_values = k_values_for(top_k)
 
     for name, strategy in variants:
+        is_rerank_channel = name.endswith("_rerank")
         evaluator = RetrievalEvaluation(k_values=k_values)
         latencies: list[float] = []
         vector_count = 0
         keyword_count = 0
         fused_count = 0
         rerank_elapsed = 0.0
+        rerank_input_count = 0
+        rerank_returned_count = 0
+        rerank_empty_responses = 0
         for query, query_embedding in zip(dataset.queries, query_embeddings, strict=True):
             started = time.perf_counter()
             vector_hits: list[ChannelHit] = []
@@ -276,16 +292,19 @@ def evaluate_hybrid(
                 keyword_count += len(keyword_hits)
 
             if strategy == "vector":
-                if reranker is not None and rerank_candidates is not None:
+                if is_rerank_channel:
+                    if reranker is None:
+                        raise ValueError("rerank channel 必须提供 reranker")
                     rerank_input = fuse(
                         vector_hits,
                         keyword_hits,
-                        strategy=strategy,
+                        strategy="rrf",
                         vector_weight=vector_weight,
                         keyword_weight=keyword_weight,
                         rrf_k=rrf_k,
                         limit=rerank_candidates,
                     )
+                    rerank_input_count += len(rerank_input)
                     rerank_started = time.perf_counter()
                     chosen = rerank_fused_hits(
                         rerank_input,
@@ -294,6 +313,9 @@ def evaluate_hybrid(
                         top_n=top_k,
                     )
                     rerank_elapsed += time.perf_counter() - rerank_started
+                    rerank_returned_count += len(chosen)
+                    if not chosen:
+                        rerank_empty_responses += 1
                 else:
                     chosen = vector_hits[:top_k]
                 metric_hits = [_metric_chunk(hit) for hit in chosen]
@@ -301,24 +323,31 @@ def evaluate_hybrid(
                 chosen = keyword_hits[:top_k]
                 metric_hits = [_metric_chunk(hit) for hit in chosen]
             else:
-                chosen = fuse(
+                final_limit = rerank_candidates if is_rerank_channel else top_k
+                fused = fuse(
                     vector_hits,
                     keyword_hits,
                     strategy=strategy,
                     vector_weight=vector_weight,
                     keyword_weight=keyword_weight,
                     rrf_k=rrf_k,
-                    limit=top_k,
+                    limit=final_limit,
                 )
-                if reranker is not None and rerank_candidates is not None:
+                if is_rerank_channel:
                     rerank_started = time.perf_counter()
                     chosen = rerank_fused_hits(
-                        chosen,
+                        fused,
                         query.query,
                         reranker,
                         top_n=top_k,
                     )
                     rerank_elapsed += time.perf_counter() - rerank_started
+                    rerank_input_count += len(fused)
+                    rerank_returned_count += len(chosen)
+                    if not chosen:
+                        rerank_empty_responses += 1
+                else:
+                    chosen = fused[:top_k]
                 metric_hits = [_metric_chunk(hit) for hit in chosen]
             latencies.append(time.perf_counter() - started)
             fused_count += len(chosen)
@@ -339,6 +368,11 @@ def evaluate_hybrid(
                 vector_candidate_hits=vector_count,
                 keyword_candidate_hits=keyword_count,
                 fused_candidates=fused_count,
+                reranked=is_rerank_channel,
+                rerank_input_candidates=rerank_input_count,
+                rerank_returned_candidates=rerank_returned_count,
+                rerank_seconds=rerank_elapsed,
+                rerank_empty_responses=rerank_empty_responses,
             )
         )
     return HybridExperimentResult(
@@ -347,7 +381,7 @@ def evaluate_hybrid(
         chunk_count=len(candidates),
         index_seconds=index_seconds,
         query_embedding_seconds=query_embedding_seconds,
-        rerank_seconds=rerank_elapsed,
+        rerank_seconds=sum(channel.rerank_seconds for channel in results),
     )
 
 

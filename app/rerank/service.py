@@ -1,8 +1,8 @@
 """Phase 11 Reranker：候选重排的抽象与 OpenAI-compatible 实现。
 
-Reranker 是第二阶段精排：它只接收 Hybrid 已召回的候选，不能新增、
-丢弃或改写证据来源。返回结果必须与输入候选一一对应，避免实验把
-“候选截断”误读成“排序改善”。
+Reranker 是第二阶段精排：它只接收 Hybrid 已召回的候选，不能新增或改写
+证据来源。OpenAI-compatible API 允许返回有序子集；适配层从原始候选还原
+证据，避免上游伪造正文，同时显式记录实际返回数量。
 """
 
 from __future__ import annotations
@@ -67,6 +67,10 @@ class RerankClient(Protocol):
         top_n: int,
     ) -> list[RerankedCandidate]: ...
 
+    def verify_available(self) -> None:
+        """在正式运行前确认上游可用；不可用时抛出 ``RerankError``。"""
+        ...
+
 
 class OpenAICompatibleRerankClient:
     """调用 OpenAI-compatible ``/v1/rerank`` 的精排客户端。"""
@@ -119,9 +123,14 @@ class OpenAICompatibleRerankClient:
                 },
             )
         except Exception as exc:  # noqa: BLE001 - 统一转换成领域错误
+            status_code = getattr(exc, "status_code", None)
             raise RerankError(
                 "Rerank 上游调用失败",
-                detail={"model": self._settings.rerank_model},
+                detail={
+                    "model": self._settings.rerank_model,
+                    "error_type": type(exc).__name__,
+                    "status_code": status_code if isinstance(status_code, int) else None,
+                },
             ) from exc
 
         by_index = {index: candidate for index, candidate in enumerate(candidates)}
@@ -140,15 +149,22 @@ class OpenAICompatibleRerankClient:
                 raise RerankError("Rerank 分数必须为有限数", detail={"key": key})
             seen.add(key)
             ranked.append(RerankedCandidate(key=key, score=item.relevance_score))
-        if len(ranked) != min(top_n, len(candidates)):
+        # OpenAI-compatible rerank 只承诺 results 是有序子集；是否返回精确
+        # top_n 由 provider 决定。这里只要求非空输入至少得到一个可用结果。
+        if not ranked:
             raise RerankError(
-                "Rerank 返回数量不一致",
-                detail={
-                    "expected": min(top_n, len(candidates)),
-                    "actual": len(ranked),
-                },
+                "Rerank 返回空结果",
+                detail={"model": self._settings.rerank_model, "candidates": len(candidates)},
             )
         return ranked
+
+    def verify_available(self) -> None:
+        """在耗时索引 / embedding 前预检 reranker 可用性。"""
+        self.rerank(
+            "availability probe",
+            [RerankCandidate(key="probe", content="probe")],
+            top_n=1,
+        )
 
 
 def _is_local_url(url: str) -> bool:

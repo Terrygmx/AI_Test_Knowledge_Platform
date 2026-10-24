@@ -8,6 +8,7 @@ from app.evaluation.dataset import load_dataset
 from app.evaluation.hybrid_experiment import HybridCandidate, evaluate_hybrid
 from app.evaluation.lexical_experiment import retrieve_chunks
 from app.rerank.service import RerankCandidate, RerankedCandidate, RerankError
+from scripts import rerank_experiment
 
 DATASET = "eval/fixtures/phase11_simulated.json"
 
@@ -60,9 +61,53 @@ def test_hybrid_and_rerank_share_candidate_set() -> None:
         rerank_candidates=5,
     )
 
-    assert [channel.name for channel in result.channels] == ["rrf"]
-    assert reranker.calls
-    assert result.rerank_seconds >= 0.0
+    assert [channel.name for channel in result.channels] == ["rrf", "rrf_rerank"]
+    assert all(call == 5 for call in reranker.calls)
+    rerank_channel = result.channels[1]
+    assert rerank_channel.reranked is True
+    assert rerank_channel.rerank_input_candidates == len(dataset.queries) * 5
+    assert rerank_channel.rerank_returned_candidates == len(dataset.queries) * 2
+    assert rerank_channel.rerank_empty_responses == 0
+    assert result.rerank_seconds == rerank_channel.rerank_seconds
+
+
+def test_rerank_uses_full_candidate_depth_not_final_top_k() -> None:
+    dataset = load_dataset(DATASET)
+    candidates = _candidates()[:7]
+    query_embeddings = [(1.0, 0.0)] * len(dataset.queries)
+    reranker = DeterministicReranker()
+
+    result = evaluate_hybrid(
+        dataset,
+        candidates,
+        query_embeddings,
+        top_k=2,
+        candidate_k=7,
+        fusion="rrf",
+        reranker=reranker,
+        rerank_candidates=5,
+    )
+
+    assert all(call == 5 for call in reranker.calls)
+    baseline, rerank_channel = result.channels
+    assert not baseline.reranked
+    assert baseline.rerank_input_candidates == 0
+    assert rerank_channel.rerank_input_candidates == len(dataset.queries) * 5
+
+
+def test_rerank_depth_cannot_exceed_candidate_depth() -> None:
+    dataset = load_dataset(DATASET)
+    with pytest.raises(ValueError, match="rerank_candidates 不能大于 candidate_k"):
+        evaluate_hybrid(
+            dataset,
+            _candidates()[:2],
+            [(1.0, 0.0)] * len(dataset.queries),
+            top_k=1,
+            candidate_k=2,
+            fusion="rrf",
+            reranker=DeterministicReranker(),
+            rerank_candidates=3,
+        )
 
 
 def test_rerank_requires_candidates_and_min_depth() -> None:
@@ -115,3 +160,54 @@ def test_rerank_candidate_identity_must_match_fusion() -> None:
 
 def test_rerank_client_contract_is_not_confused_with_llm_chat() -> None:
     assert RerankCandidate(key="a", content="doc").content == "doc"
+
+
+def test_rerank_preflight_runs_before_database_and_embedding(monkeypatch) -> None:
+    events: list[str] = []
+
+    class FakeReranker:
+        model = "fake-reranker"
+
+        def verify_available(self) -> None:
+            events.append("rerank")
+
+        def rerank(self, query, candidates, *, top_n):  # noqa: ANN001, ANN202
+            return []
+
+    class FakeEmbedding:
+        dimension = 2
+
+        def embed_texts(self, texts):  # noqa: ANN001, ANN202
+            events.append("embed_texts")
+            return [[1.0, 0.0] for _ in texts]
+
+        def embed_query(self, text):  # noqa: ANN001, ANN202
+            events.append("embed_query")
+            return [1.0, 0.0]
+
+    monkeypatch.setattr(rerank_experiment, "get_rerank_client", lambda: FakeReranker())
+    monkeypatch.setattr(
+        rerank_experiment,
+        "_git_output",
+        lambda arguments: "true" if arguments == ["status", "--porcelain"] else None,
+    )
+    monkeypatch.setattr(
+        rerank_experiment,
+        "build_engine",
+        lambda database_url: events.append("database") or pytest.fail("不应继续建库"),
+    )
+    monkeypatch.setattr(rerank_experiment, "get_embedding_client", lambda: FakeEmbedding())
+    monkeypatch.setattr(
+        rerank_experiment.sys,
+        "argv",
+        [
+            "rerank_experiment.py",
+            "--database-url",
+            "postgresql+psycopg://user:pass@localhost/aitkp_rerank",
+        ],
+    )
+
+    with pytest.raises(pytest.fail.Exception):
+        rerank_experiment.main()
+
+    assert events == ["rerank", "database"]

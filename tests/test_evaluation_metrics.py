@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from app.evaluation.dataset import ChunkingDataset, EvaluationQuery, load_dataset
-from app.evaluation.metrics import RetrievalEvaluation, percentile
+from app.evaluation.metrics import (
+    RetrievalEvaluation,
+    mrr,
+    ndcg_at_k,
+    percentile,
+    precision_at_k,
+    query_metric_details,
+    recall_at_k,
+    reciprocal_rank,
+)
 from app.models import KnowledgeChunk
 
 DATASET = Path("eval/fixtures/phase6_simulated.json")
@@ -202,3 +212,133 @@ def test_percentile_uses_nearest_rank() -> None:
     assert percentile([1, 2, 3, 4], 0.5) == 2
     assert percentile([1, 2, 3, 4], 0.95) == 4
     assert percentile([], 0.95) == 0.0
+
+
+class TestStandaloneRetrievalMetrics:
+    def test_recall_and_precision_use_the_same_top_k(self) -> None:
+        retrieved = ["A", "B", "C", "D"]
+        gold = ["B", "D", "MISSING"]
+
+        assert recall_at_k(retrieved, gold, 3) == pytest.approx(1 / 3)
+        assert precision_at_k(retrieved, gold, 3) == pytest.approx(1 / 3)
+        assert recall_at_k(retrieved, gold, 4) == pytest.approx(2 / 3)
+        assert precision_at_k(retrieved, gold, 4) == pytest.approx(2 / 4)
+
+    def test_precision_uses_actual_result_count_when_underfilled(self) -> None:
+        assert precision_at_k(["A"], ["A", "B"], 5) == 1.0
+        assert precision_at_k([], ["A"], 5) == 0.0
+
+    def test_recall_precision_and_ndcg_validate_k(self) -> None:
+        for function in (recall_at_k, precision_at_k, ndcg_at_k):
+            with pytest.raises(ValueError, match="正整数"):
+                function(["A"], ["A"], 0)
+
+    def test_empty_gold_does_not_divide_by_zero(self) -> None:
+        assert recall_at_k(["A"], [], 5) == 0.0
+        assert precision_at_k(["A"], [], 5) == 0.0
+        assert ndcg_at_k(["A"], [], 5) == 0.0
+        assert reciprocal_rank(["A"], []) == 0.0
+        assert mrr([["A"]], [[]]) == 0.0
+
+    def test_reciprocal_rank_and_mrr(self) -> None:
+        assert reciprocal_rank(["X", "A", "B"], ["A", "B"]) == 0.5
+        assert reciprocal_rank(["X"], ["A"]) == 0.0
+        assert mrr(
+            [["X", "A"], ["B"], ["X"]],
+            [["A"], ["B"], ["A"]],
+        ) == pytest.approx((0.5 + 1.0 + 0.0) / 3)
+
+    def test_mrr_rejects_mismatched_query_counts(self) -> None:
+        with pytest.raises(ValueError, match="Query 数"):
+            mrr([["A"]], [["A"], ["B"]])
+
+    def test_ndcg_rewards_earlier_relevant_results(self) -> None:
+        early = ndcg_at_k(["A", "X", "B"], ["A", "B"], 3)
+        late = ndcg_at_k(["X", "X", "A"], ["A", "B"], 3)
+
+        assert early == pytest.approx((1.0 + 1 / math.log2(4)) / (1.0 + 1 / math.log2(3)))
+        assert late < early
+        assert ndcg_at_k(["X"], ["A"], 1) == 0.0
+
+    def test_duplicate_gold_labels_are_set_semantics(self) -> None:
+        assert recall_at_k(["A"], ["A", "A"], 1) == 1.0
+        assert precision_at_k(["A"], ["A", "A"], 1) == 1.0
+        assert ndcg_at_k(["A"], ["A", "A"], 1) == 1.0
+
+    def test_duplicate_retrieved_items_cannot_inflate_ndcg(self) -> None:
+        assert ndcg_at_k(["A", "A"], ["A"], 2) == 1.0
+        assert ndcg_at_k(["A", "A", "B"], ["A", "B"], 3) == pytest.approx(
+            ndcg_at_k(["A", "X", "B"], ["A", "B"], 3)
+        )
+        assert ndcg_at_k(["A", "A", "B"], ["A", "B"], 3) <= 1.0
+
+    def test_query_details_attributes_wrong_source_badcase(self) -> None:
+        query = EvaluationQuery(
+            query_id="Q",
+            query="支付超时",
+            relevant=[
+                {
+                    "source_type": "document",
+                    "source_id": "DOC-1",
+                    "evidence": "原幂等键",
+                }
+            ],
+        )
+        details = query_metric_details(
+            query,
+            [_chunk("document", "DOC-1", "无关内容")],
+            k_values=(1,),
+        )
+
+        assert details["badcase"] == "wrong_source"
+        assert details["metrics"]["recall@1"] == 0.0
+
+    def test_query_details_marks_unanswerable_false_positive(self) -> None:
+        query = EvaluationQuery(
+            query_id="Q",
+            query="系统支持扫码吗",
+            answerable=False,
+        )
+
+        details = query_metric_details(
+            query,
+            [_chunk("document", "DOC-1", "任意结果")],
+            k_values=(5,),
+        )
+
+        assert details["badcase"] == "unexpected_results"
+
+
+def test_retrieval_evaluation_exports_precision_ndcg_and_badcases() -> None:
+    query = EvaluationQuery(
+        query_id="Q",
+        query="支付超时",
+        relevant=[
+            {
+                "source_type": "document",
+                "source_id": "DOC-1",
+                "evidence": "原幂等键",
+            },
+            {
+                "source_type": "testcase",
+                "source_id": "TC-1",
+                "evidence": "不得重复扣款",
+            },
+        ],
+    )
+    evaluator = RetrievalEvaluation(k_values=(1, 2))
+
+    evaluator.add(
+        query,
+        [
+            _chunk("document", "DOC-1", "原幂等键查询交易"),
+            _chunk("testcase", "TC-1", "不得重复扣款"),
+        ],
+    )
+    summary = evaluator.summary()
+
+    assert summary["precision@1"] == pytest.approx(1.0)
+    assert summary["precision@2"] == pytest.approx(1.0)
+    assert summary["ndcg@1"] == pytest.approx(1.0)
+    assert summary["ndcg@2"] == pytest.approx(1.0)
+    assert summary["badcase_count"] == 0

@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.evaluation.dataset import ChunkingDataset, EvaluationQuery
-from app.evaluation.metrics import RetrievalEvaluation, percentile
+from app.evaluation.metrics import RetrievalEvaluation, percentile, query_metric_details
 from app.ingestion.markdown import MarkdownParser
 from app.models import Defect, Requirement, TestCase
 from app.retrieval.lexical import BM25Index, LexicalDocument, tokenize
@@ -140,6 +140,28 @@ def _evaluate_queries(
         latencies.append(time.perf_counter() - started)
         evaluator.add(query, [_MetricChunk(item) for item in results])
     return evaluator.summary(), latencies
+
+
+def evaluate_queries_with_details(
+    queries: Sequence[EvaluationQuery],
+    searcher: LexicalSearcher,
+    *,
+    top_k: int,
+) -> tuple[dict[str, float | int], list[dict[str, object]], list[float]]:
+    """评测 Query 并保留逐 Query 指标与检索层 Badcase 归因。"""
+    if top_k < 1:
+        raise ValueError("top_k 必须大于 0")
+    evaluator = RetrievalEvaluation(k_values=k_values_for(top_k))
+    details: list[dict[str, object]] = []
+    latencies: list[float] = []
+    for query in queries:
+        started = time.perf_counter()
+        results = searcher.search(query.query, limit=top_k)
+        latencies.append(time.perf_counter() - started)
+        chunks = [_MetricChunk(item) for item in results]
+        evaluator.add(query, chunks)
+        details.append(query_metric_details(query, chunks, k_values=k_values_for(top_k)))
+    return evaluator.summary(), details, latencies
 
 
 def k_values_for(top_k: int) -> tuple[int, ...]:
@@ -345,6 +367,7 @@ __all__ = [
     "RetrievedChunk",
     "demonstrate_baseline_failure",
     "evaluate_lexical",
+    "evaluate_queries_with_details",
     "evaluate_searcher",
     "retrieve_chunks",
     "retrieval_documents",

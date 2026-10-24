@@ -30,8 +30,8 @@ def rerank_fused_hits(
         raise ValueError("Hybrid 候选身份重复")
     candidates = [RerankCandidate(key=hit.key_str(), content=hit.content) for hit in hits]
     ranked = reranker.rerank(query, candidates, top_n=top_n)
-    if len(ranked) != min(top_n, len(hits)):
-        raise RerankError("Rerank 返回数量不一致")
+    if not ranked:
+        raise RerankError("Rerank 返回了空结果")
     key_to_tuple = {hit.key_str(): hit.key for hit in hits}
     if any(item.key not in key_to_tuple for item in ranked):
         raise RerankError("Rerank 返回了未知候选")

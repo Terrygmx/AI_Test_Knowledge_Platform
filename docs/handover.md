@@ -3,6 +3,8 @@
 > 写给接手的 agent / 开发者。读完本文 + `README.md` + `CHANGELOG.md` 即可上手干活。
 > 更完整的背景：`docs/AI_Test_Knowledge_Platform_V2.md`（总体方案）、
 > `docs/AI_Test_Knowledge_Platform_Implementation_Plan.md`（Phase 0–30 开发计划）。
+> Phase 完成度、工程缺口和必须人工完成的事项以
+> `docs/PHASE_PROGRESS.md` 为统一总览；每次 phase / review 收口后同步维护。
 
 ---
 
@@ -34,7 +36,12 @@
 - **PostgreSQL 17 + pgvector 0.8**（关系数据 / Metadata / 全文检索 / 向量四合一，**不引入 Milvus**）
 - **SQLAlchemy 2.0 + Alembic**（Schema 单一事实来源，见 §4）
 - **Embedding**: bge-m3（1024 维，本机 OMLX OpenAI-compatible API）
-- **Reranker**: bge-reranker-v2-m3；**LLM**: 本机 OMLX `Ling-3.0-tiny-oQ6e`（默认）↔ Ollama / 云 API
+- **Reranker**: OpenAI-compatible `/v1/rerank`；本地模板使用
+  `Qwen3.5-9B-DFlash`，运行前必须通过预检。**LLM**: 本机 OMLX
+  `Ling-3.0-tiny-oQ6e`（默认）↔ Ollama / 云 API
+- **Phase 11 当前状态**：Rerank 候选深度、同 run 双通道、短响应契约与
+  预检已实现并通过 SQLite 测试；正式报告 / manifest 尚待 PostgreSQL 与
+  reranker 服务可用后生成。
 - 工程：pytest + ruff（lint 规则见 `pyproject.toml`）
 
 ### 环境变量
@@ -61,12 +68,12 @@ app/
 ├── services/    # EntityService CRUD 基类 + 四实体服务 + UnifiedSearchService
 ├── ingestion/   # Phase 5：表格 / Markdown / PDF 解析与文档导入
 ├── retrieval/   # Embedding 抽象、Chunking、分词 / BM25、Weighted / RRF 融合
-├── rerank/      # 空，Phase 11
+├── rerank/      # Phase 11 Rerank 接缝（正式报告待生成）
 ├── generation/  # Phase 3 最小 RAG；Phase 17 扩展完整 Citation Pipeline
-└── evaluation/  # 数据集契约、Recall@K / MRR、Chunking / Embedding / Lexical / Hybrid 实验
-alembic/         # 迁移脚本（versions/0001_initial_schema.py）
+└── evaluation/  # 数据集契约（含 Phase 12）、Recall@K / MRR 与各阶段实验
+alembic/         # 迁移脚本（0001 初始表 / 0002 knowledge_chunks）
 tests/           # 通过用例以当前实测为准（SQLite 默认路径）
-eval/ data/      # 评测数据集 / 原始语料（均只有 .gitkeep，待填）
+eval/ data/      # 评测数据集（含 Phase 12 候选）/ 原始语料
 scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upgrade head
 ```
 
@@ -111,7 +118,8 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ## 5. 当前进度
 
-**分支 `phase-10-metadata-filter`，Phase 0–10 核心链路已完成，数据库实机验证已完成。**
+**分支 `phase-12-evaluation-dataset`，Phase 0–14 核心链路已实现；Phase 12
+候选数据集已完成，等待人工确认；Phase 14 当前为模拟响应候选回归。数据库实机验证已完成。**
 
 ### 已完成
 
@@ -235,11 +243,78 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 
 ### 未完成 / 待办（按优先级）
 
-1. 扩充 `eval/` 到约 100 条人工确认 Query，并在更大 Gold Set 上复验 Phase 6 / 7 / 8 结论
-2. Phase 13 检索指标：补 Precision@K / NDCG 与 Badcase 归因
-3. Phase 11：Reranker，比较 Hybrid 与 Hybrid + Rerank 的 Recall@5 / MRR / 延迟
-4. 在带 HNSW 的隔离表上补真正的 ANN filtering / iterative scan 实验
-5. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
+1. Phase 12 的 100 条候选已完成，但必须人工逐条确认后才能作为正式 Gold Set；
+   确认后复验 Phase 6 / 7 / 8 结论
+2. Phase 13 检索指标已实现；等待 Phase 12 人工确认后在正式 Gold Set 上重跑
+3. Phase 14 生成评测工具链已实现；等待人工确认数据与真实 LLM 输出后运行正式评测
+4. Phase 15 / 16：等待人工确认数据与真实 LLM 配置后重跑；当前
+   deterministic rewrite 未产生改写，不能据此判断收益
+5. Phase 11：补齐正式 Rerank 实验报告与 manifest，比较 Hybrid 与
+   Hybrid + Rerank 的 Recall@5 / MRR / 延迟
+6. 在带 HNSW 的隔离表上补真正的 ANN filtering / iterative scan 实验
+7. `Ling-3.0-tiny-oQ6e` 延迟较高；如需更低延迟，可评估同 OMLX 下的其他模型
+
+### Phase 12 交接说明
+
+- 候选文件：`eval/fixtures/phase12_candidates.json`（100 条，全部 `pending`）
+- 数据契约：`app/evaluation/phase12_dataset.py`
+- 生成 / 校验：`uv run python scripts/phase12_candidates.py --dry-run`、
+  `uv run python scripts/phase12_candidates.py --check`
+- 正式门槛：`uv run python scripts/phase12_candidates.py --check --mode formal`
+  当前会因 pending 数据失败，这是预期行为
+- 人工确认必须填写 `review_status=confirmed`、`reviewed_by=Terry`、带时区的
+  `reviewed_at` 和 `review_notes`；不要用脚本批量伪造确认
+- 当前未创建 `evaluation_cases` 数据库表；Phase 12 先以 JSON fixture 作为
+  可复现资产，正式持久化留到需要在线管理评测集时
+
+### Phase 13 交接说明
+
+- 指标：`app/evaluation/metrics.py`，包含 Recall@K、Precision@K、MRR、
+  二值 NDCG@K 与逐 Query Badcase 初筛
+- 运行器：`app/evaluation/retrieval_evaluation.py`、
+  `scripts/retrieval_evaluation.py`
+- 报告：`docs/RETRIEVAL_EVALUATION.md`；manifest：
+  `results/retrieval-phase13.json`
+- 当前 manifest 为 `candidate` 模式，使用 Phase 8 的 24 条模拟 Query；
+  `formal_gold_set=false`，不能当作正式 Gold Set 结论
+- Phase 12 候选集可通过 `--phase12-dataset ... --mode candidate` 做流程演练；
+  `--mode formal` 会拒绝全部 `pending` 数据
+
+### Phase 14 交接说明
+
+- 评测核心：`app/evaluation/generation_evaluation.py`
+- 离线入口：`scripts/generation_evaluation.py`
+- 响应夹具：`eval/fixtures/phase14_simulated_responses.json`（人工构造）
+- 报告：`docs/GENERATION_EVALUATION.md`；manifest：
+  `results/generation-phase14.json`
+- 当前 manifest 为 `candidate` + `simulated`：10 条样本、5 个 Badcase，
+  只验证指标与归因，不代表真实 LLM 质量
+- `formal` 模式要求全部样本 `confirmed` 且带 `reviewed_by` / 带时区
+  `reviewed_at`；不要伪造人工确认
+- Deterministic 指标是回归基线，不等价于 Ragas；Ragas 适配层尚未固定版本、
+  模型与参数，默认不可用
+
+### Phase 15 交接说明
+
+- 结构化契约：`app/query/understanding.py`
+- 候选评测入口：`scripts/query_understanding_experiment.py`
+- 候选 manifest：`results/query-understanding-phase12.json`
+- 当前使用 Phase 12 的 100 条 `pending` Query，只报告 Schema 覆盖率、
+  intent 分布与 expected filters 覆盖；Phase 12 的 `expected_intent` 是业务
+  描述文本，不是受控枚举，因此不计算“意图准确率”
+- `LLMQueryUnderstanding` 已实现 JSON 严格校验、重试与确定性降级；尚未用
+  真实 LLM 做批量实验，不能把候选覆盖率当作模型效果
+
+### Phase 16 交接说明
+
+- 改写契约：`app/query/rewrite.py`
+- 候选评测：`app/evaluation/query_rewrite_evaluation.py`、
+  `scripts/query_rewrite_experiment.py`
+- 候选 manifest：`results/query-rewrite-phase16.json`
+- 当前比较 `noop` 与 `deterministic`；deterministic 没有改变任何 Phase 8
+  Query，所以 Recall@5 / MRR 相同。这不说明 Rewrite 无效，也不说明有效
+- 正式实验必须等待人工确认 Gold Set，并固定真实 LLM 的 Prompt、重试、
+  延迟预算与成本边界；没有收益时应删除或保持默认 noop，不为“高级”而保留
 
 ### 已知取舍（README「已知取舍」表中有完整列表）
 
@@ -261,6 +336,8 @@ scripts/db_init.sh  # 一键：docker compose up → 等 healthy → alembic upg
 uv sync                                   # 装依赖（自动建 .venv）
 uv run pytest                             # 全量测试（默认 SQLite，无 Docker 可跑）
 uv run ruff check .                       # 静态检查
+uv run python scripts/query_understanding_experiment.py --dry-run
+uv run python scripts/query_rewrite_experiment.py --dry-run
 ./scripts/db_init.sh                      # 起库 + 建表（需 Docker）
 uv run uvicorn app.main:app --reload      # 起服务，文档 http://127.0.0.1:8000/docs
 uv run alembic revision --autogenerate -m "..."   # 改 models 后生成迁移
@@ -293,5 +370,7 @@ uv run alembic upgrade head               # 应用迁移
    `scripts/chunking_experiment.py --dry-run`、
    `scripts/embedding_experiment.py --dry-run`、
    `scripts/lexical_experiment.py --dry-run`、
+   `scripts/retrieval_evaluation.py --dry-run`、
+   `scripts/generation_evaluation.py --dry-run`、
    `scripts/hybrid_experiment.py --dry-run`、
    `scripts/metadata_filter_experiment.py --dry-run` 做复验
