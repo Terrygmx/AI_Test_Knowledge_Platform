@@ -13,7 +13,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable, Sequence
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -36,6 +36,25 @@ class KnowledgeChunkService:
 
     #: 与 ``KnowledgeChunk.embedding`` 的 ``Vector(1024)`` 保持一致
     embedding_dimension = 1024
+
+    @classmethod
+    def get_by_keys(
+        cls,
+        session: Session,
+        keys: Sequence[tuple[str, str, int]],
+    ) -> dict[tuple[str, str, int], KnowledgeChunk]:
+        """按 (source_type, source_id, chunk_index) 批量取回 Chunk 实体。"""
+        if not keys:
+            return {}
+        unique = list(dict.fromkeys(keys))
+        rows = session.execute(
+            select(KnowledgeChunk).where(
+                tuple_(KnowledgeChunk.source_type, KnowledgeChunk.source_id, KnowledgeChunk.chunk_index).in_(
+                    unique
+                )
+            )
+        ).scalars()
+        return {(row.source_type, row.source_id, row.chunk_index): row for row in rows}
 
     @classmethod
     def create(

@@ -62,6 +62,9 @@ class TestRAGService:
         assert result.citation_valid is True
         assert result.evidence_sufficient is None
         assert result.citations
+        assert result.citations[0].chunk_id == chunks[0].id
+        assert result.citations[0].score == pytest.approx(0.1)
+        assert result.source_lines() == ["testcase:LOGIN-001"]
         assert {citation.source_id for citation in result.citations} <= {"LOGIN-001", "BUG-001"}
         assert [(citation.rank, citation.distance) for citation in result.citations] == [(1, 0.1)]
         assert "LOGIN-001" in llm.prompts[0]
@@ -78,6 +81,7 @@ class TestRAGService:
         assert result.citation_valid is False
         assert result.evidence_sufficient is False
         assert result.answer == INSUFFICIENT_EVIDENCE
+        assert result.source_lines() == []
         assert result.citations == []
         assert llm.prompts == []
 

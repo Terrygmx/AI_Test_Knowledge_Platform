@@ -59,12 +59,14 @@ def assemble_context(
         blocks.append(block)
         citations.append(
             Citation(
+                chunk_id=chunk.id,
                 source_type=chunk.source_type,
                 source_id=chunk.source_id,
                 chunk_index=chunk.chunk_index,
                 snippet=_truncate(raw_content, MAX_SNIPPET_CHARS),
                 rank=len(citations) + 1,
                 distance=_distance,
+                score=_distance,
             )
         )
         used += len(block)

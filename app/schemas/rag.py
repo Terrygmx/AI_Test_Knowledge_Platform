@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import Field, field_validator
 
@@ -36,6 +36,11 @@ class RAGRequest(BaseSchema):
 class Citation(BaseSchema):
     """回答引用的知识片段，业务编号是最终追溯锚点。"""
 
+    chunk_id: int | None = Field(
+        default=None,
+        ge=1,
+        description="knowledge_chunks 主键；离线实验没有数据库行时可为空",
+    )
     source_type: SourceType
     source_id: str
     chunk_index: int = Field(ge=0)
@@ -46,6 +51,10 @@ class Citation(BaseSchema):
     )
     retriever: Literal["vector", "keyword", "hybrid", "rerank"] = Field(
         default="vector", description="产生该证据的检索器"
+    )
+    score: float | None = Field(
+        default=None,
+        description="检索器原始分数；vector 使用 cosine distance，BM25 使用相关度分数",
     )
 
 
@@ -64,6 +73,22 @@ class RAGResponse(BaseSchema):
     evidence_sufficient: bool | None = None
     citations: list[Citation] = Field(default_factory=list)
     retrieved_count: int = Field(ge=0)
+    trace: dict[str, Any] | None = Field(
+        default=None,
+        description="Phase 18 逐阶段 pipeline trace；只在 pipeline 路径填充",
+    )
+
+    def source_lines(self) -> list[str]:
+        """按引用顺序输出去重后的来源清单，用于展示“来源”区块。"""
+        lines: list[str] = []
+        seen: set[tuple[str, str]] = set()
+        for citation in self.citations:
+            key = (citation.source_type, citation.source_id)
+            if key in seen:
+                continue
+            seen.add(key)
+            lines.append(f"{citation.source_type}:{citation.source_id}")
+        return lines
 
 
 __all__ = ["Citation", "RAGRequest", "RAGResponse"]
