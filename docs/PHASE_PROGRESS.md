@@ -1,8 +1,8 @@
 # Phase 进度台账
 
-- 最后更新：2026-10-24 14:45（Asia/Shanghai）
+- 最后更新：2026-10-24 18:00（Asia/Shanghai）
 - 当前分支：`phase-12-evaluation-dataset`
-- 当前 HEAD：`df62284384d2262210b8c99a4cb79ade83719900`
+- 当前 HEAD：`32acdaec9830f87744c0ca7abeb745df6f481134`
 - 状态口径：**已完成** / **部分完成** / **未开始**
 - 维护规则：每完成一个 Phase、每次 review 收口、每次正式实验重跑后，同步更新本文件；Phase 完成状态以本文件为总览，细节以链接的报告和 review 为准。
 
@@ -15,7 +15,7 @@
 | Phase | 主题 | 状态 | 已完成工作 | 工程缺口 | 人工缺口 | 依据 |
 |---|---|---|---|---|---|---|
 | 0 | 项目边界 | 已完成 | `PROJECT_SCOPE.md`、`LEARNING_QUESTIONS.md`、MVP / 非目标 / 成功指标与学习问题 | 后续正式指标口径随实验演进同步更新 | 由项目负责人确认边界与指标是否仍代表真实业务目标 | `docs/PROJECT_SCOPE.md`、`docs/LEARNING_QUESTIONS.md` |
-| 1 | FastAPI + PostgreSQL | 已完成 | FastAPI 应用、四实体 CRUD、统一错误信封、请求追踪中间件、Alembic、PostgreSQL 实机验证 | CI 尚未自动执行 PostgreSQL 门禁；当前为手工验证 | 人工确认 Schema / API 契约是否满足真实业务字段与权限边界 | `README.md`、`docs/handover.md`、review Phase 1 |
+| 1 | FastAPI + PostgreSQL | 已完成 | FastAPI 应用、四实体 CRUD、统一错误信封、请求追踪中间件、Alembic、PostgreSQL 实机验证 | CI 已含 PostgreSQL job（pgvector/pg17 + alembic check + 全量测试），尚未在远程分支实际触发过 | 人工确认 Schema / API 契约是否满足真实业务字段与权限边界 | `README.md`、`docs/handover.md`、review Phase 1 |
 | 2 | Embedding + pgvector | 已完成 | Embedding 抽象、1024 维 bge-m3 探针、`knowledge_chunks`、cosine 检索、索引脚本、无向量 Chunk 可观测性 | 大库 HNSW 参数与生产容量尚未验证；当前实验不是 ANN 性能结论 | 人工确认 Embedding 模型、维度和成本是否可作为默认生产选择 | `docs/EMBEDDING_EXPERIMENT.md`、`docs/RAG_EXPERIMENT.md` |
 | 3 | 手写最小 RAG | 已完成（实验链路） | Context Assembly、Prompt、LLM 调用、引用编号校验、无证据拒答、超时 / 并发闸门、`scripts/ask.py` | `citation_valid` 仍只表示引用编号合法；正式 Faithfulness / Citation Accuracy 待 Phase 14 收口；同步接口仍是实验性慢接口 | 人工确认拒答文案、可接受的回答延迟和引用展示方式 | `docs/RAG_EXPERIMENT.md`、review Phase 3 |
 | 4 | 测试知识模型 | 已完成 | TestCase / Defect / Requirement / Document / KnowledgeChunk 契约、业务编号与 Metadata 收口 | 业务字段未来扩展需补迁移与兼容策略 | 人工确认四类实体的字段语义、编号规则和 Metadata 映射 | `docs/PHASE4_KNOWLEDGE_MODEL.md` |
@@ -33,13 +33,13 @@
 | 16 | Query Rewrite | 部分完成 | No-op / deterministic / LLM / composite rewriter、失败降级与延迟记录；Phase 8 候选 Query Rewrite 对比、manifest 与报告 | 当前 deterministic 改写未改变任何 Query；无真实 LLM rewrite 批量实验；正式收益和成本未验证 | 人工确认是否保留改写策略、可接受延迟与模型成本；等待 Phase 12 人工 Gold Set | `docs/QUERY_UNDERSTANDING_REWRITE.md`、`results/query-rewrite-phase16.json` |
 | 17 | Citation | 部分完成 | Citation 增加 `chunk_id` / `score`，`RAGResponse.source_lines()` 来源清单契约 | API 未新增独立来源字段；引用正确性仍靠 Phase 14 离线评测 | 人工确认引用展示格式与拒答文案 | `app/schemas/rag.py`、review Phase 17 |
 | 18 | 完整 RAG Pipeline | 部分完成 | Understanding → Filter → Hybrid → 可选 Rerank → LLM 全链路 + 逐阶段 trace | 未替换公开 `/rag/answer` 默认路径；trace 未持久化；真实 Rerank 未接入 | 人工确认 trace 存储与在线接入时机 | `app/generation/pipeline.py`、review Phase 18 |
-| 19 | Badcase 系统 | 部分完成 | 九阶段分类、闭环状态机、回归 Query 强制绑定 | 未持久化；Phase 13/14 badcase 字符串未自动映射 | 人工填写根因与修复假设 | `app/evaluation/badcase.py`、review Phase 19 |
+| 19 | Badcase 系统 | 部分完成 | 九阶段分类、闭环状态机、回归 Query 强制绑定；`evaluation_badcases` 表 + Service + `/badcases` API 持久化与闭环推进 | Phase 13/14 badcase 字符串未自动映射 | 人工填写根因与修复假设 | `app/evaluation/badcase.py`、`app/services/badcase_service.py`、review Phase 19 / step2 |
 | 20 | 性能统计 | 部分完成 | nearest-rank 分位数、分阶段延迟记录、并发结果契约 | 未跑真实压测；未接 Locust | 人工确认 SLO 与压测方案 | `app/evaluation/performance.py`、review Phase 20 |
-| 21 | 增量索引 | 部分完成 | hash 对比生成 CREATE / UPDATE / DELETE 计划，与执行解耦 | 未接执行器与 CLI；Chunk 级对比未实现 | 人工确认删除策略与同步频率 | `app/ingestion/incremental.py`、review Phase 21 |
-| 22 | 版本管理 | 部分完成 | 版本解析、包含式区间、对比请求契约 | 区间过滤未接 SQL；diff 呈现未定义 | 人工确认未标注版本语义 | `app/retrieval/versioning.py`、review Phase 22 |
-| 23 | 检索层权限 | 部分完成 | team / project / role 契约与候选过滤 | 数据模型无权限字段；SQL pre-filter 未实现 | 人工确认权限模型与角色集 | `app/retrieval/access_control.py`、review Phase 23 |
+| 21 | 增量索引 | 部分完成 | hash 对比生成 CREATE / UPDATE / DELETE 计划；`sync_incremental_index()` 执行器与 `scripts/incremental_index.py`（`--dry-run` / `--only`），复跑幂等 | Chunk 级对比未实现（实体一 Chunk 假设） | 人工确认删除策略与同步频率 | `app/ingestion/incremental.py`、`app/services/incremental_index_service.py`、review Phase 21 / step3 |
+| 22 | 版本管理 | 部分完成 | 版本解析、包含式区间、对比请求契约；`version_key` 零填充列 + SQL 区间 pre-filter（迁移 0004） | diff 呈现未定义 | 人工确认未标注版本语义 | `app/retrieval/versioning.py`、`app/retrieval/access_filters.py`、review Phase 22 / step4 |
+| 23 | 检索层权限 | 部分完成 | team / project / role 契约与候选过滤；chunk meta `access` 块 SQL pre-filter（PG JSONB / SQLite Python 兜底，fail-closed） | 权限字段仍未进独立数据模型列；规则来源是 metadata 约定 | 人工确认权限模型与角色集 | `app/retrieval/access_control.py`、`app/retrieval/access_filters.py`、review Phase 23 / step4 |
 | 24 | Dashboard | 部分完成 | manifest 聚合投影，带 formal / candidate 溯源 | 无 UI 与 HTTP 端点；Token / Top Questions 需日志持久化 | 人工确认展示范围 | `app/evaluation/dashboard.py`、review Phase 24 |
-| 25 | Agentic RAG | 部分完成 | 工具白名单、Planner 协议、max_steps 受控循环 | 工具未绑真实检索；LLM Planner 未实现 | 人工确认工具清单与对比语义 | `app/agent/tools.py`、review Phase 25 |
+| 25 | Agentic RAG | 部分完成 | 工具白名单、Planner 协议、max_steps 受控循环；六个工具绑定真实 Hybrid / 实体检索（`build_default_registry`），证据带来源标识 | LLM Planner 未实现 | 人工确认工具清单与对比语义 | `app/agent/tools.py`、`app/agent/retrieval_tools.py`、review Phase 25 / step7 |
 | 26 | 回归测试 Agent | 部分完成 | 四类证据 → 确定性计划草稿 → Terry 人工批准硬门槛 | 未绑定检索工具；用例执行器在项目边界外 | 人工批准每次执行 | `app/agent/regression_planner.py`、review Phase 26 |
 | 27 | 实验矩阵 | 部分完成 | 跨 manifest 聚合 + 缺失行显式标记 | Vector / Rerank / final 行待正式数据 | 人工评定 final 行 | `app/evaluation/experiment_matrix.py`、review Phase 27 |
 | 28 | 项目文档 | 部分完成 | `docs/ARCHITECTURE.md` 总览 + 既有文档索引 | BADCASE / PERFORMANCE 独立成篇待数据 | 人工审阅文档准确性 | `docs/ARCHITECTURE.md`、review Phase 28 |
@@ -96,7 +96,6 @@
 | P1 | Phase 13 正式检索评测未运行 | 当前只有 24 条模拟 Query 的 candidate 结果 | Phase 12 人工确认后以 formal 模式重跑并归档 |
 | P1 | Phase 15 / 16 尚无正式数据与真实 LLM 结论 | 只能验证 Schema、降级路径和候选工具链 | Phase 12 人工确认；固定模型、Prompt、重试与延迟预算后重跑 |
 | P2 | Phase 15 未建立业务 intent 到受控枚举的人工映射 | 不能计算有意义的意图准确率 | 人工确认 intent 词表与映射后再评测 |
-| P2 | PostgreSQL 门禁仍为手工执行 | CI 不能阻止 PG 回归 | CI 增加 PostgreSQL service 与 `alembic check` |
 | P2 | Phase 10 未验证 HNSW ANN filtering / iterative scan | 不能声称近似索引过滤质量 | 建 HNSW 隔离表并做召回 / 延迟实验 |
 | P2 | Phase 6–10 均为小样本实验 | 结论不能外推到真实测试知识库 | 用约 100 条人工 Gold Set 复验 |
 

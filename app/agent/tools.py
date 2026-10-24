@@ -69,6 +69,35 @@ class ToolRegistry:
             return ToolResult(tool=call.tool, errors=[str(exc)])
 
 
+def build_default_registry(session: Any) -> ToolRegistry:
+    """把白名单工具绑定到真实检索（Phase 9 Hybrid + Phase 1 实体查询）。
+
+    ``session`` 是 SQLAlchemy Session；工具不自己开会话，生命周期由调用方
+    控制。检索类工具走 ``KnowledgeChunkService.hybrid_search``（需要
+    PostgreSQL + pgvector 才有向量通道，SQLite 下会按既有语义失败并返回
+    ToolResult 错误，不静默降级成假证据）；实体查询工具走统一检索服务。
+    """
+    from app.agent.retrieval_tools import (
+        CompareVersionsTool,
+        HybridSearchTool,
+        SearchDefectsTool,
+        SearchDocumentsTool,
+        SearchRequirementsTool,
+        SearchTestCasesTool,
+    )
+
+    return ToolRegistry(
+        [
+            HybridSearchTool(session),
+            SearchTestCasesTool(session),
+            SearchDefectsTool(session),
+            SearchRequirementsTool(session),
+            SearchDocumentsTool(session),
+            CompareVersionsTool(session),
+        ]
+    )
+
+
 class AgentPlanner(Protocol):
     """把问题映射成最多 max_steps 步工具调用。"""
 
@@ -133,6 +162,7 @@ __all__ = [
     "AgentPlanner",
     "AgentTool",
     "DeterministicPlanner",
+    "build_default_registry",
     "ToolCall",
     "ToolRegistry",
     "ToolResult",

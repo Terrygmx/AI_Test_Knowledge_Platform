@@ -219,6 +219,7 @@ class TestKnowledgeChunkModel:
             "embedding",
             "content_hash",
             "version",
+            "version_key",
             "created_at",
             "updated_at",
         }
@@ -229,6 +230,7 @@ class TestKnowledgeChunkModel:
             "idx_knowledge_chunks_document",
             "idx_knowledge_chunks_embedding_hnsw",
             "idx_knowledge_chunks_source",
+            "idx_knowledge_chunks_version_key",
         }
         table = Base.metadata.tables["knowledge_chunks"]
         unique_names = {

@@ -13,6 +13,84 @@ from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 from app.services.knowledge_chunk_service import KnowledgeChunkService
 
 API = "/api/v1/rag/answer"
+PIPELINE_API = "/api/v1/rag/answer/pipeline"
+
+
+class TestRAGPipelineEndpoint:
+    """Phase 18 Pipeline 的可选 HTTP 入口（不替换 /rag/answer 默认路径）。"""
+
+    def test_pipeline_answer_returns_trace_and_citations(
+        self, client, db_session, monkeypatch
+    ) -> None:
+        from app.api import rag
+        from app.retrieval.embedding import FakeEmbeddingClient as _Fake
+
+        embedding = _Fake(dimension=1024)
+        KnowledgeChunkService.create(
+            db_session,
+            data=KnowledgeChunkCreate(
+                source_type="testcase",
+                source_id="LOGIN-PIPE-1",
+                content="用例编号：LOGIN-PIPE-1\n标题：登录失败\n预期结果：提示错误并保留输入",
+                metadata={"module": "login"},
+            ),
+            embedding_client=embedding,
+        )
+
+        class FakeLLM:
+            def generate(self, prompt: str) -> str:
+                return "检查登录流程的验证码缓存。[1]"
+
+        monkeypatch.setattr(rag, "get_embedding_client", lambda: embedding)
+        monkeypatch.setattr(rag, "get_llm_client", lambda: FakeLLM())
+
+        response = client.post(PIPELINE_API, json={"question": "login 模块的登录失败"})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["citation_valid"] is True
+        assert body["citations"][0]["source_id"] == "LOGIN-PIPE-1"
+        trace = body["trace"]
+        assert trace is not None
+        assert trace["original_query"] == "login 模块的登录失败"
+        assert trace["filters"] == {"module": "login"}
+        assert set(trace["stage_seconds"]) >= {
+            "understanding",
+            "query_embedding",
+            "hybrid",
+            "context",
+            "llm",
+        }
+
+    def test_pipeline_timeout_shares_guard_contract(self, client, monkeypatch) -> None:
+        """Pipeline 端点复用并发闸门 + 超时骨架，超时同样立即返回。"""
+        from app.api import rag
+
+        def slow_pipeline_answer(*args, **kwargs):
+            time.sleep(2)
+
+        monkeypatch.setattr(rag, "_run_pipeline_answer", slow_pipeline_answer)
+        monkeypatch.setattr(rag.settings, "rag_request_timeout", 0.01)
+
+        response = client.post(PIPELINE_API, json={"question": "登录失败怎么排查？"})
+        assert response.status_code == 503
+        assert response.json()["error"]["code"] == "llm_error"
+
+    def test_pipeline_full_concurrency_returns_429(self, client, monkeypatch) -> None:
+        from threading import BoundedSemaphore
+
+        from app.api import rag
+
+        class ExhaustedSemaphore(BoundedSemaphore):
+            def acquire(self, blocking: bool = True, timeout: float | None = None) -> bool:
+                return False
+
+            def release(self, n: int = 1) -> None:  # noqa: ANN401
+                return None
+
+        monkeypatch.setattr(rag, "_slots", ExhaustedSemaphore(1))
+        response = client.post(PIPELINE_API, json={"question": "登录失败怎么排查？"})
+        assert response.status_code == 429
+        assert response.json()["error"]["code"] == "rag_overloaded"
 
 
 class TestRAGTimeoutBoundary:

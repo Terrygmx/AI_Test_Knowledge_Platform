@@ -40,6 +40,7 @@ class KnowledgeChunk(Base):
         Index("idx_knowledge_chunks_source", "source_type", "source_id"),
         Index("idx_knowledge_chunks_document", "document_id"),
         Index("idx_knowledge_chunks_content_hash", "content_hash"),
+        Index("idx_knowledge_chunks_version_key", "version_key"),
         Index(
             "idx_knowledge_chunks_embedding_hnsw",
             "embedding",
@@ -58,6 +59,9 @@ class KnowledgeChunk(Base):
     embedding: Mapped[list[float] | None] = mapped_column(Vector(1024), nullable=True)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     version: Mapped[str | None] = mapped_column(String(32))
+    #: ``version`` 的零填充可排序键（如 ``0002.0010.0000``）；用于 SQL 版本区间过滤。
+    #: 非法版本为 NULL，不匹配任何区间。
+    version_key: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

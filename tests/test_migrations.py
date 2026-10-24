@@ -70,6 +70,15 @@ def _parse_migrations() -> dict[str, MigrationTable]:
                 names = _string_args(node)
                 if len(names) >= 2:
                     tables.setdefault(names[1], MigrationTable()).indexes.add(names[0])
+            elif node.func.attr == "add_column":
+                names = _string_args(node)
+                if names:
+                    table = tables.setdefault(names[0], MigrationTable())
+                    for sub in ast.walk(node):
+                        if isinstance(sub, ast.Call) and getattr(sub.func, "attr", None) == "Column":
+                            cols = _string_args(sub)
+                            if cols:
+                                table.columns.add(cols[0])
             elif node.func.attr == "execute":
                 names = _string_args(node)
                 if not names:

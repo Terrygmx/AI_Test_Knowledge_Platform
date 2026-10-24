@@ -23,6 +23,22 @@ def parse_version(value: str) -> tuple[int, int, int]:
     return (int(match.group(1)), int(match.group(2)), int(match.group(3) or 0))
 
 
+def version_key(value: str | None) -> str | None:
+    """把版本号转成零填充的可排序键；非法 / 缺失版本返回 None。
+
+    ``v2.10`` 与 ``v2.9`` 的字符串比较是错的；零填充后
+    ``0002.0010.0000 > 0002.0009.0000``，SQL 的普通字符串范围比较即可
+    表达数值区间语义。上限 9999.9999.9999，键宽 16 字符以内。
+    """
+    if value is None:
+        return None
+    try:
+        major, minor, patch = parse_version(value)
+    except ValueError:
+        return None
+    return f"{major:04d}.{minor:04d}.{patch:04d}"
+
+
 class VersionRange(BaseSchema):
     """版本区间过滤；边界都按包含语义处理。"""
 
@@ -72,4 +88,4 @@ class VersionDiffRequest(BaseSchema):
         return self
 
 
-__all__ = ["VersionDiffRequest", "VersionRange", "parse_version"]
+__all__ = ["VersionDiffRequest", "VersionRange", "parse_version", "version_key"]

@@ -218,6 +218,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["vector"] = limit
             return []
@@ -230,6 +231,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["keyword"] = limit
             return []
@@ -268,6 +270,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["vector"] = limit
             return []
@@ -280,6 +283,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["keyword"] = limit
             return []
@@ -317,6 +321,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["vector"] = (source_types, metadata_filters)
             return []
@@ -329,6 +334,7 @@ class TestKnowledgeChunkCreate:
             limit=10,
             source_types=None,
             metadata_filters=None,
+            **kwargs,
         ):
             captured["keyword"] = (source_types, metadata_filters)
             return []

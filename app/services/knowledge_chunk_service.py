@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Sequence
+from typing import Any
 
 from sqlalchemy import delete, func, select, tuple_
 from sqlalchemy.exc import IntegrityError
@@ -22,13 +23,49 @@ from app.core.exceptions import DomainError, DuplicateError, NotFoundError
 from app.core.logging import get_logger
 from app.models import KnowledgeChunk
 from app.models.types import POSTGRES
+from app.retrieval.access_filters import (
+    access_allow_predicates,
+    apply_version_and_access_filters,
+)
 from app.retrieval.embedding import EmbeddingClient, content_sha256
 from app.retrieval.filters import apply_metadata_filters
 from app.retrieval.hybrid import ChannelHit, FusedHit, fuse
 from app.retrieval.lexical import BM25Index, LexicalDocument
+from app.retrieval.versioning import VersionRange, version_key
 from app.schemas.knowledge_chunk import KnowledgeChunkCreate
 
 logger = get_logger(__name__)
+
+
+def _python_access_allows(chunk: KnowledgeChunk, context: dict[str, Any]) -> bool:
+    """Python 权限复核；SQLite 的 SQL 层只排除畸形 access，这里补全语义。
+
+    与 ``app.retrieval.access_control.AccessRule.allows`` 保持一致：
+    缺 access 即可见；teams / projects 是"包含任一"；min_role 是等级比较；
+    畸形 access 一律拒绝。
+    """
+    rule = (chunk.meta or {}).get("access")
+    if rule is None:
+        return True
+    if not isinstance(rule, dict):
+        return False
+    teams = rule.get("teams")
+    if teams is not None:
+        if not isinstance(teams, list) or not all(isinstance(v, str) for v in teams):
+            return False
+        if context["team"] not in teams:
+            return False
+    projects = rule.get("projects")
+    if projects is not None:
+        if not isinstance(projects, list) or not all(isinstance(v, str) for v in projects):
+            return False
+        if context["project"] not in projects:
+            return False
+    min_role = rule.get("min_role") or "viewer"
+    ranks = {"viewer": 0, "editor": 1, "admin": 2}
+    if min_role not in ranks:
+        return False
+    return context["role_rank"] >= ranks[min_role]
 
 
 class KnowledgeChunkService:
@@ -72,6 +109,7 @@ class KnowledgeChunkService:
         """
         values = data.to_orm_dict()
         values["content_hash"] = values.get("content_hash") or content_sha256(data.content)
+        values["version_key"] = version_key(values.get("version"))
         values["meta"] = values.pop("metadata", {})
 
         if embedding_client is not None:
@@ -126,6 +164,7 @@ class KnowledgeChunkService:
         for item, vector in zip(items, vectors, strict=True):
             values = item.to_orm_dict()
             values["content_hash"] = values.get("content_hash") or content_sha256(item.content)
+            values["version_key"] = version_key(values.get("version"))
             values["meta"] = values.pop("metadata", {})
             values["embedding"] = vector
             chunks.append(KnowledgeChunk(**values))
@@ -181,6 +220,8 @@ class KnowledgeChunkService:
         limit: int = 10,
         source_types: Sequence[str] | None = None,
         metadata_filters: dict[str, object] | None = None,
+        version_range: VersionRange | None = None,
+        access_context: dict[str, Any] | None = None,
     ) -> list[tuple[KnowledgeChunk, float]]:
         """按 cosine distance 返回 ``(chunk, distance)``。
 
@@ -206,6 +247,21 @@ class KnowledgeChunkService:
             metadata_filters,
             dialect_name=session.bind.dialect.name,
         )
+        stmt = apply_version_and_access_filters(
+            stmt,
+            version_range=version_range,
+            dialect_name=session.bind.dialect.name,
+            access_predicates=(
+                access_allow_predicates(
+                    team=access_context["team"],
+                    project=access_context["project"],
+                    role_rank=access_context["role_rank"],
+                    dialect_name=session.bind.dialect.name,
+                )
+                if access_context
+                else None
+            ),
+        )
         stmt = stmt.order_by(
             distance,
             KnowledgeChunk.source_type,
@@ -214,6 +270,12 @@ class KnowledgeChunkService:
             KnowledgeChunk.id,
         ).limit(limit)
         results = [(chunk, float(value)) for chunk, value in session.execute(stmt).all()]
+        if access_context is not None:
+            results = [
+                item
+                for item in results
+                if _python_access_allows(item[0], access_context)
+            ]
         logger.info(
             "向量检索完成 hits=%s distances=%s",
             len(results),
@@ -230,6 +292,8 @@ class KnowledgeChunkService:
         limit: int = 10,
         source_types: Sequence[str] | None = None,
         metadata_filters: dict[str, object] | None = None,
+        version_range: VersionRange | None = None,
+        access_context: dict[str, Any] | None = None,
     ) -> list[tuple[KnowledgeChunk, float, list[str]]]:
         """按 BM25 返回 ``(chunk, score, matched_terms)``。
 
@@ -250,9 +314,32 @@ class KnowledgeChunkService:
             metadata_filters,
             dialect_name=session.bind.dialect.name,
         )
+        stmt = apply_version_and_access_filters(
+            stmt,
+            version_range=version_range,
+            dialect_name=session.bind.dialect.name,
+            access_predicates=(
+                access_allow_predicates(
+                    team=access_context["team"],
+                    project=access_context["project"],
+                    role_rank=access_context["role_rank"],
+                    dialect_name=session.bind.dialect.name,
+                )
+                if access_context
+                else None
+            ),
+        )
         chunks = list(session.scalars(stmt.order_by(KnowledgeChunk.id)).all())
         if not chunks:
             return []
+        if access_context is not None:
+            chunks = [
+                chunk
+                for chunk in chunks
+                if _python_access_allows(chunk, access_context)
+            ]
+            if not chunks:
+                return []
 
         index = BM25Index(
             [
@@ -289,6 +376,8 @@ class KnowledgeChunkService:
         source_types: Sequence[str] | None = None,
         metadata_filters: dict[str, object] | None = None,
         strategy: str | None = None,
+        version_range: VersionRange | None = None,
+        access_context: dict[str, Any] | None = None,
         vector_weight: float = 1.0,
         keyword_weight: float = 1.0,
         rrf_k: int | None = None,
@@ -353,6 +442,8 @@ class KnowledgeChunkService:
             limit=vector_depth,
             source_types=source_types,
             metadata_filters=metadata_filters,
+            version_range=version_range,
+            access_context=access_context,
         )
         keyword_results = cls.lexical_search(
             session,
@@ -360,6 +451,8 @@ class KnowledgeChunkService:
             limit=keyword_depth,
             source_types=source_types,
             metadata_filters=metadata_filters,
+            version_range=version_range,
+            access_context=access_context,
         )
         vector_hits = [
             ChannelHit(

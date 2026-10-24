@@ -6,6 +6,34 @@
 
 ### Added
 
+#### 工程缺口收口七步循环（2026-10-24）
+
+- **Pipeline HTTP API**：新增 `POST /api/v1/rag/answer/pipeline`，
+  与 `/rag/answer` 共享并发闸门 + 超时骨架，响应带逐阶段 trace；
+  不替换默认 RAG 路径。
+- **Badcase 持久化**：新增 `evaluation_badcases` 表（迁移 0003）、
+  `BadcaseService` 与 `/api/v1/badcases` CRUD + `advance` 端点；
+  闭环语义仍由 Phase 19 契约层单点强制。
+- **增量索引执行器**：`sync_incremental_index()` 把 Phase 21 计划落到库
+  （CREATE / UPDATE 重嵌向量，DELETE 清理），`scripts/incremental_index.py`
+  支持 `--dry-run` / `--only`；复跑幂等有回归测试。
+- **版本 / 权限 SQL pre-filter**：`knowledge_chunks.version_key`
+  零填充排序键（迁移 0004 + 回填）让 SQL 字符串比较等价数值比较；
+  权限过滤以 chunk meta 的 `access` 块下沉到 SQL（PG 原生 JSONB，
+  SQLite Python 兜底，畸形 fail-closed）；三个检索接缝统一接入。
+- **Phase 12 审阅辅助**：`scripts/phase12_review.py` 提供
+  `export`（100 条带 chunk 原文的 checklist）、`apply`（回填并重跑全部
+  契约 + 语料校验，写到新文件）、`progress`；审阅人锁定 Terry，
+  工具不代替人工判断。
+- **CI PostgreSQL 门禁**：GitHub Actions 新增 pgvector/pg17 service job，
+  空库迁移到 head + `alembic check` + 全量测试，替代手工验证。
+- **Agentic RAG 真实检索**：六个白名单工具绑定 Hybrid Search 与实体查询
+  （`build_default_registry`），证据强制带 `source_type:source_id` 前缀；
+  `compare_versions` 复用版本区间 SQL 过滤。
+- **验证**：SQLite 729 passed；PostgreSQL 731 passed / 2 skipped；
+  `ruff` / `git diff --check` / `alembic check` 通过。
+  每步独立 review 见 `review/review-step1..7-*.md`。
+
 #### Phase Progress Ledger（2026-10-23）
 
 - **统一进度台账**：新增 `docs/PHASE_PROGRESS.md`，按 Phase 0–30 记录已完成工作、

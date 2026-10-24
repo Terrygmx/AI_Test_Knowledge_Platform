@@ -14,7 +14,10 @@ from app.core.db import SessionLocal
 from app.core.exceptions import DomainError
 from app.core.logging import get_logger
 from app.generation.llm import LLMError, get_llm_client
+from app.generation.pipeline import RAGPipeline
 from app.generation.rag import RAGService
+from app.query.rewrite import NoOpQueryRewriter
+from app.query.understanding import DeterministicQueryUnderstanding
 from app.retrieval.embedding import get_embedding_client
 from app.schemas.rag import RAGRequest, RAGResponse
 
@@ -80,24 +83,31 @@ def _run_answer(payload: RAGRequest, session_factory: SessionFactory) -> RAGResp
         )
 
 
-@router.post(
-    "/answer",
-    response_model=RAGResponse,
-    summary="基于知识库回答问题（实验性慢接口）",
-    description=(
-        "同步执行 Vector Search + LLM。默认 OMLX 模型可能耗时 11–60 秒，"
-        "超过 RAG_REQUEST_TIMEOUT 返回 503；并发超过 RAG_MAX_CONCURRENCY 返回 429。"
-        "底层调用无法被中断（见 README 已知取舍），暂不建议用于交互式生产场景。"
-    ),
-)
-def answer(payload: RAGRequest, session_factory: SessionFactoryDep) -> RAGResponse:
-    """实验性慢接口：真实推理模型可能耗时数十秒。
+def _run_pipeline_answer(
+    payload: RAGRequest, session_factory: SessionFactory
+) -> RAGResponse:
+    """在工作线程内执行 Phase 18 Pipeline；会话由本线程自己开、自己关。"""
+    pipeline = RAGPipeline(
+        understanding=DeterministicQueryUnderstanding(),
+        rewriter=NoOpQueryRewriter(),
+        embedding_client=get_embedding_client(),
+        llm=get_llm_client(),
+    )
+    with session_factory() as session:
+        return pipeline.answer(
+            session,
+            question=payload.question,
+            top_k=payload.top_k,
+            max_distance=payload.max_distance,
+        )
 
-    已知取舍：超时只是放弃等待，工作线程仍会跑完（最长占用 ``LLM_TIMEOUT``）。
-    后台任务用守护线程 + 自己的会话，因此超时返回后请求级连接 / 会话是干净的；
-    守护线程让进程退出时不被仍在跑的推理拖住（结果丢弃，但那次请求已经放弃）。
-    真正的解法是异步化（Phase 14/20）。
-    """
+
+def _execute_with_guards(
+    runner: Callable[[RAGRequest, SessionFactory], RAGResponse],
+    payload: RAGRequest,
+    session_factory: SessionFactory,
+) -> RAGResponse:
+    """共享的并发闸门 + 超时执行骨架。"""
     try:
         acquired = _slots.acquire(blocking=False)
     except ValueError:  # pragma: no cover - 信号量计数异常，视为满载
@@ -118,7 +128,7 @@ def answer(payload: RAGRequest, session_factory: SessionFactoryDep) -> RAGRespon
 
     def worker() -> None:
         try:
-            holder["value"] = _run_answer(payload, session_factory)
+            holder["value"] = runner(payload, session_factory)
         except BaseException as exc:  # noqa: BLE001 - 交回主线程按原样抛出
             holder["error"] = exc
         finally:
@@ -147,6 +157,44 @@ def answer(payload: RAGRequest, session_factory: SessionFactoryDep) -> RAGRespon
     if error is not None:
         raise error  # type: ignore[misc] - 原样抛出，交给统一错误信封
     return holder["value"]  # type: ignore[return-value]
+
+
+@router.post(
+    "/answer",
+    response_model=RAGResponse,
+    summary="基于知识库回答问题（实验性慢接口）",
+    description=(
+        "同步执行 Vector Search + LLM。默认 OMLX 模型可能耗时 11–60 秒，"
+        "超过 RAG_REQUEST_TIMEOUT 返回 503；并发超过 RAG_MAX_CONCURRENCY 返回 429。"
+        "底层调用无法被中断（见 README 已知取舍），暂不建议用于交互式生产场景。"
+    ),
+)
+def answer(payload: RAGRequest, session_factory: SessionFactoryDep) -> RAGResponse:
+    """实验性慢接口：真实推理模型可能耗时数十秒。
+
+    已知取舍：超时只是放弃等待，工作线程仍会跑完（最长占用 ``LLM_TIMEOUT``）。
+    后台任务用守护线程 + 自己的会话，因此超时返回后请求级连接 / 会话是干净的；
+    守护线程让进程退出时不被仍在跑的推理拖住（结果丢弃，但那次请求已经放弃）。
+    真正的解法是异步化（Phase 14/20）。
+    """
+    return _execute_with_guards(_run_answer, payload, session_factory)
+
+
+@router.post(
+    "/answer/pipeline",
+    response_model=RAGResponse,
+    summary="基于完整 Pipeline 回答问题（实验性慢接口）",
+    description=(
+        "Phase 18 Pipeline 路径：Query Understanding → Hybrid 检索 → 可选 Rerank → LLM，"
+        "响应附带逐阶段 trace。并发 / 超时契约与 /rag/answer 相同；"
+        "understanding / rewriter 当前使用确定性默认实现。"
+    ),
+)
+def answer_pipeline(
+    payload: RAGRequest, session_factory: SessionFactoryDep
+) -> RAGResponse:
+    """Pipeline 版回答；trace 在响应的 ``trace`` 字段返回。"""
+    return _execute_with_guards(_run_pipeline_answer, payload, session_factory)
 
 
 __all__ = ["RAGOverloadedError", "router"]

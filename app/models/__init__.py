@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from app.models.badcase import EvaluationBadcase
 from app.models.defect import Defect
 from app.models.document import Document
 from app.models.enums import (
@@ -24,6 +25,7 @@ __all__ = [
     "Defect",
     "DefectStatus",
     "Document",
+    "EvaluationBadcase",
     "JSONMap",
     "KnowledgeChunk",
     "Priority",
