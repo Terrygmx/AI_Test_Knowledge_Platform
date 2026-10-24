@@ -1,0 +1,1661 @@
+{
+  "phase": 16,
+  "manifest_schema_version": 1,
+  "started_at": "2026-10-23T03:32:59.770218+00:00",
+  "finished_at": "2026-10-23T03:32:59.788542+00:00",
+  "git_commit": "df62284384d2262210b8c99a4cb79ade83719900",
+  "git_commit_role": "generation",
+  "git_dirty": true,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/query_rewrite_experiment.py"
+  ],
+  "mode": "candidate",
+  "formal_gold_set": false,
+  "dataset": {
+    "path": "eval/fixtures/phase8_simulated.json",
+    "sha256": "be85ce63b760207368bf229a6484235a430360aee82d82ca81e45d42c0f186a1",
+    "queries": 24
+  },
+  "top_k": 10,
+  "understanding": {
+    "strategy": "deterministic",
+    "queries": 24,
+    "with_specific_intent": 4,
+    "with_filters": 19,
+    "details": [
+      {
+        "query_id": "P8-Q01",
+        "query": "SHOP-BUG-001",
+        "expected_category": "exact_identifier",
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "SHOP-BUG-001"
+          ],
+          "semantic_query": "SHOP-BUG-001",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {}
+      },
+      {
+        "query_id": "P8-Q02",
+        "query": "P0 BUG-1234 login-api v1.3",
+        "expected_category": "exact_identifier",
+        "parsed": {
+          "intent": "defect_search",
+          "module": "login",
+          "priority": "P0",
+          "version": "v1.3",
+          "keywords": [
+            "BUG-1234",
+            "p0",
+            "login-api",
+            "v1.3"
+          ],
+          "semantic_query": "P0 BUG-1234 login-api v1.3",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "priority": "P0",
+          "version": "v1.3"
+        }
+      },
+      {
+        "query_id": "P8-Q03",
+        "query": "SHOP-PAYMENT-002 幂等键",
+        "expected_category": "exact_identifier",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "shop-payment-002"
+          ],
+          "semantic_query": "SHOP-PAYMENT-002 幂等键",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        }
+      },
+      {
+        "query_id": "P8-Q04",
+        "query": "SHOP-LOGIN-003 v2.3",
+        "expected_category": "exact_version",
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.3",
+          "keywords": [
+            "shop-login-003",
+            "v2.3"
+          ],
+          "semantic_query": "SHOP-LOGIN-003 v2.3",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.3"
+        }
+      },
+      {
+        "query_id": "P8-Q05",
+        "query": "v2.3 login 账户锁定 SHOP-BUG-004",
+        "expected_category": "exact_version",
+        "parsed": {
+          "intent": "defect_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.3",
+          "keywords": [
+            "SHOP-BUG-004",
+            "v2.3",
+            "login"
+          ],
+          "semantic_query": "v2.3 login 账户锁定 SHOP-BUG-004",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.3"
+        }
+      },
+      {
+        "query_id": "P8-Q06",
+        "query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+        "expected_category": "exact_version",
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "refund",
+            "退款",
+            "shop-refund-001"
+          ],
+          "semantic_query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "version": "v2.4"
+        }
+      },
+      {
+        "query_id": "P8-Q07",
+        "query": "P0 payment 重复扣款",
+        "expected_category": "exact_priority",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "p0",
+            "payment"
+          ],
+          "semantic_query": "P0 payment 重复扣款",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "priority": "P0"
+        }
+      },
+      {
+        "query_id": "P8-Q08",
+        "query": "P2 login 邮箱枚举 SHOP-BUG-004",
+        "expected_category": "exact_priority",
+        "parsed": {
+          "intent": "defect_search",
+          "module": "login",
+          "priority": "P2",
+          "version": null,
+          "keywords": [
+            "SHOP-BUG-004",
+            "p2",
+            "login"
+          ],
+          "semantic_query": "P2 login 邮箱枚举 SHOP-BUG-004",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "priority": "P2"
+        }
+      },
+      {
+        "query_id": "P8-Q09",
+        "query": "P0 checkout 幂等",
+        "expected_category": "exact_priority",
+        "parsed": {
+          "intent": "general_search",
+          "module": "checkout",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "p0",
+            "checkout"
+          ],
+          "semantic_query": "P0 checkout 幂等",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "checkout",
+          "priority": "P0"
+        }
+      },
+      {
+        "query_id": "P8-Q10",
+        "query": "支付网关超时以后还能不能再点一次支付？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付网关超时以后还能不能再点一次支付？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        }
+      },
+      {
+        "query_id": "P8-Q11",
+        "query": "账户连续登录失败会怎样？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "账户连续登录失败会怎样？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        }
+      },
+      {
+        "query_id": "P8-Q12",
+        "query": "优惠码能不能连续叠加两个使用？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "优惠码能不能连续叠加两个使用？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {}
+      },
+      {
+        "query_id": "P8-Q13",
+        "query": "部分退款后订单金额应该怎么变化？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "部分退款后订单金额应该怎么变化？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        }
+      },
+      {
+        "query_id": "P8-Q14",
+        "query": "退出登录只清掉浏览器 Cookie 够不够？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录",
+            "cookie"
+          ],
+          "semantic_query": "退出登录只清掉浏览器 Cookie 够不够？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        }
+      },
+      {
+        "query_id": "P8-Q15",
+        "query": "支付回调重复到达时应该怎么处理？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付回调重复到达时应该怎么处理？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        }
+      },
+      {
+        "query_id": "P8-Q16",
+        "query": "加急配送满三百元也免运费吗？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "加急配送满三百元也免运费吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {}
+      },
+      {
+        "query_id": "P8-Q17",
+        "query": "搜索旅行商品翻到第二页时关键词还在吗？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": "catalog",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "搜索旅行商品翻到第二页时关键词还在吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "catalog"
+        }
+      },
+      {
+        "query_id": "P8-Q18",
+        "query": "测试时能不能使用真实信用卡？",
+        "expected_category": "semantic_paraphrase",
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "测试时能不能使用真实信用卡？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {}
+      },
+      {
+        "query_id": "P8-Q19",
+        "query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {}
+      },
+      {
+        "query_id": "P8-Q20",
+        "query": "退款时可以使用比特币原路退回吗？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "退款时可以使用比特币原路退回吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        }
+      },
+      {
+        "query_id": "P8-Q21",
+        "query": "登录支持企业微信扫码吗？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录支持企业微信扫码吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        }
+      },
+      {
+        "query_id": "P8-Q22",
+        "query": "购物车能不能把商品直接分享到短视频平台？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": "cart",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "购物车能不能把商品直接分享到短视频平台？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "cart"
+        }
+      },
+      {
+        "query_id": "P8-Q23",
+        "query": "支付失败后系统会自动给用户发短信吗？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付失败后系统会自动给用户发短信吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        }
+      },
+      {
+        "query_id": "P8-Q24",
+        "query": "订单支持使用数字人民币硬钱包支付吗？",
+        "expected_category": "unanswerable",
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "订单支持使用数字人民币硬钱包支付吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        }
+      }
+    ]
+  },
+  "metric_definitions": {
+    "recall_at_k": "Gold evidence hits in top-k / Gold evidence",
+    "mrr": "mean reciprocal rank of first relevant result",
+    "rewrite_seconds_p95": "nearest-rank P95 rewrite latency",
+    "search_seconds_total": "sum of search latency"
+  },
+  "results": [
+    {
+      "name": "noop",
+      "mode": "candidate",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7916666666666666,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "precision@5": 0.40000000000000013,
+        "precision@10": 0.2888888888888889,
+        "ndcg@5": 0.6273350194087893,
+        "ndcg@10": 0.6273350194087893,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26,
+        "badcase_count": 6,
+        "badcases": [
+          {
+            "query_id": "P8-Q19",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+            "search_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q20",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "退款时可以使用比特币原路退回吗？",
+            "search_query": "退款时可以使用比特币原路退回吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q21",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "登录支持企业微信扫码吗？",
+            "search_query": "登录支持企业微信扫码吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q22",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "购物车能不能把商品直接分享到短视频平台？",
+            "search_query": "购物车能不能把商品直接分享到短视频平台？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q23",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "支付失败后系统会自动给用户发短信吗？",
+            "search_query": "支付失败后系统会自动给用户发短信吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q24",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "订单支持使用数字人民币硬钱包支付吗？",
+            "search_query": "订单支持使用数字人民币硬钱包支付吗？",
+            "changed": false
+          }
+        ],
+        "rewrite_seconds_total": 4.612299926520791e-05,
+        "rewrite_seconds_p95": 4.458999683265574e-06,
+        "search_seconds_total": 0.0015630819980287924,
+        "changed_queries": 0
+      },
+      "query_details": [
+        {
+          "query_id": "P8-Q01",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-BUG-001",
+          "search_query": "SHOP-BUG-001",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q02",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "P0 BUG-1234 login-api v1.3",
+          "search_query": "P0 BUG-1234 login-api v1.3",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q03",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-PAYMENT-002 幂等键",
+          "search_query": "SHOP-PAYMENT-002 幂等键",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q04",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-LOGIN-003 v2.3",
+          "search_query": "SHOP-LOGIN-003 v2.3",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q05",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "v2.3 login 账户锁定 SHOP-BUG-004",
+          "search_query": "v2.3 login 账户锁定 SHOP-BUG-004",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q06",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+          "search_query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q07",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "P0 payment 重复扣款",
+          "search_query": "P0 payment 重复扣款",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q08",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "P2 login 邮箱枚举 SHOP-BUG-004",
+          "search_query": "P2 login 邮箱枚举 SHOP-BUG-004",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q09",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 0.5,
+            "reciprocal_rank": 0.5,
+            "recall@5": 0.5,
+            "precision@5": 0.2,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 0.5,
+            "precision@10": 0.1,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "P0 checkout 幂等",
+          "search_query": "P0 checkout 幂等",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q10",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 4,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.25,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "支付网关超时以后还能不能再点一次支付？",
+          "search_query": "支付网关超时以后还能不能再点一次支付？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q11",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "账户连续登录失败会怎样？",
+          "search_query": "账户连续登录失败会怎样？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q12",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "优惠码能不能连续叠加两个使用？",
+          "search_query": "优惠码能不能连续叠加两个使用？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q13",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "部分退款后订单金额应该怎么变化？",
+          "search_query": "部分退款后订单金额应该怎么变化？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q14",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "退出登录只清掉浏览器 Cookie 够不够？",
+          "search_query": "退出登录只清掉浏览器 Cookie 够不够？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q15",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 0.5,
+            "precision@5": 0.2,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "支付回调重复到达时应该怎么处理？",
+          "search_query": "支付回调重复到达时应该怎么处理？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q16",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "加急配送满三百元也免运费吗？",
+          "search_query": "加急配送满三百元也免运费吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q17",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "搜索旅行商品翻到第二页时关键词还在吗？",
+          "search_query": "搜索旅行商品翻到第二页时关键词还在吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q18",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "测试时能不能使用真实信用卡？",
+          "search_query": "测试时能不能使用真实信用卡？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q19",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+          "search_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q20",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "退款时可以使用比特币原路退回吗？",
+          "search_query": "退款时可以使用比特币原路退回吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q21",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "登录支持企业微信扫码吗？",
+          "search_query": "登录支持企业微信扫码吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q22",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "购物车能不能把商品直接分享到短视频平台？",
+          "search_query": "购物车能不能把商品直接分享到短视频平台？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q23",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "支付失败后系统会自动给用户发短信吗？",
+          "search_query": "支付失败后系统会自动给用户发短信吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q24",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "订单支持使用数字人民币硬钱包支付吗？",
+          "search_query": "订单支持使用数字人民币硬钱包支付吗？",
+          "changed": false
+        }
+      ]
+    },
+    {
+      "name": "deterministic",
+      "mode": "candidate",
+      "metrics": {
+        "answerable_queries": 18,
+        "unanswerable_queries": 6,
+        "unanswerable_false_positive_rate": 1.0,
+        "unanswerable_top1_distance_min": 0.0,
+        "unanswerable_top1_distance_median": 0.0,
+        "mrr": 0.7916666666666666,
+        "recall@5": 0.9444444444444444,
+        "recall@10": 0.9722222222222222,
+        "precision@5": 0.40000000000000013,
+        "precision@10": 0.2888888888888889,
+        "ndcg@5": 0.6273350194087893,
+        "ndcg@10": 0.6273350194087893,
+        "recall@5_hits": 24,
+        "recall@10_hits": 25,
+        "recall@5_labels": 26,
+        "recall@10_labels": 26,
+        "badcase_count": 6,
+        "badcases": [
+          {
+            "query_id": "P8-Q19",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+            "search_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q20",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "退款时可以使用比特币原路退回吗？",
+            "search_query": "退款时可以使用比特币原路退回吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q21",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "登录支持企业微信扫码吗？",
+            "search_query": "登录支持企业微信扫码吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q22",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "购物车能不能把商品直接分享到短视频平台？",
+            "search_query": "购物车能不能把商品直接分享到短视频平台？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q23",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "支付失败后系统会自动给用户发短信吗？",
+            "search_query": "支付失败后系统会自动给用户发短信吗？",
+            "changed": false
+          },
+          {
+            "query_id": "P8-Q24",
+            "answerable": false,
+            "result_count": 10,
+            "badcase": "unexpected_results",
+            "hit_labels": [],
+            "original_query": "订单支持使用数字人民币硬钱包支付吗？",
+            "search_query": "订单支持使用数字人民币硬钱包支付吗？",
+            "changed": false
+          }
+        ],
+        "rewrite_seconds_total": 4.5875001887907274e-05,
+        "rewrite_seconds_p95": 3.250000190746505e-06,
+        "search_seconds_total": 0.001162876001217228,
+        "changed_queries": 0
+      },
+      "query_details": [
+        {
+          "query_id": "P8-Q01",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-BUG-001",
+          "search_query": "SHOP-BUG-001",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q02",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "P0 BUG-1234 login-api v1.3",
+          "search_query": "P0 BUG-1234 login-api v1.3",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q03",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-PAYMENT-002 幂等键",
+          "search_query": "SHOP-PAYMENT-002 幂等键",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q04",
+          "answerable": true,
+          "result_count": 1,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 1.0,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 1.0,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "SHOP-LOGIN-003 v2.3",
+          "search_query": "SHOP-LOGIN-003 v2.3",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q05",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "v2.3 login 账户锁定 SHOP-BUG-004",
+          "search_query": "v2.3 login 账户锁定 SHOP-BUG-004",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q06",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+          "search_query": "v2.4 refund 部分退款 SHOP-REFUND-001",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q07",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "P0 payment 重复扣款",
+          "search_query": "P0 payment 重复扣款",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q08",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "P2 login 邮箱枚举 SHOP-BUG-004",
+          "search_query": "P2 login 邮箱枚举 SHOP-BUG-004",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q09",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 0.5,
+            "reciprocal_rank": 0.5,
+            "recall@5": 0.5,
+            "precision@5": 0.2,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 0.5,
+            "precision@10": 0.1,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "P0 checkout 幂等",
+          "search_query": "P0 checkout 幂等",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q10",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 4,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.25,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.0,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.0
+          },
+          "badcase": null,
+          "original_query": "支付网关超时以后还能不能再点一次支付？",
+          "search_query": "支付网关超时以后还能不能再点一次支付？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q11",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 2,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 0.5,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "账户连续登录失败会怎样？",
+          "search_query": "账户连续登录失败会怎样？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q12",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "优惠码能不能连续叠加两个使用？",
+          "search_query": "优惠码能不能连续叠加两个使用？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q13",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.4,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "部分退款后订单金额应该怎么变化？",
+          "search_query": "部分退款后订单金额应该怎么变化？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q14",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "退出登录只清掉浏览器 Cookie 够不够？",
+          "search_query": "退出登录只清掉浏览器 Cookie 够不够？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q15",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0,
+            1
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 0.5,
+            "precision@5": 0.2,
+            "ndcg@5": 0.6131471927654584,
+            "recall@10": 1.0,
+            "precision@10": 0.2,
+            "ndcg@10": 0.6131471927654584
+          },
+          "badcase": null,
+          "original_query": "支付回调重复到达时应该怎么处理？",
+          "search_query": "支付回调重复到达时应该怎么处理？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q16",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "加急配送满三百元也免运费吗？",
+          "search_query": "加急配送满三百元也免运费吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q17",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "搜索旅行商品翻到第二页时关键词还在吗？",
+          "search_query": "搜索旅行商品翻到第二页时关键词还在吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q18",
+          "answerable": true,
+          "result_count": 10,
+          "first_relevant_rank": 1,
+          "hit_labels": [
+            0
+          ],
+          "metrics": {
+            "recall": 1.0,
+            "reciprocal_rank": 1.0,
+            "recall@5": 1.0,
+            "precision@5": 0.2,
+            "ndcg@5": 1.0,
+            "recall@10": 1.0,
+            "precision@10": 0.1,
+            "ndcg@10": 1.0
+          },
+          "badcase": null,
+          "original_query": "测试时能不能使用真实信用卡？",
+          "search_query": "测试时能不能使用真实信用卡？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q19",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+          "search_query": "这个系统支持黑五促销期间按用户画像自动生成优惠券吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q20",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "退款时可以使用比特币原路退回吗？",
+          "search_query": "退款时可以使用比特币原路退回吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q21",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "登录支持企业微信扫码吗？",
+          "search_query": "登录支持企业微信扫码吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q22",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "购物车能不能把商品直接分享到短视频平台？",
+          "search_query": "购物车能不能把商品直接分享到短视频平台？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q23",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "支付失败后系统会自动给用户发短信吗？",
+          "search_query": "支付失败后系统会自动给用户发短信吗？",
+          "changed": false
+        },
+        {
+          "query_id": "P8-Q24",
+          "answerable": false,
+          "result_count": 10,
+          "badcase": "unexpected_results",
+          "hit_labels": [],
+          "original_query": "订单支持使用数字人民币硬钱包支付吗？",
+          "search_query": "订单支持使用数字人民币硬钱包支付吗？",
+          "changed": false
+        }
+      ]
+    }
+  ]
+}

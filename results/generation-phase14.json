@@ -1,0 +1,476 @@
+{
+  "phase": 14,
+  "manifest_schema_version": 1,
+  "started_at": "2026-10-23T03:32:58.069771+00:00",
+  "finished_at": "2026-10-23T03:32:58.069780+00:00",
+  "git_commit": "df62284384d2262210b8c99a4cb79ade83719900",
+  "git_commit_role": "generation",
+  "git_dirty": true,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/generation_evaluation.py"
+  ],
+  "mode": "candidate",
+  "formal_gold_set": false,
+  "evaluator": "deterministic",
+  "response_source": "simulated",
+  "dataset": {
+    "path": "eval/fixtures/phase12_candidates.json",
+    "sha256": "6a689eed73b01549950ef2190029d234827e29d341aaf87749437e109fffa5c6",
+    "hash_scope": "evaluated_cases",
+    "cases": 10,
+    "review_statuses": {
+      "pending": 10,
+      "confirmed": 0,
+      "rejected": 0
+    }
+  },
+  "corpus": {
+    "path": "eval/fixtures/phase6_simulated.json",
+    "sha256": "fdff0d8faa1b313ef657488e4fe70a044b63e645b7ef6efece1cc5c61c038209"
+  },
+  "responses": {
+    "path": "eval/fixtures/phase14_simulated_responses.json",
+    "sha256": "55aa12530f772fda92b1a274258ad457fc5e91c3aa27c58bab99037e33a3fe40"
+  },
+  "metric_definitions": {
+    "context_recall": "Gold Chunk identities with matching evidence / Gold Chunks",
+    "context_precision": "context Chunks with matching identity and evidence / context Chunks",
+    "faithfulness": "answer sentences supported by context / answer sentences",
+    "answer_relevancy": "0.5 * question-token overlap + 0.5 * answer-point coverage",
+    "citation_accuracy": "valid citation numbers / all citation numbers",
+    "refusal_correct": "unanswerable refused or answerable not refused",
+    "unsupported_sentence_total": "total unsupported answer sentences across cases",
+    "unsupported_sentence_rate": "unsupported sentences / evaluated cases"
+  },
+  "metrics": {
+    "cases": 10,
+    "badcase_count": 5,
+    "context_recall": 0.875,
+    "context_precision": 0.875,
+    "faithfulness": 0.75,
+    "answer_relevancy_heuristic": 0.3,
+    "answer_relevancy": 0.3,
+    "answer_coverage": 0.75,
+    "citation_accuracy": 0.7,
+    "refusal_correct": 0.9,
+    "metric_case_counts": {
+      "context_recall": 8,
+      "context_precision": 8,
+      "faithfulness": 10,
+      "answer_relevancy_heuristic": 10,
+      "answer_relevancy": 10,
+      "answer_coverage": 8,
+      "citation_accuracy": 10,
+      "refusal_correct": 10,
+      "unsupported_sentence_total": 10,
+      "unsupported_sentence_rate": 10
+    },
+    "unsupported_sentence_total": 3,
+    "unsupported_sentence_rate": 0.3
+  },
+  "cases": [
+    {
+      "query_id": "P12-TC-001",
+      "category": "testcase_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": null,
+      "answer": "登录成功后服务端会创建新的会话。[1]",
+      "citations": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-LOGIN-001",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-TC-002",
+      "category": "testcase_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": null,
+      "answer": "第五次失败后账户锁定三十分钟。[1]",
+      "citations": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-LOGIN-002",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-TC-003",
+      "category": "testcase_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 0.5,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "generation_error_unsupported_claim",
+      "answer": "地址栏不出现访问令牌。[1] 系统会自动发送短信。",
+      "citations": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-LOGIN-003",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DF-001",
+      "category": "defect_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": 0.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": "generation_error_missing_answer_point",
+      "answer": "支付超时重试会造成同一订单重复扣款。[1]",
+      "citations": [
+        {
+          "source_type": "defect",
+          "source_id": "SHOP-BUG-001",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DOC-002",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 0.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": "generation_error_citation",
+      "answer": "回调处理必须按交易号去重。[2]",
+      "citations": [
+        {
+          "source_type": "document",
+          "source_id": "SHOP-DOC-001",
+          "chunk_index": 6,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DOC-006",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 0.0,
+        "context_precision": 0.0,
+        "faithfulness": 0.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": 0.0,
+        "citation_accuracy": 0.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "retrieval_error",
+      "answer": "证据不足：无法确认。",
+      "citations": []
+    },
+    {
+      "query_id": "P12-DOC-007",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": null,
+      "answer": "超时后使用原幂等键查询交易状态。[1]",
+      "citations": [
+        {
+          "source_type": "document",
+          "source_id": "SHOP-DOC-002",
+          "chunk_index": 3,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DOC-008",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": null,
+      "answer": "金额不一致时应停止支付并刷新订单快照。[1]",
+      "citations": [
+        {
+          "source_type": "document",
+          "source_id": "SHOP-DOC-002",
+          "chunk_index": 5,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-UN-001",
+      "category": "unanswerable",
+      "answerable": false,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": null,
+        "context_precision": null,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": null,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": null,
+      "answer": "证据不足：当前知识库没有可用于回答该问题的内容。",
+      "citations": []
+    },
+    {
+      "query_id": "P12-UN-002",
+      "category": "unanswerable",
+      "answerable": false,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": null,
+        "context_precision": null,
+        "faithfulness": 0.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": null,
+        "citation_accuracy": 0.0,
+        "refusal_correct": false,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "generation_error_false_answer",
+      "answer": "退款可以直接使用比特币原路退回。",
+      "citations": []
+    }
+  ],
+  "badcases": [
+    {
+      "query_id": "P12-TC-003",
+      "category": "testcase_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 0.5,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "generation_error_unsupported_claim",
+      "answer": "地址栏不出现访问令牌。[1] 系统会自动发送短信。",
+      "citations": [
+        {
+          "source_type": "testcase",
+          "source_id": "SHOP-LOGIN-003",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DF-001",
+      "category": "defect_search",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": 0.0,
+        "citation_accuracy": 1.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": "generation_error_missing_answer_point",
+      "answer": "支付超时重试会造成同一订单重复扣款。[1]",
+      "citations": [
+        {
+          "source_type": "defect",
+          "source_id": "SHOP-BUG-001",
+          "chunk_index": 0,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DOC-002",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 1.0,
+        "context_precision": 1.0,
+        "faithfulness": 1.0,
+        "answer_relevancy_heuristic": 0.5,
+        "answer_relevancy": 0.5,
+        "answer_coverage": 1.0,
+        "citation_accuracy": 0.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 0
+      },
+      "badcase": "generation_error_citation",
+      "answer": "回调处理必须按交易号去重。[2]",
+      "citations": [
+        {
+          "source_type": "document",
+          "source_id": "SHOP-DOC-001",
+          "chunk_index": 6,
+          "snippet": "",
+          "rank": 1,
+          "distance": null,
+          "retriever": "vector"
+        }
+      ]
+    },
+    {
+      "query_id": "P12-DOC-006",
+      "category": "document_qa",
+      "answerable": true,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": 0.0,
+        "context_precision": 0.0,
+        "faithfulness": 0.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": 0.0,
+        "citation_accuracy": 0.0,
+        "refusal_correct": true,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "retrieval_error",
+      "answer": "证据不足：无法确认。",
+      "citations": []
+    },
+    {
+      "query_id": "P12-UN-002",
+      "category": "unanswerable",
+      "answerable": false,
+      "review_status": "pending",
+      "metrics": {
+        "context_recall": null,
+        "context_precision": null,
+        "faithfulness": 0.0,
+        "answer_relevancy_heuristic": 0.0,
+        "answer_relevancy": 0.0,
+        "answer_coverage": null,
+        "citation_accuracy": 0.0,
+        "refusal_correct": false,
+        "unsupported_sentence_count": 1
+      },
+      "badcase": "generation_error_false_answer",
+      "answer": "退款可以直接使用比特币原路退回。",
+      "citations": []
+    }
+  ]
+}

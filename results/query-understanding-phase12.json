@@ -1,0 +1,2428 @@
+{
+  "phase": 15,
+  "manifest_schema_version": 1,
+  "started_at": "2026-10-23T03:33:00.375259+00:00",
+  "finished_at": "2026-10-23T03:33:00.375293+00:00",
+  "git_commit": "df62284384d2262210b8c99a4cb79ade83719900",
+  "git_commit_role": "generation",
+  "git_dirty": true,
+  "command": [
+    "/Users/terrygmx/PycharmProjects/AI_Test_Knowledge_Platform/.venv/bin/python3",
+    "scripts/query_understanding_experiment.py"
+  ],
+  "mode": "candidate",
+  "formal_gold_set": false,
+  "dataset": {
+    "path": "eval/fixtures/phase12_candidates.json",
+    "sha256": "5b77a029aebea56ca516a35bc0bb4449b168bafbe0ce99336dce540b4fb3752e",
+    "queries": 100,
+    "corpus_dataset": "phase6_simulated.json",
+    "categories": {
+      "cross_version": 10,
+      "defect_search": 20,
+      "document_qa": 20,
+      "multi_condition": 10,
+      "testcase_search": 30,
+      "unanswerable": 10
+    },
+    "review_statuses": {
+      "pending": 100
+    }
+  },
+  "understanding": {
+    "strategy": "deterministic",
+    "dataset_kind": "phase12",
+    "mode": "candidate",
+    "queries": 100,
+    "with_specific_intent": 29,
+    "with_filters": 58,
+    "with_expected_filters": 20,
+    "matched_expected_filters": 12,
+    "expected_filter_match_rate": 0.6,
+    "details": [
+      {
+        "query_id": "P12-TC-001",
+        "query": "登录成功后系统会怎样创建会话？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录成功后系统会怎样创建会话？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-002",
+        "query": "连续输错五次密码后账户会怎样？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "连续输错五次密码后账户会怎样？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-003",
+        "query": "登录跳转地址里能看到访问令牌吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录跳转地址里能看到访问令牌吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-004",
+        "query": "商品搜索翻到第二页后关键词还在吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "catalog",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "商品搜索翻到第二页后关键词还在吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "catalog"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-005",
+        "query": "颜色和尺寸筛选刷新后还会保留吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "颜色和尺寸筛选刷新后还会保留吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-006",
+        "query": "购物车数量超过库存时还能结算吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "cart",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "结算"
+          ],
+          "semantic_query": "购物车数量超过库存时还能结算吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "cart"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-007",
+        "query": "订单满三百元时标准运费是多少？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "订单满三百元时标准运费是多少？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-008",
+        "query": "返回确认页再提交会生成几个订单？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "返回确认页再提交会生成几个订单？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-009",
+        "query": "信用卡支付成功后订单状态会变化吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "信用卡支付成功后订单状态会变化吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-010",
+        "query": "支付超时后再次支付会造成重复扣款吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付超时后再次支付会造成重复扣款吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-011",
+        "query": "连续应用两个优惠码会叠加折扣吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "连续应用两个优惠码会叠加折扣吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-012",
+        "query": "部分退款后订单和账务金额如何保持一致？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "部分退款后订单和账务金额如何保持一致？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-013",
+        "query": "成功登录后页面会显示哪个账户？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "成功登录后页面会显示哪个账户？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-014",
+        "query": "账户锁定期间使用正确密码能登录吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "账户锁定期间使用正确密码能登录吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-015",
+        "query": "会话标识应该保存在哪里？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "会话标识应该保存在哪里？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-016",
+        "query": "商品搜索结果翻页时会不会重复或遗漏？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "catalog",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "商品搜索结果翻页时会不会重复或遗漏？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "catalog"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-017",
+        "query": "同时选择蓝色和中号会返回哪些商品？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "catalog",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "同时选择蓝色和中号会返回哪些商品？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "catalog"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-018",
+        "query": "购物车数量改到库存上限以上会怎样？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "cart",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "购物车数量改到库存上限以上会怎样？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "cart"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-019",
+        "query": "订单总价里会出现隐藏服务费吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "订单总价里会出现隐藏服务费吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-020",
+        "query": "重复提交订单会被什么机制拦截？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "重复提交订单会被什么机制拦截？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-021",
+        "query": "支付成功后如何追溯交易？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付成功后如何追溯交易？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-022",
+        "query": "支付超时后用户应该看到什么状态？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付超时后用户应该看到什么状态？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-023",
+        "query": "快速重复点击优惠码按钮会累计折扣吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "快速重复点击优惠码按钮会累计折扣吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-024",
+        "query": "退款二十元后订单剩余金额是多少？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "退款二十元后订单剩余金额是多少？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-025",
+        "query": "登录测试需要使用什么账户？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录测试需要使用什么账户？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-026",
+        "query": "搜索旅行商品需要满足什么数据前置条件？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "catalog",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "搜索旅行商品需要满足什么数据前置条件？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "catalog"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-027",
+        "query": "库存不足时允许先下单后人工取消吗？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "库存不足时允许先下单后人工取消吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-028",
+        "query": "标准配送免运测试的前置规则是什么？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "标准配送免运测试的前置规则是什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-029",
+        "query": "查询网关流水时应该看到几笔成功扣款？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "查询网关流水时应该看到几笔成功扣款？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-TC-030",
+        "query": "部分退款后订单详情会显示哪些金额？",
+        "category": "testcase_search",
+        "expected_intent": "定位与问题最相关的测试用例及预期结果",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "部分退款后订单详情会显示哪些金额？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-001",
+        "query": "支付超时重试为什么会造成重复扣款？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付超时重试为什么会造成重复扣款？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-002",
+        "query": "返回确认页后为什么会出现两个待支付订单？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "返回确认页后为什么会出现两个待支付订单？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-003",
+        "query": "优惠码连点后为什么折扣会累计两次？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "优惠码连点后为什么折扣会累计两次？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-004",
+        "query": "登录失败提示为什么会泄露邮箱是否注册？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录失败提示为什么会泄露邮箱是否注册？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-005",
+        "query": "部分退款后订单总额为什么没有扣减？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "部分退款后订单总额为什么没有扣减？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-006",
+        "query": "重复扣款缺陷的复现步骤是什么？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "testcase_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "重复扣款缺陷的复现步骤是什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-007",
+        "query": "重复订单缺陷的解决方案是什么？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "重复订单缺陷的解决方案是什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-008",
+        "query": "优惠码并发缺陷应该怎样修复？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "优惠码并发缺陷应该怎样修复？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-009",
+        "query": "账户锁定提示缺陷应该怎样修复？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "账户锁定提示缺陷应该怎样修复？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-010",
+        "query": "退款总额缺陷应该怎样修复？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款",
+            "缺陷"
+          ],
+          "semantic_query": "退款总额缺陷应该怎样修复？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-011",
+        "query": "支付重复扣款缺陷修复后要求怎样重试？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付",
+            "缺陷"
+          ],
+          "semantic_query": "支付重复扣款缺陷修复后要求怎样重试？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-012",
+        "query": "重复订单缺陷修复时如何复用草稿订单？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "重复订单缺陷修复时如何复用草稿订单？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-013",
+        "query": "优惠码缺陷修复时如何保证事务一致性？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "优惠码缺陷修复时如何保证事务一致性？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-014",
+        "query": "账户枚举缺陷修复后失败提示怎样统一？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "账户枚举缺陷修复后失败提示怎样统一？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-015",
+        "query": "退款金额缺陷修复后如何更新读模型？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款",
+            "缺陷"
+          ],
+          "semantic_query": "退款金额缺陷修复后如何更新读模型？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-016",
+        "query": "支付重复扣款缺陷涉及哪个订单保护约束？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付",
+            "缺陷"
+          ],
+          "semantic_query": "支付重复扣款缺陷涉及哪个订单保护约束？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-017",
+        "query": "重复订单缺陷缺少什么客户端标识？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "重复订单缺陷缺少什么客户端标识？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-018",
+        "query": "优惠码缺陷中两个请求基于什么状态计算？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "优惠码缺陷中两个请求基于什么状态计算？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-019",
+        "query": "账户枚举缺陷中错误提示如何拼接账户信息？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "缺陷"
+          ],
+          "semantic_query": "账户枚举缺陷中错误提示如何拼接账户信息？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DF-020",
+        "query": "退款缺陷中读模型仍然展示什么金额？",
+        "category": "defect_search",
+        "expected_intent": "定位缺陷记录、根因或修复信息",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "defect_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款",
+            "缺陷"
+          ],
+          "semantic_query": "退款缺陷中读模型仍然展示什么金额？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-001",
+        "query": "订单提交后客户端应该携带什么标识？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "订单提交后客户端应该携带什么标识？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-002",
+        "query": "支付回调重复到达时应该按什么去重？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付回调重复到达时应该按什么去重？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-003",
+        "query": "订单状态变化需要记录哪些追踪字段？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "订单状态变化需要记录哪些追踪字段？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-004",
+        "query": "日志中可以记录完整卡号和 CVV 吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "cvv"
+          ],
+          "semantic_query": "日志中可以记录完整卡号和 CVV 吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-005",
+        "query": "发布评审前哪些幂等场景必须通过？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "发布评审前哪些幂等场景必须通过？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-006",
+        "query": "支付页面报错时首先要查询什么？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付页面报错时首先要查询什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-007",
+        "query": "网关超时后应该使用什么键查询交易？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "网关超时后应该使用什么键查询交易？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-008",
+        "query": "支付金额不一致时应该继续支付吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付金额不一致时应该继续支付吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-009",
+        "query": "账务对账发现差异后可以手工改库吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "账务对账发现差异后可以手工改库吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-010",
+        "query": "哪些支付异常需要立即升级值班人员？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "哪些支付异常需要立即升级值班人员？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-011",
+        "query": "邮箱和密码可以记录在错误日志里吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "邮箱和密码可以记录在错误日志里吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-012",
+        "query": "已注册和未注册账户的失败提示应该一致吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "已注册和未注册账户的失败提示应该一致吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-013",
+        "query": "客服解锁账户需要留下什么记录？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "客服解锁账户需要留下什么记录？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-014",
+        "query": "退出登录只删除本地 Cookie 够吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录",
+            "cookie"
+          ],
+          "semantic_query": "退出登录只删除本地 Cookie 够吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-015",
+        "query": "多设备登录时应该向用户展示什么？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "多设备登录时应该向用户展示什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-016",
+        "query": "验收证据可以只靠口头确认吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "验收证据可以只靠口头确认吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-017",
+        "query": "结算页一次可以应用几个优惠码？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "checkout",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "结算"
+          ],
+          "semantic_query": "结算页一次可以应用几个优惠码？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "checkout"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-018",
+        "query": "标准配送低于三百元时运费是多少？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "标准配送低于三百元时运费是多少？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-019",
+        "query": "重复成功回调会重复记账吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "重复成功回调会重复记账吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-DOC-020",
+        "query": "会话列表可以展示完整 IP 地址吗？",
+        "category": "document_qa",
+        "expected_intent": "基于规范文档回答流程、约束或验收要求",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "ip"
+          ],
+          "semantic_query": "会话列表可以展示完整 IP 地址吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-001",
+        "query": "v2.3 登录跳转为什么不能把令牌放在 URL？",
+        "category": "cross_version",
+        "expected_intent": "比较旧版本登录用例的安全要求",
+        "expected_filters": {
+          "version": "v2.3"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.3",
+          "keywords": [
+            "v2.3",
+            "登录",
+            "url"
+          ],
+          "semantic_query": "v2.3 登录跳转为什么不能把令牌放在 URL？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.3"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-002",
+        "query": "v2.3 的登录失败提示为什么可能泄露账户存在？",
+        "category": "cross_version",
+        "expected_intent": "比较旧版本账户枚举缺陷",
+        "expected_filters": {
+          "version": "v2.3"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.3",
+          "keywords": [
+            "v2.3",
+            "登录"
+          ],
+          "semantic_query": "v2.3 的登录失败提示为什么可能泄露账户存在？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.3"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-003",
+        "query": "v2.4 连续登录失败会触发什么保护？",
+        "category": "cross_version",
+        "expected_intent": "对比新版本登录锁定策略",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "登录"
+          ],
+          "semantic_query": "v2.4 连续登录失败会触发什么保护？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-004",
+        "query": "v2.4 对 URL 中的访问令牌有什么要求？",
+        "category": "cross_version",
+        "expected_intent": "对比新版本认证需求",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "url"
+          ],
+          "semantic_query": "v2.4 对 URL 中的访问令牌有什么要求？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-005",
+        "query": "v2.4 支付超时重试应该使用什么幂等键？",
+        "category": "cross_version",
+        "expected_intent": "对比新版本支付幂等要求",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "支付"
+          ],
+          "semantic_query": "v2.4 支付超时重试应该使用什么幂等键？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-006",
+        "query": "v2.4 支付重复扣款缺陷修复后要求怎样重试？",
+        "category": "cross_version",
+        "expected_intent": "对比缺陷修复后的重试策略",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "defect_search",
+          "module": "payment",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "支付",
+            "缺陷"
+          ],
+          "semantic_query": "v2.4 支付重复扣款缺陷修复后要求怎样重试？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-007",
+        "query": "v2.4 部分退款后订单金额应如何变化？",
+        "category": "cross_version",
+        "expected_intent": "对比退款用例与旧版本行为",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "退款"
+          ],
+          "semantic_query": "v2.4 部分退款后订单金额应如何变化？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-008",
+        "query": "v2.4 部分退款是否应该把订单标记为全部退款？",
+        "category": "cross_version",
+        "expected_intent": "对比退款需求中的状态语义",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "退款"
+          ],
+          "semantic_query": "v2.4 部分退款是否应该把订单标记为全部退款？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-009",
+        "query": "旧版本登录用例的预期结果是否仍适用于 v2.4？",
+        "category": "cross_version",
+        "expected_intent": "比较跨版本会话安全要求",
+        "expected_filters": {
+          "version": "v2.3"
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "login",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "登录",
+            "用例",
+            "v2.4"
+          ],
+          "semantic_query": "旧版本登录用例的预期结果是否仍适用于 v2.4？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-CV-010",
+        "query": "v2.4 退款缺陷修复后订单净额如何重算？",
+        "category": "cross_version",
+        "expected_intent": "比较退款缺陷与当前净额要求",
+        "expected_filters": {
+          "version": "v2.4"
+        },
+        "parsed": {
+          "intent": "defect_search",
+          "module": "refund",
+          "priority": null,
+          "version": "v2.4",
+          "keywords": [
+            "v2.4",
+            "退款",
+            "缺陷"
+          ],
+          "semantic_query": "v2.4 退款缺陷修复后订单净额如何重算？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "version": "v2.4"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-001",
+        "query": "payment 模块 P0 的支付超时用例要求什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "payment",
+          "priority": "P0"
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "payment",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "payment",
+            "p0",
+            "支付",
+            "用例"
+          ],
+          "semantic_query": "payment 模块 P0 的支付超时用例要求什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "priority": "P0"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-002",
+        "query": "checkout 模块 P0 的幂等回归用例验证什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "checkout",
+          "priority": "P0",
+          "tags": [
+            "regression"
+          ]
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "checkout",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "checkout",
+            "p0",
+            "用例"
+          ],
+          "semantic_query": "checkout 模块 P0 的幂等回归用例验证什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "checkout",
+          "priority": "P0"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-003",
+        "query": "login 模块 P1 的安全用例如何验证锁定？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "login",
+          "priority": "P1",
+          "tags": [
+            "security"
+          ]
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "login",
+          "priority": "P1",
+          "version": null,
+          "keywords": [
+            "login",
+            "p1",
+            "用例"
+          ],
+          "semantic_query": "login 模块 P1 的安全用例如何验证锁定？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "priority": "P1"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-004",
+        "query": "cart 模块 P1 的边界用例如何处理库存？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "cart",
+          "priority": "P1",
+          "tags": [
+            "boundary"
+          ]
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "cart",
+          "priority": "P1",
+          "version": null,
+          "keywords": [
+            "cart",
+            "p1",
+            "用例"
+          ],
+          "semantic_query": "cart 模块 P1 的边界用例如何处理库存？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "cart",
+          "priority": "P1"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-005",
+        "query": "refund 模块 P1 的账务一致性用例检查什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "refund",
+          "priority": "P1",
+          "tags": [
+            "ledger"
+          ]
+        },
+        "parsed": {
+          "intent": "testcase_search",
+          "module": "refund",
+          "priority": "P1",
+          "version": null,
+          "keywords": [
+            "refund",
+            "p1",
+            "用例"
+          ],
+          "semantic_query": "refund 模块 P1 的账务一致性用例检查什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "priority": "P1"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-006",
+        "query": "payment 模块 P0 的重复扣款缺陷根因是什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "payment",
+          "priority": "P0",
+          "severity": "critical"
+        },
+        "parsed": {
+          "intent": "defect_search",
+          "module": "payment",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "payment",
+            "p0",
+            "缺陷"
+          ],
+          "semantic_query": "payment 模块 P0 的重复扣款缺陷根因是什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "priority": "P0"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-007",
+        "query": "login 模块 P2 的开放缺陷有什么安全影响？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "login",
+          "priority": "P2",
+          "status": "open"
+        },
+        "parsed": {
+          "intent": "defect_search",
+          "module": "login",
+          "priority": "P2",
+          "version": null,
+          "keywords": [
+            "login",
+            "p2",
+            "缺陷"
+          ],
+          "semantic_query": "login 模块 P2 的开放缺陷有什么安全影响？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login",
+          "priority": "P2"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-008",
+        "query": "refund 模块 P0 的 reopened 缺陷影响什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "refund",
+          "priority": "P0",
+          "status": "reopened"
+        },
+        "parsed": {
+          "intent": "defect_search",
+          "module": "refund",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "refund",
+            "p0",
+            "reopened",
+            "缺陷"
+          ],
+          "semantic_query": "refund 模块 P0 的 reopened 缺陷影响什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund",
+          "priority": "P0"
+        },
+        "expected_filters_matched": false,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-009",
+        "query": "payment 模块 P0 的支付幂等需求要求什么？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "payment",
+          "priority": "P0"
+        },
+        "parsed": {
+          "intent": "requirement_search",
+          "module": "payment",
+          "priority": "P0",
+          "version": null,
+          "keywords": [
+            "payment",
+            "p0",
+            "支付",
+            "需求"
+          ],
+          "semantic_query": "payment 模块 P0 的支付幂等需求要求什么？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "priority": "P0"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-MC-010",
+        "query": "payment 模块 P1 的优惠码需求如何限制叠加？",
+        "category": "multi_condition",
+        "expected_intent": "组合模块、优先级、状态或标签条件定位知识",
+        "expected_filters": {
+          "module": "payment",
+          "priority": "P1"
+        },
+        "parsed": {
+          "intent": "requirement_search",
+          "module": "payment",
+          "priority": "P1",
+          "version": null,
+          "keywords": [
+            "payment",
+            "p1",
+            "需求"
+          ],
+          "semantic_query": "payment 模块 P1 的优惠码需求如何限制叠加？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment",
+          "priority": "P1"
+        },
+        "expected_filters_matched": true,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-001",
+        "query": "系统是否支持按用户画像自动生成黑五优惠券？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的营销能力",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "系统是否支持按用户画像自动生成黑五优惠券？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-002",
+        "query": "退款是否可以使用比特币原路退回？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的退款币种",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "refund",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "退款"
+          ],
+          "semantic_query": "退款是否可以使用比特币原路退回？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "refund"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-003",
+        "query": "登录是否支持企业微信扫码？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的认证方式",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "login",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "登录"
+          ],
+          "semantic_query": "登录是否支持企业微信扫码？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "login"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-004",
+        "query": "购物车商品能否直接分享到短视频平台？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的分享渠道",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "cart",
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "购物车商品能否直接分享到短视频平台？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "cart"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-005",
+        "query": "支付失败后系统会自动发送短信吗？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的通知能力",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": "payment",
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "支付"
+          ],
+          "semantic_query": "支付失败后系统会自动发送短信吗？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {
+          "module": "payment"
+        },
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-006",
+        "query": "订单是否支持数字人民币硬钱包？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的支付方式",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "订单是否支持数字人民币硬钱包？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-007",
+        "query": "系统能否自动生成跨项目自动化测试脚本？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的测试生成能力",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "系统能否自动生成跨项目自动化测试脚本？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-008",
+        "query": "知识平台是否支持 Slack 消息推送？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的外部集成",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [
+            "slack"
+          ],
+          "semantic_query": "知识平台是否支持 Slack 消息推送？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-009",
+        "query": "文档检索是否支持按作者权限隔离？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的权限模型",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "document_qa",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "文档检索是否支持按作者权限隔离？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      },
+      {
+        "query_id": "P12-UN-010",
+        "query": "系统是否提供移动端原生应用？",
+        "category": "unanswerable",
+        "expected_intent": "识别语料未覆盖的客户端形态",
+        "expected_filters": {},
+        "parsed": {
+          "intent": "general_search",
+          "module": null,
+          "priority": null,
+          "version": null,
+          "keywords": [],
+          "semantic_query": "系统是否提供移动端原生应用？",
+          "filters": {},
+          "accepted_by": "deterministic"
+        },
+        "filters": {},
+        "expected_filters_matched": null,
+        "review_status": "pending"
+      }
+    ]
+  },
+  "metric_definitions": {
+    "with_specific_intent": "parsed intent != general_search",
+    "with_filters": "projected Metadata Filters are non-empty",
+    "expected_filter_match_rate": "queries with expected_filters where all expected conditions are covered"
+  },
+  "limitations": [
+    "Phase 12 expected_intent is business text, not a controlled enum; intent accuracy is not reported.",
+    "Candidate rows are pending and must not be used as a formal Gold Set.",
+    "Deterministic parser coverage is not a substitute for human semantic review."
+  ]
+}

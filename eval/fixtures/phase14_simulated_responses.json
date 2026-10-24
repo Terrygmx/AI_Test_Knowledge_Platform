@@ -1,0 +1,105 @@
+{
+  "version": "2026-10-22",
+  "description": "Phase 14 生成评测离线回归夹具。响应为人工构造，用于验证指标与 Badcase 归因，不代表真实 LLM 质量。",
+  "response_source": "simulated",
+  "generated_by": "offline-fixture-v1",
+  "responses": [
+    {
+      "query_id": "P12-TC-001",
+      "answer": "登录成功后服务端会创建新的会话。[1]",
+      "reference_answer": "服务端创建新的会话",
+      "context_sources": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-001", "chunk_index": 0}
+      ],
+      "citations": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-001", "chunk_index": 0, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-TC-002",
+      "answer": "第五次失败后账户锁定三十分钟。[1]",
+      "reference_answer": "第五次失败后账户锁定三十分钟",
+      "context_sources": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-002", "chunk_index": 0}
+      ],
+      "citations": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-002", "chunk_index": 0, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-DOC-007",
+      "answer": "超时后使用原幂等键查询交易状态。[1]",
+      "reference_answer": "超时后使用原幂等键查询交易状态",
+      "context_sources": [
+        {"source_type": "document", "source_id": "SHOP-DOC-002", "chunk_index": 3}
+      ],
+      "citations": [
+        {"source_type": "document", "source_id": "SHOP-DOC-002", "chunk_index": 3, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-DOC-008",
+      "answer": "金额不一致时应停止支付并刷新订单快照。[1]",
+      "reference_answer": "前端显示金额与支付金额不一致时，停止支付并刷新订单快照",
+      "context_sources": [
+        {"source_type": "document", "source_id": "SHOP-DOC-002", "chunk_index": 5}
+      ],
+      "citations": [
+        {"source_type": "document", "source_id": "SHOP-DOC-002", "chunk_index": 5, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-DF-001",
+      "answer": "支付超时重试会造成同一订单重复扣款。[1]",
+      "reference_answer": "客户端每次提交都生成新幂等键，服务端未按订单号加锁",
+      "context_sources": [
+        {"source_type": "defect", "source_id": "SHOP-BUG-001", "chunk_index": 0}
+      ],
+      "citations": [
+        {"source_type": "defect", "source_id": "SHOP-BUG-001", "chunk_index": 0, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-DOC-002",
+      "answer": "回调处理必须按交易号去重。[2]",
+      "reference_answer": "回调处理必须按交易号去重",
+      "context_sources": [
+        {"source_type": "document", "source_id": "SHOP-DOC-001", "chunk_index": 6}
+      ],
+      "citations": [
+        {"source_type": "document", "source_id": "SHOP-DOC-001", "chunk_index": 6, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-TC-003",
+      "answer": "地址栏不出现访问令牌。[1] 系统会自动发送短信。",
+      "reference_answer": "地址栏不出现访问令牌或其他凭据",
+      "context_sources": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-003", "chunk_index": 0}
+      ],
+      "citations": [
+        {"source_type": "testcase", "source_id": "SHOP-LOGIN-003", "chunk_index": 0, "rank": 1}
+      ]
+    },
+    {
+      "query_id": "P12-DOC-006",
+      "answer": "证据不足：无法确认。",
+      "context_sources": [
+        {"source_type": "document", "source_id": "SHOP-DOC-001", "chunk_index": 0}
+      ],
+      "citations": []
+    },
+    {
+      "query_id": "P12-UN-001",
+      "answer": "证据不足：当前知识库没有可用于回答该问题的内容。",
+      "context_sources": [],
+      "citations": []
+    },
+    {
+      "query_id": "P12-UN-002",
+      "answer": "退款可以直接使用比特币原路退回。",
+      "context_sources": [],
+      "citations": []
+    }
+  ]
+}
