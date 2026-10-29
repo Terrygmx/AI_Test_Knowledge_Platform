@@ -1,0 +1,3845 @@
+openapi: 3.1.0
+info:
+  title: AI Test Knowledge Platform
+  description: '面向测试工程的知识智能平台：结构化知识建模 + Hybrid Retrieval + Rerank + RAG。
+
+
+    - Retrieval First：先证明检索正确，再做生成
+
+    - Evidence First：回答必须有来源，不凭空生成 Case ID / Bug ID
+
+    - Evaluation First-class：改 Chunk / Embedding / TopK / Rerank 都可重新评测'
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      tags:
+      - health
+      summary: 健康检查与能力自检
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/badcases:
+    post:
+      tags:
+      - badcases
+      summary: 登记 Badcase
+      operationId: create_badcase_api_v1_badcases_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BadcaseCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadcaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - badcases
+      summary: Badcase 列表（可按阶段 / 状态过滤）
+      operationId: list_badcases_api_v1_badcases_get
+      parameters:
+      - name: stage
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/BadcaseStage'
+          - type: 'null'
+          title: Stage
+      - name: status_filter
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/BadcaseStatus'
+          - type: 'null'
+          title: Status Filter
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BadcaseRead'
+                title: Response List Badcases Api V1 Badcases Get
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/badcases/{badcase_id}:
+    get:
+      tags:
+      - badcases
+      summary: Badcase 详情
+      operationId: get_badcase_api_v1_badcases__badcase_id__get
+      parameters:
+      - name: badcase_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Badcase Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadcaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/badcases/{badcase_id}/advance:
+    post:
+      tags:
+      - badcases
+      summary: 推进闭环状态（open → fixing → fixed → verified）
+      operationId: advance_badcase_api_v1_badcases__badcase_id__advance_post
+      parameters:
+      - name: badcase_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Badcase Id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/BadcaseAdvance'
+              - type: 'null'
+              title: Payload
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadcaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/testcases:
+    post:
+      tags:
+      - testcases
+      summary: 新增测试用例
+      operationId: create_testcase_api_v1_testcases_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCaseCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - testcases
+      summary: 用例列表（元数据过滤 + 关键词）
+      operationId: list_testcases_api_v1_testcases_get
+      parameters:
+      - name: module
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+      - name: sub_module
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sub Module
+      - name: version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          title: Priority
+      - name: case_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CaseType'
+          - type: 'null'
+          title: Case Type
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_TestCaseRead_'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/testcases/{case_id}:
+    get:
+      tags:
+      - testcases
+      summary: 按 Case ID 查询
+      operationId: get_testcase_api_v1_testcases__case_id__get
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Case Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags:
+      - testcases
+      summary: 局部更新用例
+      operationId: update_testcase_api_v1_testcases__case_id__patch
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Case Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCaseUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCaseRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+      - testcases
+      summary: 删除用例
+      operationId: delete_testcase_api_v1_testcases__case_id__delete
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Case Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/defects:
+    post:
+      tags:
+      - defects
+      summary: 新增缺陷
+      operationId: create_defect_api_v1_defects_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - defects
+      summary: 缺陷列表（元数据过滤 + 关键词）
+      operationId: list_defects_api_v1_defects_get
+      parameters:
+      - name: module
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+      - name: version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+      - name: severity
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Severity'
+          - type: 'null'
+          title: Severity
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          title: Priority
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/DefectStatus'
+          - type: 'null'
+          title: Status
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_DefectRead_'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/defects/{bug_id}:
+    get:
+      tags:
+      - defects
+      summary: 按 Bug ID 查询
+      operationId: get_defect_api_v1_defects__bug_id__get
+      parameters:
+      - name: bug_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Bug Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags:
+      - defects
+      summary: 局部更新缺陷
+      operationId: update_defect_api_v1_defects__bug_id__patch
+      parameters:
+      - name: bug_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Bug Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefectUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DefectRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+      - defects
+      summary: 删除缺陷
+      operationId: delete_defect_api_v1_defects__bug_id__delete
+      parameters:
+      - name: bug_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Bug Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/requirements:
+    post:
+      tags:
+      - requirements
+      summary: 新增需求
+      operationId: create_requirement_api_v1_requirements_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - requirements
+      summary: 需求列表
+      operationId: list_requirements_api_v1_requirements_get
+      parameters:
+      - name: module
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+      - name: version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          title: Priority
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+          title: Status
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_RequirementRead_'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/requirements/{req_id}:
+    get:
+      tags:
+      - requirements
+      summary: 按 Req ID 查询
+      operationId: get_requirement_api_v1_requirements__req_id__get
+      parameters:
+      - name: req_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Req Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags:
+      - requirements
+      summary: 局部更新需求
+      operationId: update_requirement_api_v1_requirements__req_id__patch
+      parameters:
+      - name: req_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Req Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequirementUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+      - requirements
+      summary: 删除需求
+      operationId: delete_requirement_api_v1_requirements__req_id__delete
+      parameters:
+      - name: req_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Req Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/documents:
+    post:
+      tags:
+      - documents
+      summary: 登记文档元数据
+      operationId: create_document_api_v1_documents_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - documents
+      summary: 文档列表
+      operationId: list_documents_api_v1_documents_get
+      parameters:
+      - name: doc_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Doc Type
+      - name: version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Q
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_DocumentRead_'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/documents/{doc_id}:
+    get:
+      tags:
+      - documents
+      summary: 按 Doc ID 查询
+      operationId: get_document_api_v1_documents__doc_id__get
+      parameters:
+      - name: doc_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Doc Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    patch:
+      tags:
+      - documents
+      summary: 局部更新文档元数据
+      operationId: update_document_api_v1_documents__doc_id__patch
+      parameters:
+      - name: doc_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Doc Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    delete:
+      tags:
+      - documents
+      summary: 删除文档
+      operationId: delete_document_api_v1_documents__doc_id__delete
+      parameters:
+      - name: doc_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Doc Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/chunks:
+    post:
+      tags:
+      - chunks
+      summary: 创建知识片段（不生成 Embedding）
+      description: '只保存正文和 Metadata。
+
+
+        向量由索引任务生成，避免 HTTP 入参不稳定或调用方塞入不可追溯的向量。'
+      operationId: create_chunk_api_v1_chunks_post
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeChunkCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeChunkRead'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+    get:
+      tags:
+      - chunks
+      summary: 知识片段列表
+      operationId: list_chunks_api_v1_chunks_get
+      parameters:
+      - name: source_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - enum:
+            - testcase
+            - defect
+            - requirement
+            - document
+            type: string
+          - type: 'null'
+          title: Source Type
+      - name: source_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source Id
+      - name: has_embedding
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Has Embedding
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page_KnowledgeChunkRead_'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/chunks/{chunk_id}:
+    delete:
+      tags:
+      - chunks
+      summary: 删除知识片段
+      operationId: delete_chunk_api_v1_chunks__chunk_id__delete
+      parameters:
+      - name: chunk_id
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Chunk Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/search:
+    get:
+      tags:
+      - search
+      summary: 统一知识检索
+      operationId: search_api_v1_search_get
+      parameters:
+      - name: q
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: 关键词，匹配标题与正文
+          title: Q
+        description: 关键词，匹配标题与正文
+      - name: source_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: array
+            items:
+              enum:
+              - testcase
+              - defect
+              - requirement
+              - document
+              type: string
+          - type: 'null'
+          description: 限定检索来源，可重复传入；不传则全部
+          title: Source Type
+        description: 限定检索来源，可重复传入；不传则全部
+      - name: module
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+      - name: version
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+      - name: severity
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Severity'
+          - type: 'null'
+          title: Severity
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          title: Priority
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/DefectStatus'
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+          title: Status
+      - name: type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/CaseType'
+          - type: 'null'
+          title: Type
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          description: 每页条数
+          default: 20
+          title: Limit
+        description: 每页条数
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: 偏移量
+          default: 0
+          title: Offset
+        description: 偏移量
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/rag/answer:
+    post:
+      tags:
+      - rag
+      summary: 基于知识库回答问题（实验性慢接口）
+      description: 同步执行 Vector Search + LLM。默认 OMLX 模型可能耗时 11–60 秒，超过 RAG_REQUEST_TIMEOUT 返回 503；并发超过
+        RAG_MAX_CONCURRENCY 返回 429。底层调用无法被中断（见 README 已知取舍），暂不建议用于交互式生产场景。
+      operationId: answer_api_v1_rag_answer_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RAGRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAGResponse'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+  /api/v1/rag/answer/pipeline:
+    post:
+      tags:
+      - rag
+      summary: 基于完整 Pipeline 回答问题（实验性慢接口）
+      description: Phase 18 Pipeline 路径：Query Understanding → Hybrid 检索 → 可选 Rerank → LLM，响应附带逐阶段 trace。并发
+        / 超时契约与 /rag/answer 相同；understanding / rewriter 当前使用确定性默认实现。
+      operationId: answer_pipeline_api_v1_rag_answer_pipeline_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RAGRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RAGResponse'
+        '422':
+          description: 请求参数校验失败（validation_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '400':
+          description: 业务校验失败（domain_error / bad_request）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '404':
+          description: 资源不存在（not_found）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '409':
+          description: 唯一约束冲突（duplicate / conflict）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '429':
+          description: 并发闸门满载（rag_overloaded / too_many_requests）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: 未处理异常（internal_error，不回显内部细节）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '503':
+          description: 上游模型或 Embedding 不可用 / 超时（llm_error / embedding_error）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+components:
+  schemas:
+    BadcaseAdvance:
+      properties:
+        evaluation_result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Evaluation Result
+      type: object
+      title: BadcaseAdvance
+      description: 推进闭环状态的请求体；verified 必须提供评测结果。
+    BadcaseCreate:
+      properties:
+        badcase_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Badcase Id
+        query_id:
+          type: string
+          maxLength: 128
+          minLength: 1
+          title: Query Id
+        stage:
+          $ref: '#/components/schemas/BadcaseStage'
+        symptom:
+          type: string
+          minLength: 1
+          title: Symptom
+        root_cause:
+          type: string
+          minLength: 1
+          title: Root Cause
+        hypothesis:
+          type: string
+          minLength: 1
+          title: Hypothesis
+        regression_query_ids:
+          items:
+            type: string
+          type: array
+          minItems: 1
+          title: Regression Query Ids
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+      type: object
+      required:
+      - badcase_id
+      - query_id
+      - stage
+      - symptom
+      - root_cause
+      - hypothesis
+      - regression_query_ids
+      title: BadcaseCreate
+      description: 创建 Badcase 的请求体，字段语义与 Phase 19 契约一致。
+    BadcaseRead:
+      properties:
+        badcase_id:
+          type: string
+          title: Badcase Id
+        query_id:
+          type: string
+          title: Query Id
+        stage:
+          $ref: '#/components/schemas/BadcaseStage'
+        symptom:
+          type: string
+          title: Symptom
+        root_cause:
+          type: string
+          title: Root Cause
+        hypothesis:
+          type: string
+          title: Hypothesis
+        regression_query_ids:
+          items:
+            type: string
+          type: array
+          title: Regression Query Ids
+        status:
+          $ref: '#/components/schemas/BadcaseStatus'
+        evaluation_result:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Evaluation Result
+        notes:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Notes
+      type: object
+      required:
+      - badcase_id
+      - query_id
+      - stage
+      - symptom
+      - root_cause
+      - hypothesis
+      - regression_query_ids
+      - status
+      title: BadcaseRead
+      description: Badcase 读取视图。
+    BadcaseStage:
+      type: string
+      enum:
+      - parser
+      - chunk
+      - embedding
+      - query
+      - retrieval
+      - rerank
+      - context
+      - generation
+      - citation
+      title: BadcaseStage
+      description: Badcase 归因的 Pipeline 阶段。
+    BadcaseStatus:
+      type: string
+      enum:
+      - open
+      - fixing
+      - fixed
+      - verified
+      title: BadcaseStatus
+      description: 闭环状态；只能按 open → fixing → fixed → verified 顺序推进。
+    CaseType:
+      type: string
+      enum:
+      - smoke
+      - functional
+      - regression
+      - performance
+      - security
+      - compatibility
+      title: CaseType
+      description: 用例类型。
+    Citation:
+      properties:
+        chunk_id:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Chunk Id
+          description: knowledge_chunks 主键；离线实验没有数据库行时可为空
+        source_type:
+          type: string
+          enum:
+          - testcase
+          - defect
+          - requirement
+          - document
+          title: Source Type
+        source_id:
+          type: string
+          title: Source Id
+        chunk_index:
+          type: integer
+          minimum: 0.0
+          title: Chunk Index
+        snippet:
+          type: string
+          title: Snippet
+        rank:
+          type: integer
+          minimum: 1.0
+          title: Rank
+          description: 本次检索排序，从 1 开始
+        distance:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Distance
+          description: cosine distance；越小越相似，仅 PostgreSQL 检索可用
+        retriever:
+          type: string
+          enum:
+          - vector
+          - keyword
+          - hybrid
+          - rerank
+          title: Retriever
+          description: 产生该证据的检索器
+          default: vector
+        score:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Score
+          description: 检索器原始分数；vector 使用 cosine distance，BM25 使用相关度分数
+      type: object
+      required:
+      - source_type
+      - source_id
+      - chunk_index
+      - snippet
+      - rank
+      title: Citation
+      description: 回答引用的知识片段，业务编号是最终追溯锚点。
+    DefectCreate:
+      properties:
+        bug_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+          title: Bug Id
+          description: 业务编号，如 BUG-1021
+          examples:
+          - BUG-1021
+        title:
+          type: string
+          minLength: 1
+          title: Title
+          description: 缺陷标题
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+          description: 发现版本
+        severity:
+          anyOf:
+          - $ref: '#/components/schemas/Severity'
+          - type: 'null'
+          description: 严重程度
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          description: 优先级 P0-P3
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/DefectStatus'
+          - type: 'null'
+          description: 缺陷状态
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
+          description: 复现步骤
+        root_cause:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Root Cause
+          description: 根因分析
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+          description: 解决方案
+        related_cases:
+          items:
+            type: string
+          type: array
+          title: Related Cases
+          description: 关联用例编号
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+      type: object
+      required:
+      - bug_id
+      - title
+      title: DefectCreate
+      description: 新增缺陷。
+    DefectRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        bug_id:
+          type: string
+          title: Bug Id
+        title:
+          type: string
+          title: Title
+        module:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        severity:
+          anyOf:
+          - $ref: '#/components/schemas/Severity'
+          - type: 'null'
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/DefectStatus'
+          - type: 'null'
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
+        root_cause:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Root Cause
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        related_cases:
+          items:
+            type: string
+          type: array
+          title: Related Cases
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - bug_id
+      - title
+      - created_at
+      - updated_at
+      title: DefectRead
+      description: 缺陷出参。
+    DefectStatus:
+      type: string
+      enum:
+      - open
+      - in_progress
+      - fixed
+      - verified
+      - closed
+      - reopened
+      title: DefectStatus
+      description: 缺陷状态。
+    DefectUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+          title: Title
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        severity:
+          anyOf:
+          - $ref: '#/components/schemas/Severity'
+          - type: 'null'
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/DefectStatus'
+          - type: 'null'
+        reproduce_steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reproduce Steps
+        root_cause:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Root Cause
+        resolution:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Resolution
+        related_cases:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Related Cases
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+      additionalProperties: false
+      type: object
+      title: DefectUpdate
+      description: 局部更新缺陷。
+    DocumentCreate:
+      properties:
+        doc_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+          title: Doc Id
+          description: 业务编号，如 DOC-001
+          examples:
+          - DOC-001
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+          description: 文档标题
+        doc_type:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Doc Type
+          description: markdown / pdf / spec ...
+        path:
+          anyOf:
+          - type: string
+            maxLength: 512
+          - type: 'null'
+          title: Path
+          description: 原始文件路径
+        content_hash:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Content Hash
+          description: 内容指纹（增量索引用）
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+          description: 附加元数据
+      type: object
+      required:
+      - doc_id
+      title: DocumentCreate
+      description: 新增文档元数据（正文由 Phase 2 的 Chunker 处理）。
+    DocumentRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        doc_id:
+          type: string
+          title: Doc Id
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        doc_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Doc Type
+        path:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Path
+        content_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Hash
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - doc_id
+      - created_at
+      - updated_at
+      title: DocumentRead
+      description: 文档出参。
+    DocumentUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Title
+        doc_type:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Doc Type
+        path:
+          anyOf:
+          - type: string
+            maxLength: 512
+          - type: 'null'
+          title: Path
+        content_hash:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Content Hash
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        metadata:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Metadata
+      additionalProperties: false
+      type: object
+      title: DocumentUpdate
+      description: 局部更新文档元数据。
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HealthResponse:
+      properties:
+        status:
+          type: string
+          enum:
+          - ok
+          - degraded
+          title: Status
+        app:
+          type: string
+          title: App
+        version:
+          type: string
+          title: Version
+        environment:
+          type: string
+          title: Environment
+        checks:
+          additionalProperties:
+            type: boolean
+          type: object
+          title: Checks
+        metrics:
+          additionalProperties:
+            type: integer
+          type: object
+          title: Metrics
+        capabilities:
+          additionalProperties:
+            type: boolean
+          type: object
+          title: Capabilities
+      type: object
+      required:
+      - status
+      - app
+      - version
+      - environment
+      - checks
+      - capabilities
+      title: HealthResponse
+      description: 健康检查响应。
+    KnowledgeChunkCreate:
+      properties:
+        source_type:
+          type: string
+          enum:
+          - testcase
+          - defect
+          - requirement
+          - document
+          title: Source Type
+        source_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          title: Source Id
+        document_id:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Document Id
+        chunk_index:
+          type: integer
+          minimum: 0.0
+          title: Chunk Index
+          default: 0
+        content:
+          type: string
+          minLength: 1
+          title: Content
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        content_hash:
+          anyOf:
+          - type: string
+            maxLength: 64
+            minLength: 64
+          - type: 'null'
+          title: Content Hash
+          description: 内容 SHA-256；缺省时由服务层计算
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+      type: object
+      required:
+      - source_type
+      - source_id
+      - content
+      title: KnowledgeChunkCreate
+      description: 创建检索单元。Embedding 由服务层生成，API 入参不接收向量。
+    KnowledgeChunkRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        source_type:
+          type: string
+          enum:
+          - testcase
+          - defect
+          - requirement
+          - document
+          title: Source Type
+        source_id:
+          type: string
+          title: Source Id
+        document_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Document Id
+        chunk_index:
+          type: integer
+          title: Chunk Index
+        content:
+          type: string
+          title: Content
+        metadata:
+          additionalProperties: true
+          type: object
+          title: Metadata
+        content_hash:
+          type: string
+          title: Content Hash
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - source_type
+      - source_id
+      - document_id
+      - chunk_index
+      - content
+      - content_hash
+      - version
+      - created_at
+      - updated_at
+      title: KnowledgeChunkRead
+      description: 检索单元响应。默认不返回完整向量，避免 API 响应过大。
+    Page_DefectRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/DefectRead'
+          type: array
+          title: Items
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+        limit:
+          type: integer
+          minimum: 1.0
+          title: Limit
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: Page[DefectRead]
+    Page_DocumentRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/DocumentRead'
+          type: array
+          title: Items
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+        limit:
+          type: integer
+          minimum: 1.0
+          title: Limit
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: Page[DocumentRead]
+    Page_KnowledgeChunkRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/KnowledgeChunkRead'
+          type: array
+          title: Items
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+        limit:
+          type: integer
+          minimum: 1.0
+          title: Limit
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: Page[KnowledgeChunkRead]
+    Page_RequirementRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/RequirementRead'
+          type: array
+          title: Items
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+        limit:
+          type: integer
+          minimum: 1.0
+          title: Limit
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: Page[RequirementRead]
+    Page_TestCaseRead_:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/TestCaseRead'
+          type: array
+          title: Items
+        total:
+          type: integer
+          minimum: 0.0
+          title: Total
+        limit:
+          type: integer
+          minimum: 1.0
+          title: Limit
+        offset:
+          type: integer
+          minimum: 0.0
+          title: Offset
+      type: object
+      required:
+      - items
+      - total
+      - limit
+      - offset
+      title: Page[TestCaseRead]
+    Priority:
+      type: string
+      enum:
+      - P0
+      - P1
+      - P2
+      - P3
+      title: Priority
+      description: 用例 / 缺陷 / 需求通用优先级。
+    RAGRequest:
+      properties:
+        question:
+          type: string
+          maxLength: 2000
+          minLength: 1
+          title: Question
+          description: 测试知识问题
+        top_k:
+          type: integer
+          maximum: 20.0
+          minimum: 1.0
+          title: Top K
+          description: 最多使用的证据片段数
+          default: 5
+        source_types:
+          anyOf:
+          - items:
+              type: string
+              enum:
+              - testcase
+              - defect
+              - requirement
+              - document
+            type: array
+          - type: 'null'
+          title: Source Types
+          description: 限定证据来源；不传则检索全部来源
+        max_distance:
+          anyOf:
+          - type: number
+            maximum: 2.0
+            minimum: 0.0
+          - type: 'null'
+          title: Max Distance
+          description: 可选 cosine distance 上限；超过则拒答，默认不设阈值
+      type: object
+      required:
+      - question
+      title: RAGRequest
+      description: 自然语言问题。
+    RAGResponse:
+      properties:
+        question:
+          type: string
+          title: Question
+        answer:
+          type: string
+          title: Answer
+        citation_valid:
+          type: boolean
+          title: Citation Valid
+        evidence_sufficient:
+          anyOf:
+          - type: boolean
+          - type: 'null'
+          title: Evidence Sufficient
+        citations:
+          items:
+            $ref: '#/components/schemas/Citation'
+          type: array
+          title: Citations
+        retrieved_count:
+          type: integer
+          minimum: 0.0
+          title: Retrieved Count
+        trace:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Trace
+          description: Phase 18 逐阶段 pipeline trace；只在 pipeline 路径填充
+      type: object
+      required:
+      - question
+      - answer
+      - citation_valid
+      - retrieved_count
+      title: RAGResponse
+      description: 'RAG 回答。
+
+
+        ``citation_valid`` 只表示引用编号合法且回答至少引用一条证据，不代表 Faithfulness；
+
+        ``evidence_sufficient`` 在配置 ``max_distance`` 时表示是否存在通过阈值的证据；
+
+        未配置时为 ``None``，表示尚未建立相关性判定，而不是“无据”或“有据”。
+
+        该字段与 LLM 是否引用证据无关；回答可追溯性由 ``citation_valid`` 表示。'
+    RequirementCreate:
+      properties:
+        req_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+          title: Req Id
+          description: 业务编号，如 REQ-001
+          examples:
+          - REQ-001
+        title:
+          type: string
+          minLength: 1
+          title: Title
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+          description: 需求正文
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+      type: object
+      required:
+      - req_id
+      - title
+      title: RequirementCreate
+      description: 新增需求。
+    RequirementRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        req_id:
+          type: string
+          title: Req Id
+        title:
+          type: string
+          title: Title
+        module:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - req_id
+      - title
+      - created_at
+      - updated_at
+      title: RequirementRead
+      description: 需求出参。
+    RequirementStatus:
+      type: string
+      enum:
+      - draft
+      - reviewing
+      - approved
+      - deprecated
+      title: RequirementStatus
+      description: 需求状态。
+    RequirementUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+          title: Title
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        status:
+          anyOf:
+          - $ref: '#/components/schemas/RequirementStatus'
+          - type: 'null'
+        content:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+      additionalProperties: false
+      type: object
+      title: RequirementUpdate
+      description: 局部更新需求。
+    SearchHit:
+      properties:
+        source_type:
+          type: string
+          enum:
+          - testcase
+          - defect
+          - requirement
+          - document
+          title: Source Type
+        source_id:
+          type: string
+          title: Source Id
+          description: 业务编号：Case ID / Bug ID / Req ID / Doc ID
+        title:
+          type: string
+          title: Title
+        module:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        severity:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Severity
+        status:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+        snippet:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Snippet
+          description: 命中片段（围绕关键词截取）
+        matched_on:
+          items:
+            type: string
+          type: array
+          title: Matched On
+      type: object
+      required:
+      - source_type
+      - source_id
+      - title
+      title: SearchHit
+      description: '一条检索命中。
+
+
+        ``matched_on`` 说明命中了哪些字段（title / steps / content ...），
+
+        让人能判断这条结果为什么被召回，也是后续 Badcase 归因的输入。'
+    SearchResponse:
+      properties:
+        query:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Query
+        filters:
+          additionalProperties: true
+          type: object
+          title: Filters
+          description: 实际生效的过滤条件
+        total:
+          type: integer
+          title: Total
+        limit:
+          type: integer
+          title: Limit
+        offset:
+          type: integer
+          title: Offset
+        items:
+          items:
+            $ref: '#/components/schemas/SearchHit'
+          type: array
+          title: Items
+      type: object
+      required:
+      - total
+      - limit
+      - offset
+      title: SearchResponse
+      description: 检索响应。
+    Severity:
+      type: string
+      enum:
+      - blocker
+      - critical
+      - major
+      - minor
+      - trivial
+      title: Severity
+      description: 缺陷严重程度。
+    TestCaseCreate:
+      properties:
+        case_id:
+          type: string
+          maxLength: 64
+          minLength: 1
+          pattern: ^[A-Za-z0-9][A-Za-z0-9_-]*$
+          title: Case Id
+          description: 业务编号，如 LOGIN-001
+          examples:
+          - LOGIN-001
+        title:
+          type: string
+          minLength: 1
+          title: Title
+          description: 用例标题
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+          description: 模块，如 login / payment
+        sub_module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Sub Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+          description: 适用版本，如 v1.3
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+          description: 优先级 P0-P3
+        case_type:
+          anyOf:
+          - $ref: '#/components/schemas/CaseType'
+          - type: 'null'
+          description: 用例类型
+        precondition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Precondition
+          description: 前置条件
+        steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Steps
+          description: 测试步骤
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
+          description: 预期结果
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+          description: 标签，自动去重去空白
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+          description: 来源文件 / 系统
+      type: object
+      required:
+      - case_id
+      - title
+      title: TestCaseCreate
+      description: 新增用例。
+    TestCaseRead:
+      properties:
+        id:
+          type: integer
+          title: Id
+        case_id:
+          type: string
+          title: Case Id
+        title:
+          type: string
+          title: Title
+        module:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Module
+        sub_module:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sub Module
+        version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        case_type:
+          anyOf:
+          - $ref: '#/components/schemas/CaseType'
+          - type: 'null'
+        precondition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Precondition
+        steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Steps
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        source:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Source
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+      type: object
+      required:
+      - id
+      - case_id
+      - title
+      - created_at
+      - updated_at
+      title: TestCaseRead
+      description: 用例出参。
+    TestCaseUpdate:
+      properties:
+        title:
+          anyOf:
+          - type: string
+            minLength: 1
+          - type: 'null'
+          title: Title
+        module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Module
+        sub_module:
+          anyOf:
+          - type: string
+            maxLength: 64
+          - type: 'null'
+          title: Sub Module
+        version:
+          anyOf:
+          - type: string
+            maxLength: 32
+          - type: 'null'
+          title: Version
+        priority:
+          anyOf:
+          - $ref: '#/components/schemas/Priority'
+          - type: 'null'
+        case_type:
+          anyOf:
+          - $ref: '#/components/schemas/CaseType'
+          - type: 'null'
+        precondition:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Precondition
+        steps:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Steps
+        expected_result:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Expected Result
+        tags:
+          anyOf:
+          - items:
+              type: string
+            type: array
+          - type: 'null'
+          title: Tags
+        source:
+          anyOf:
+          - type: string
+            maxLength: 256
+          - type: 'null'
+          title: Source
+      additionalProperties: false
+      type: object
+      title: TestCaseUpdate
+      description: 局部更新用例：只更新显式传入的字段。
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    ErrorEnvelope:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - request_id
+          - detail
+          properties:
+            code:
+              type: string
+              description: 机器可读错误码，如 not_found / duplicate / validation_error
+            message:
+              type: string
+              description: 人类可读错误信息
+            request_id:
+              type:
+              - string
+              - 'null'
+              description: 请求追踪 ID（X-Request-ID）
+            detail:
+              description: 字段级细节；不同错误码结构不同
+tags:
+- name: health
+  description: 健康检查与能力自检
+- name: testcases
+  description: 测试用例
+- name: defects
+  description: 缺陷
+- name: requirements
+  description: 需求
+- name: documents
+  description: 文档元数据
+- name: chunks
+  description: 知识检索单元
+- name: search
+  description: 统一知识检索（Phase 1 最小版）
+- name: rag
+  description: 最小 RAG：回答与 Citation（Phase 3）
+- name: badcases
+  description: Badcase 闭环跟踪（Phase 19）
+x-contract-version: '1.0'
+x-error-envelope: '#/components/schemas/ErrorEnvelope'
+x-response-conventions:
+  success: 2xx 返回具体资源模型或 Page 包装
+  error: 所有非 2xx 返回统一错误信封
+  request_id: 响应头 X-Request-ID 与错误体 request_id 一致

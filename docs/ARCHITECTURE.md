@@ -19,7 +19,8 @@ Question
 ```
 
 Phase 18 起完整链路由 `app/generation/pipeline.py` 组合；
-`app/api/rag.py` 的公开端点当前仍走 Phase 3 最小 RAG，Pipeline 尚未替换默认路径。
+`POST /api/v1/rag/answer/pipeline` 是可选 Pipeline 入口，
+`POST /api/v1/rag/answer` 仍走 Phase 3 最小 RAG，默认路径未替换。
 
 ## 2. 数据流与存储
 
@@ -30,8 +31,10 @@ CSV / Excel / Markdown / PDF
 → Embedding 由 scripts/index_entities.py 显式生成
 ```
 
-- 权限字段尚未建模；`app/retrieval/access_control.py` 只提供候选层契约。
-- 版本语义在 `app/retrieval/versioning.py`，区间过滤尚未接到 SQL。
+- 权限以 Chunk metadata 的 `access` 块建模；`app/retrieval/access_filters.py`
+  在 SQL 层过滤（PG JSONB / SQLite Python 兜底，畸形配置 fail-closed）。
+- 版本区间过滤已接 SQL：`knowledge_chunks.version_key` 零填充排序键
+  （迁移 `0004`），无版本 / 非法版本不匹配。
 
 ## 3. 评测体系
 
@@ -41,7 +44,7 @@ CSV / Excel / Markdown / PDF
 | 生成指标 | `app/evaluation/generation_evaluation.py` | `results/generation-phase14.json` |
 | 候选数据集 | `app/evaluation/phase12_dataset.py` | `eval/fixtures/phase12_candidates.json`（全部 pending） |
 | Query 理解 / 改写 | `app/evaluation/query_rewrite_evaluation.py` | `results/query-*.json` |
-| Badcase 闭环 | `app/evaluation/badcase.py` | 进程内，未持久化 |
+| Badcase 闭环 | `app/evaluation/badcase.py` + `app/services/badcase_service.py` | `evaluation_badcases` 表（迁移 `0003`） |
 | 性能统计 | `app/evaluation/performance.py` | 库级契约 |
 | Dashboard 聚合 | `app/evaluation/dashboard.py` | manifest 投影 |
 | 实验矩阵 | `app/evaluation/experiment_matrix.py` | manifest 投影 |
@@ -62,3 +65,5 @@ CSV / Excel / Markdown / PDF
 - 检索实验：`docs/CHUNKING_EXPERIMENT.md`、`docs/HYBRID_SEARCH_EXPERIMENT.md`
 - 评测口径：`docs/RETRIEVAL_EVALUATION.md`、`docs/GENERATION_EVALUATION.md`
 - 进度总览：`docs/PHASE_PROGRESS.md`
+- SDD 规范：`docs/sdd/proposal.md`、`docs/sdd/design.md`、
+  `docs/sdd/api-spec.yaml`、`docs/sdd/tasks.md`

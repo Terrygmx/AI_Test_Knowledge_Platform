@@ -14,6 +14,12 @@
 项目边界与学习问题见 [`docs/PROJECT_SCOPE.md`](docs/PROJECT_SCOPE.md)、
 [`docs/LEARNING_QUESTIONS.md`](docs/LEARNING_QUESTIONS.md)。
 
+SDD 规范（提案 / 设计 / 接口契约 / 任务清单）见
+[`docs/sdd/proposal.md`](docs/sdd/proposal.md)、
+[`docs/sdd/design.md`](docs/sdd/design.md)、
+[`docs/sdd/api-spec.yaml`](docs/sdd/api-spec.yaml)、
+[`docs/sdd/tasks.md`](docs/sdd/tasks.md)。
+
 ---
 
 ## 技术栈

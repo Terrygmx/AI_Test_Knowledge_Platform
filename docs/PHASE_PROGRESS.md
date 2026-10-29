@@ -5,6 +5,8 @@
 - 当前 HEAD：`32acdaec9830f87744c0ca7abeb745df6f481134`
 - 状态口径：**已完成** / **部分完成** / **未开始**
 - 维护规则：每完成一个 Phase、每次 review 收口、每次正式实验重跑后，同步更新本文件；Phase 完成状态以本文件为总览，细节以链接的报告和 review 为准。
+- SDD 规范基线：`docs/sdd/proposal.md`、`docs/sdd/design.md`、
+  `docs/sdd/api-spec.yaml`、`docs/sdd/tasks.md`；任务状态与验收证据以 `tasks.md` 为准。
 
 > “工程缺口”是代码、测试、正式实验或报告尚未闭环的事项。
 > “人工缺口”是必须由人判断、确认或签署的事项，不能用脚本批量伪造。

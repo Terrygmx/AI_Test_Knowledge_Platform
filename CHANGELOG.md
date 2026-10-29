@@ -6,6 +6,16 @@
 
 ### Added
 
+#### SDD 规范基线（2026-10-29）
+
+- 新增 `docs/sdd/` 四件套：`proposal.md`（范围与验收标准）、
+  `design.md`（模块边界、数据模型、ADR、非功能约束）、
+  `api-spec.yaml`（机器可读接口契约）、`tasks.md`（依赖排序任务与证据）。
+- 新增 `app/api/contract.py` 与 `scripts/export_openapi.py`：在 FastAPI
+  OpenAPI 上补齐统一错误信封，契约由实现导出而非手写。
+- 新增 `tests/test_sdd_api_spec.py`：契约与运行中实现不一致、或任一操作
+  缺少错误响应时测试失败；`scripts/export_openapi.py --check` 可用于 CI。
+
 #### 工程缺口收口七步循环（2026-10-24）
 
 - **Pipeline HTTP API**：新增 `POST /api/v1/rag/answer/pipeline`，

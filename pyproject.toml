@@ -38,6 +38,7 @@ dev = [
     "pytest-cov>=6.0",
     "ruff>=0.8",
     "ipython>=8.30",
+    "pyyaml>=6.0.3",
 ]
 
 # 本项目按应用方式部署（uvicorn app.main:app），不作为库分发，
